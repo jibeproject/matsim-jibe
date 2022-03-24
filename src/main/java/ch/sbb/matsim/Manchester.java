@@ -1,8 +1,10 @@
-package ch.sbb.matsim.analysis.skims;
+package ch.sbb.matsim;
 
 import bicycle.BicycleLinkSpeedCalculatorDefaultImpl;
 import bicycle.BicycleTravelDisutility;
 import bicycle.BicycleTravelTime;
+import ch.sbb.matsim.analysis.skims.CalculateData;
+import ch.sbb.matsim.analysis.skims.TravelAttribute;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
