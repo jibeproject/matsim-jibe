@@ -13,7 +13,7 @@ import java.util.Map;
  * average adaption times, connection frequency and connection shares based
  * on the rooftop-algorithm from Niek Guis (ca. 2015).
  *
- * For more details, see {@link PTSkimMatrices}.
+ * For more details, see {@link PtIndicators}.
  *
  * @author mrieser / Simunto
  */

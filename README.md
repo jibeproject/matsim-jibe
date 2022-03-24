@@ -446,7 +446,7 @@ To calculate skim matrices, you need:
 - recommended: facilities, to sample locations within zones; alternatively nodes from the network can be used
 - required: transit schedule
 
-The class `ch.sbb.matsim.analysis.skims.CalculateSkimMatrices` is the main class that
+The class `ch.sbb.matsim.analysis.skims.CalculateData` is the main class that
 exposes some helpful methods to calculate skim matrices. It contains a main method that accepts
 arguments to be directly run, alternatively the main method can act as a template for customized
 skim matrix calculations. 

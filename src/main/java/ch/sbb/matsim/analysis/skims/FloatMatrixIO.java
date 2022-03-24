@@ -34,9 +34,10 @@ public final class FloatMatrixIO {
     private static <T> void writeCSV(FloatMatrix<T> matrix, BufferedWriter writer) throws IOException {
         writer.write(HEADER);
         writer.write(NL);
-        T[] zoneIds = getSortedIds(matrix);
-        for (T fromZoneId : zoneIds) {
-            for (T toZoneId : zoneIds) {
+        T[] fromZoneIds = getSortedIds(matrix.orig2index);
+        T[] toZoneIds = getSortedIds(matrix.dest2index);
+        for (T fromZoneId : fromZoneIds) {
+            for (T toZoneId : toZoneIds) {
                 writer.write(fromZoneId.toString());
                 writer.append(SEP);
                 writer.write(toZoneId.toString());
@@ -74,11 +75,11 @@ public final class FloatMatrixIO {
         }
     }
 
-    private static <T> T[] getSortedIds(FloatMatrix<T> matrix) {
+    private static <T> T[] getSortedIds(Map<T, Integer> id2index) {
         // the array-creation is only safe as long as the generated array is only within this class!
         @SuppressWarnings("unchecked")
-        T[] ids = (T[]) (new Object[matrix.id2index.size()]);
-        for (Map.Entry<T, Integer> e : matrix.id2index.entrySet()) {
+        T[] ids = (T[]) (new Object[id2index.size()]);
+        for (Map.Entry<T, Integer> e : id2index.entrySet()) {
             ids[e.getValue()] = e.getKey();
         }
         return ids;

@@ -1,14 +1,13 @@
 package ch.sbb.matsim.routing.graph;
 
-import ch.sbb.matsim.analysis.skims.TravelAttribute;
+import java.util.Arrays;
+import java.util.NoSuchElementException;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
+import org.matsim.core.utils.misc.OptionalTime;
 import org.matsim.vehicles.Vehicle;
-
-import java.util.Arrays;
-import java.util.NoSuchElementException;
 
 /**
  * Implements a least-cost-path-tree upon a {@link Graph} datastructure.
@@ -25,33 +24,23 @@ import java.util.NoSuchElementException;
  * memory is pre-allocated in the constructor. This makes the implementation
  * NOT thread-safe.
  */
-public class LeastCostPathTree {
+public class LeastCostPathTreeOld {
 
     private final Graph graph;
     private final TravelTime tt;
     private final TravelDisutility td;
-    private final TravelAttribute ta[];
-    private final int attributeCount;
-    private final int entriesPerNode;
-    private final double[] data; // minimum 3 entries per node: time, cost, distance
-    private final int[] linksUsed;
-    private final int[] comingFromNode;
-    private final int[] comingFromLink;
+    private final double[] data; // 3 entries per node: time, cost, distance
+    private final int[] comingFrom;
     private final Graph.LinkIterator outLI;
     private final Graph.LinkIterator inLI;
     private final NodeMinHeap pq;
 
-    public LeastCostPathTree(Graph graph, TravelTime tt, TravelDisutility td, TravelAttribute ta[]) {
+    public LeastCostPathTreeOld(Graph graph, TravelTime tt, TravelDisutility td) {
         this.graph = graph;
         this.tt = tt;
         this.td = td;
-        this.ta = ta;
-        this.attributeCount = ta != null ? ta.length : 0;
-        this.entriesPerNode = 3 + attributeCount;
-        this.data = new double[graph.nodeCount * entriesPerNode];
-        this.linksUsed = new int[graph.nodeCount];
-        this.comingFromNode = new int[graph.nodeCount];
-        this.comingFromLink = new int[graph.nodeCount];
+        this.data = new double[graph.nodeCount * 3];
+        this.comingFrom = new int[graph.nodeCount];
         this.pq = new NodeMinHeap();
         this.outLI = graph.getOutLinkIterator();
         this.inLI = graph.getInLinkIterator();
@@ -63,12 +52,9 @@ public class LeastCostPathTree {
 
     public void calculate(int startNode, double startTime, Person person, Vehicle vehicle, StopCriterion stopCriterion) {
         Arrays.fill(this.data, Double.POSITIVE_INFINITY);
-        Arrays.fill(this.comingFromNode, -1);
+        Arrays.fill(this.comingFrom, -1);
 
-        setData(startNode, 0., startTime, 0., 0);
-        for(int i = 0 ; i < attributeCount ; i++) {
-            setAttribute(startNode, i, 0.);
-        }
+        setData(startNode, 0, startTime, 0);
 
         this.pq.clear();
         this.pq.insert(startNode);
@@ -78,8 +64,6 @@ public class LeastCostPathTree {
             double currTime = getTime(nodeIdx);
             double currCost = getCost(nodeIdx);
             double currDistance = getDistance(nodeIdx);
-            int currLinksUsed = getLinksUsed(nodeIdx);
-            double[] currAttr = getAttributes(nodeIdx);
 
             if (stopCriterion.stop(nodeIdx, currTime, currCost, currDistance, startTime)) {
                 break;
@@ -91,101 +75,100 @@ public class LeastCostPathTree {
                 Link link = this.graph.getLink(linkIdx);
                 int toNode = outLI.getToNodeIndex();
 
-                double newTime = currTime + this.tt.getLinkTravelTime(link, currTime, person, vehicle);
+                double travelTime = this.tt.getLinkTravelTime(link, currTime, person, vehicle);
+                double newTime = currTime + travelTime;
                 double newCost = currCost + this.td.getLinkTravelDisutility(link, currTime, person, vehicle);
-                int newLinksUsed = currLinksUsed + 1;
 
                 double oldCost = getCost(toNode);
                 if (Double.isFinite(oldCost)) {
                     if (newCost < oldCost) {
                         pq.decreaseKey(toNode, newCost);
-                        setData(toNode, newCost, newTime, currDistance + link.getLength(), newLinksUsed);
-                        for(int i = 0 ; i < attributeCount ; i++) {
-                            double newAttr = currAttr[i] + this.ta[i].getTravelAttribute(link);
-                            setAttribute(toNode, i, newAttr);
-                        }
-                        this.comingFromNode[toNode] = nodeIdx;
-                        this.comingFromLink[toNode] = linkIdx;
+                        setData(toNode, newCost, newTime, currDistance + link.getLength());
+                        this.comingFrom[toNode] = nodeIdx;
                     }
                 } else {
-                    setData(toNode, newCost, newTime, currDistance + link.getLength(), newLinksUsed);
-                    for(int i = 0 ; i < attributeCount ; i++) {
-                        double newAttr = currAttr[i] + this.ta[i].getTravelAttribute(link);
-                        setAttribute(toNode, i, newAttr);
-                    }
+                    setData(toNode, newCost, newTime, currDistance + link.getLength());
                     pq.insert(toNode);
-                    this.comingFromNode[toNode] = nodeIdx;
-                    this.comingFromLink[toNode] = linkIdx;
+                    this.comingFrom[toNode] = nodeIdx;
                 }
             }
         }
     }
 
-    public int getLinksUsed(int nodeIndex) { return this.linksUsed[nodeIndex]; }
+    public void calculateBackwards(int arrivalNode, double arrivalTime, Person person, Vehicle vehicle) {
+        this.calculate(arrivalNode, arrivalTime, person, vehicle, (node, arrTime, cost, distance, depTime) -> false);
+    }
+
+    public void calculateBackwards(int arrivalNode, double arrivalTime, Person person, Vehicle vehicle, StopCriterion stopCriterion) {
+        Arrays.fill(this.data, Double.POSITIVE_INFINITY);
+        Arrays.fill(this.comingFrom, -1);
+
+        setData(arrivalNode, 0, arrivalTime, 0);
+
+        this.pq.clear();
+        this.pq.insert(arrivalNode);
+
+        while (!pq.isEmpty()) {
+            final int nodeIdx = pq.poll();
+            double currTime = getTime(nodeIdx);
+            double currCost = getCost(nodeIdx);
+            double currDistance = getDistance(nodeIdx);
+
+            if (stopCriterion.stop(nodeIdx, arrivalTime, currCost, currDistance, currTime)) {
+                break;
+            }
+
+            inLI.reset(nodeIdx);
+            while (inLI.next()) {
+                int linkIdx = inLI.getLinkIndex();
+                Link link = this.graph.getLink(linkIdx);
+                int fromNode = inLI.getFromNodeIndex();
+
+                double travelTime = this.tt.getLinkTravelTime(link, currTime, person, vehicle);
+                double newTime = currTime - travelTime;
+                double newCost = currCost + this.td.getLinkTravelDisutility(link, currTime, person, vehicle);
+
+                double oldCost = getCost(fromNode);
+                if (Double.isFinite(oldCost)) {
+                    if (newCost < oldCost) {
+                        pq.decreaseKey(fromNode, newCost);
+                        setData(fromNode, newCost, newTime, currDistance + link.getLength());
+                        this.comingFrom[fromNode] = nodeIdx;
+                    }
+                } else {
+                    setData(fromNode, newCost, newTime, currDistance + link.getLength());
+                    pq.insert(fromNode);
+                    this.comingFrom[fromNode] = nodeIdx;
+                }
+            }
+        }
+    }
 
     public double getCost(int nodeIndex) {
-        return this.data[nodeIndex * entriesPerNode];
+        return this.data[nodeIndex * 3];
     }
 
     public double getTime(int nodeIndex) {
-        return this.data[nodeIndex * entriesPerNode + 1];
+        return this.data[nodeIndex * 3 + 1];
     }
 
     public double getDistance(int nodeIndex) {
-        return this.data[nodeIndex * entriesPerNode + 2];
+        return this.data[nodeIndex * 3 + 2];
     }
-
-    public double getAttribute(int nodeIndex, int attrIndex) { return this.data[nodeIndex * entriesPerNode + 3 + attrIndex]; }
-
-    public double[] getAttributes(int nodeIndex) {
-        double[] attributes = new double[attributeCount];
-        for(int i = 0 ; i < attributeCount ; i++) {
-            attributes[i] = this.data[nodeIndex * entriesPerNode + 3 + i];
-        }
-        return attributes;
-    }
-
-    public int[] getNodeArray(int nodeIndex) {
-        int nodesUsed = getLinksUsed(nodeIndex) + 1;
-        int[] nodeArray = new int[nodesUsed];
-        nodeArray[nodesUsed-1] = nodeIndex;
-        for(int i = nodesUsed ; i > 1 ; i--) {
-            nodeArray[i-2] = getComingFromNode(nodeArray[i-1]);
-        }
-        return nodeArray;
-    }
-
-    public int[] getLinkArray(int nodeIndex) {
-        int linksUsed = getLinksUsed(nodeIndex);
-        int[] linkArray = new int[linksUsed];
-        int currNode = nodeIndex;
-        for(int i = linksUsed ; i > 0 ; i--) {
-            linkArray[i-1] = getComingFromLink(currNode);
-            currNode = getComingFromNode(currNode);
-        }
-        return linkArray;
-    }
-
-    private void setAttribute(int nodeIndex, int attrIndex, double attr) { this.data[nodeIndex * entriesPerNode + 3 + attrIndex] = attr; }
 
     private void setCost(int nodeIndex, double cost) {
-        this.data[nodeIndex * entriesPerNode] = cost;
+        this.data[nodeIndex * 3] = cost;
     }
 
-    private void setData(int nodeIndex, double cost, double time, double distance, int linksUsed) {
-        int index = nodeIndex * entriesPerNode;
+    private void setData(int nodeIndex, double cost, double time, double distance) {
+        int index = nodeIndex * 3;
         this.data[index] = cost;
         this.data[index + 1] = time;
         this.data[index + 2] = distance;
-        this.linksUsed[nodeIndex] = linksUsed;
     }
 
-    public int getComingFromNode(int nodeIndex) {
-        return this.comingFromNode[nodeIndex];
-    }
-
-    public int getComingFromLink(int nodeIndex) {
-        return this.comingFromLink[nodeIndex];
+    public int getComingFrom(int nodeIndex) {
+        return this.comingFrom[nodeIndex];
     }
 
     private class NodeMinHeap {

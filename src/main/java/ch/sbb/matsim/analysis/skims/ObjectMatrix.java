@@ -37,81 +37,32 @@ import java.util.Set;
  * For larger matrices the absolute volumes become even more impressive. For an 8000x8000 matrix,
  * the float array will use 250MB, while the alternatives will use 4.5 or 6.5 GB respectively.
  */
-public class FloatMatrix<T> {
+public class ObjectMatrix<T> {
 
     final Map<T, Integer> orig2index;
     final Map<T, Integer> dest2index;
     private final int origSize;
     private final int destSize;
-    private final float[] data;
+    private final Object[] data;
 
-    public FloatMatrix(Set<T> zones, float defaultValue) {
-        this.origSize = zones.size();
-        this.destSize = zones.size();
-        this.orig2index = new HashMap<>((int) (this.origSize * 1.5));
-        this.dest2index = new HashMap<>((int) (this.destSize * 1.5));
-        this.data = new float[this.origSize * this.destSize];
-        Arrays.fill(this.data, defaultValue);
-        int index = 0;
-        for(T z : zones) {
-            this.orig2index.put(z, index);
-            this.dest2index.put(z, index);
-            index++;
-        }
-    }
-
-    public FloatMatrix(int origSize, int destSize, Map<T, Integer> orig2index, Map<T, Integer> dest2index, float defaultValue) {
+    public ObjectMatrix(int origSize, int destSize, Map<T, Integer> orig2index, Map<T, Integer> dest2index) {
         this.origSize = origSize;
         this.destSize = destSize;
         this.orig2index = orig2index;
         this.dest2index = dest2index;
-        this.data = new float[this.origSize * this.destSize];
-        Arrays.fill(this.data, defaultValue);
+        this.data = new Object[this.origSize * this.destSize];
     }
 
-    public float set(T from, T to, float value) {
+    public Object set(T from, T to, Object value) {
         int index = getIndex(from, to);
-        float oldValue = this.data[index];
+        Object oldValue = this.data[index];
         this.data[index] = value;
         return oldValue;
     }
 
-    public float get(T from, T to) {
+    public Object get(T from, T to) {
         int index = getIndex(from, to);
         return this.data[index];
-    }
-
-    public float add(T from, T to, float value) {
-        int index = getIndex(from, to);
-        float oldValue = this.data[index];
-        float newValue = oldValue + value;
-        this.data[index] = newValue;
-        return newValue;
-    }
-
-    /**
-     * @param from
-     * @param to
-     * @param factor
-     * @return the new value
-     */
-    public float multiply(T from, T to, float factor) {
-        int index = getIndex(from, to);
-        float oldValue = this.data[index];
-        float newValue = oldValue * factor;
-        this.data[index] = newValue;
-        return newValue;
-    }
-
-    /**
-     * Multiplies the values in every cell with the given factor.
-     *
-     * @param factor the multiplication factor
-     */
-    public void multiply(float factor) {
-        for (int i = 0; i < this.data.length; i++) {
-            this.data[i] *= factor;
-        }
     }
 
     private int getIndex(T from, T to) {
