@@ -1,4 +1,4 @@
-**[Work in progress]** This repository contains a collection of tools and code for routing, matrix generation, and accessibility calculations for JIBE.
+**[Work in progress]** This repository contains a collection of tools and code for network conversion, routing, matrix generation, and accessibility calculations for GLASST and JIBE.
 
 The routing algorithms are based largely on code by the swiss federal railway (SBB) which can be found here:
 https://github.com/SchweizerischeBundesbahnen/matsim-sbb-extensions
@@ -21,7 +21,7 @@ Calculates the routes between any number of zones (minimum 2). Zone names are pa
 Can specify one or multiple routing algorithms in this code by defining different travel disutility functions. 
 In the current code there are 4 routing possibilities:
 - shortest distance
-- fastest time
+- fastest
 - berlin (default form the MATSim bicycle extension)
 - jibe (an example custom algorithm which considers infrastructure quality, surface, ndvi, gradient, and traffic speed)
 
