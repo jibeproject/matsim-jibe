@@ -7,7 +7,6 @@ import ch.sbb.matsim.analysis.CalculateData;
 import ch.sbb.matsim.analysis.TravelAttribute;
 import disutility.DistanceAsTravelDisutility;
 import org.apache.log4j.Logger;
-import org.matsim.api.core.v01.TransportMode;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;
@@ -19,9 +18,9 @@ import org.opengis.referencing.FactoryException;
 
 import java.io.IOException;
 
-public class ManchesterSkims {
+public class JibeSkims {
 
-    private final static Logger log = Logger.getLogger(ManchesterSkims.class);
+    private final static Logger log = Logger.getLogger(JibeSkims.class);
 
     private final static double AVG_WALK_SPEED = 5.3 / 3.6;
     private final static double AVG_CYCLE_SPEED = 14 / 3.6;

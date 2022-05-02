@@ -39,12 +39,12 @@ public class RouteComparison {
 
         if(args.length < 6) {
             throw new RuntimeException("Program requires at least 6 arguments: \n" +
-                    "(0) Network file path\n" +
-                    "(1) Zone coordinates file\n" +
-                    "(2) Edges file path\n" +
-                    "(3) Output directory\n" +
-                    "(4) Zone 1\n" +
-                    "(5) Zone 2\n" +
+                    "(0) MATSim network file path \n" +
+                    "(1) Zone coordinates file \n" +
+                    "(2) Edges file path \n" +
+                    "(3) Output file path \n" +
+                    "(4) Zone 1 \n" +
+                    "(5) Zone 2 \n" +
                     "(6+) Additional zones for routing");
         }
 
@@ -88,16 +88,16 @@ public class RouteComparison {
         BicycleLinkSpeedCalculatorDefaultImpl linkSpeedCalculator = new BicycleLinkSpeedCalculatorDefaultImpl((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME));
         TravelTime ttCycle = new BicycleTravelTime(linkSpeedCalculator);
 
-        // DEFINE ROUTES TO DRAW
+        // DEFINE TRAVEL DISUTILITIES HERE
         Map<String,TravelDisutility> travelDisutilities = new HashMap<>();
 
         // Shortest distance
         travelDisutilities.put("shortestDistance", new DistanceAsTravelDisutility());
 
         // Least time
-        travelDisutilities.put("leastTime", new OnlyTimeDependentTravelDisutility(ttCycle));
+        travelDisutilities.put("fastest", new OnlyTimeDependentTravelDisutility(ttCycle));
 
-        // Berlin (default from bicycle MATSim contrib)
+        // Berlin disutility (default from bicycle MATSim contrib)
         TravelDisutility tdBerlin = new BicycleTravelDisutility((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME),
                 planCalcScoreConfigGroup, ttCycle);
 
@@ -106,7 +106,7 @@ public class RouteComparison {
 
         travelDisutilities.put("berlin", tdBerlin);
 
-        // JIBE Custom route
+        // JIBE custom disutility
         TravelDisutility tdJibe = new CustomBicycleDisutility((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME),
                 planCalcScoreConfigGroup, ttCycle);
 
@@ -115,7 +115,7 @@ public class RouteComparison {
 
         travelDisutilities.put("jibe", tdJibe);
 
-        // DEFINE ADDITIONAL ROUTING ATTRIBUTES TO INCLUDE IN GPKG
+        // DEFINE ADDITIONAL ROUTE ATTRIBUTES TO INCLUDE IN GPKG (DOES NOT AFFECT ROUTING)
         LinkedHashMap<String,TravelAttribute> attributes = new LinkedHashMap<>();
         attributes.put("infrastructureFactor",l -> CustomBicycleUtils.getInfrastructureFactor(l) * l.getLength());
         attributes.put("gradientFactor", l -> BicycleUtilityUtils.getGradientFactor(l) * l.getLength());

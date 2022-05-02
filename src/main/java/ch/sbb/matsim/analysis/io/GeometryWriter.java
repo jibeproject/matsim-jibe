@@ -38,7 +38,7 @@ public final class GeometryWriter {
 
     private final static Logger log = Logger.getLogger(GeometryWriter.class);
     private final static String SHORTEST_DISTANCE_ROUTE_NAME = "shortestDistance";
-    private final static String LEAST_TIME_ROUTE_NAME = "leastTime";
+    private final static String LEAST_TIME_ROUTE_NAME = "fastest";
 
 
     public static <T> void writeGpkg(GeometryData<T> geometryData, Map<String, Node> zoneNodeMap,
