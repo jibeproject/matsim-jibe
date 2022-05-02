@@ -1,16 +1,16 @@
-package ch.sbb.matsim.analysis.skims;
+package ch.sbb.matsim.analysis.data;
 
 import java.util.*;
 
 public class AccessibilityData<T> {
 
-    final Map<T, Integer> zone2index;
-    private final double[] distData;
+    public final Map<T, Integer> zone2index;
+    public final double[] distData;
     //private final float[] timeData;
-    final ArrayList<double[]> attrData = new ArrayList<>();
+    public final ArrayList<double[]> attrData = new ArrayList<>();
 
 
-    AccessibilityData(Set<T> zones, int attributeCount) {
+    public AccessibilityData(Set<T> zones, int attributeCount) {
         int size = zones.size();
         this.zone2index = new HashMap<>((int) (size * 1.5));
         int index = 0;

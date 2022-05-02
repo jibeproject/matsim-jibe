@@ -2,7 +2,7 @@
  * Copyright (C) Schweizerische Bundesbahnen SBB, 2018.
  */
 
-package ch.sbb.matsim.analysis.skims;
+package ch.sbb.matsim.analysis;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -14,6 +14,19 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import ch.sbb.matsim.analysis.calc.AccessibilityCalculator;
+import ch.sbb.matsim.analysis.calc.GeometryCalculator;
+import ch.sbb.matsim.analysis.calc.IndicatorCalculator;
+import ch.sbb.matsim.analysis.calc.PtCalculator;
+import ch.sbb.matsim.analysis.data.AccessibilityData;
+import ch.sbb.matsim.analysis.data.GeometryData;
+import ch.sbb.matsim.analysis.data.IndicatorData;
+import ch.sbb.matsim.analysis.data.PtData;
+import ch.sbb.matsim.analysis.io.AccessibilityWriter;
+import ch.sbb.matsim.analysis.io.GeometryWriter;
+import ch.sbb.matsim.analysis.io.IndicatorWriter;
+import ch.sbb.matsim.analysis.io.PtWriter;
+import ch.sbb.matsim.analysis.matrix.FloatMatrix;
 import ch.sbb.matsim.routing.pt.raptor.RaptorParameters;
 import ch.sbb.matsim.routing.pt.raptor.RaptorStaticConfig;
 import ch.sbb.matsim.routing.pt.raptor.RaptorUtils;
@@ -105,23 +118,7 @@ public class CalculateData {
 
     public final void loadSamplingPointsFromFile(String filename) throws IOException {
         log.info("loading sampling points from " + filename);
-        String expectedHeader = "ZONE;POINT_INDEX;X;Y";
-        this.zoneCoordMap = new HashMap<>();
-        try (BufferedReader reader = IOUtils.getBufferedReader(filename)) {
-            String header = reader.readLine();
-            if (!expectedHeader.equals(header)) {
-                throw new RuntimeException("Bad header, expected '" + expectedHeader + "', got: '" + header + "'.");
-            }
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = StringUtils.explode(line, ';');
-                String zoneId = parts[0];
-                double x = Double.parseDouble(parts[2]);
-                double y = Double.parseDouble(parts[3]);
-                Coord coord = new Coord(x, y);
-                this.zoneCoordMap.put(zoneId,coord);
-            }
-        }
+        this.zoneCoordMap = buildZoneCoordMap(filename);
         if (batchSize == null) {
             batchSize = zoneCoordMap.size();
         }
@@ -194,11 +191,10 @@ public class CalculateData {
 
             log.info("Writing batch " + counter + " data to " + outputDirectory + (prefix.isEmpty() ? "" : (" with prefix " + prefix)));
             startTime = System.currentTimeMillis();
-            IndicatorIO.writeAsCsv(netIndicators,outputDirectory + "/" + prefix + "batch_" + counter + ".csv.gz");
+            IndicatorWriter.writeAsCsv(netIndicators,outputDirectory + "/" + prefix + "batch_" + counter + ".csv.gz");
             endTime = System.currentTimeMillis();
             log.info("Batch " + counter + " writing time: " + (endTime - startTime));
-
-            break; // break for debugging only
+            // break; // break for debugging only
         }
     }
 
@@ -236,17 +232,16 @@ public class CalculateData {
         log.info("Calculation time: " + (endTime - startTime));
 
         startTime = System.currentTimeMillis();
-        AccessibilityIO.writeAsCsv(accessibilities,outputDirectory + "/" + prefix + ".csv.gz");
+        AccessibilityWriter.writeAsCsv(accessibilities,outputDirectory + "/" + prefix + ".csv.gz");
         endTime = System.currentTimeMillis();
         log.info("Writing time: " + (endTime - startTime));
     }
 
     public final void calculateRouteGeometries(String networkFilename,Config config, String[] originZoneNames,
-                                               TravelTime tt, TravelDisutility td,
-                                               String outputPrefix, String transportMode,
+                                               TravelTime tt, TravelDisutility td, String inputEdgesGpkg,
+                                               String outputFilePath, String transportMode,
                                                Predicate<Link> xy2linksPredicate) throws IOException, FactoryException {
 
-        String prefix = outputPrefix == null ? "" : outputPrefix;
         Scenario scenario = ScenarioUtils.createScenario(config);
         log.info("loading network from " + networkFilename);
         new MatsimNetworkReader(scenario.getNetwork()).readFile(networkFilename);
@@ -283,18 +278,16 @@ public class CalculateData {
             log.info("INITIATING BATCH " + counter + " OF " + numberOfBatches);
             long startTime = System.currentTimeMillis();
             GeometryData<String> geometries = GeometryCalculator.calculate(
-                    modeSpecificNetwork, origins, destinations, zoneNodeMap, tt, td, this.numberOfThreads);
+                    modeSpecificNetwork, origins, destinations, zoneNodeMap, tt, td, null, this.numberOfThreads);
             long endTime = System.currentTimeMillis();
             log.info("Batch " + counter + " calculation time: " + (endTime - startTime));
 
-            log.info("Writing batch " + counter + " geometries to " + outputDirectory + (prefix.isEmpty() ? "" : (" with prefix " + prefix)));
             startTime = System.currentTimeMillis();
-            //GeometryIO.writeAsCSV(geometries, modeSpecificNetwork, outputDirectory + "/" + prefix + "batch_" + counter);
-            GeometryIO.writeGpkg(geometries, modeSpecificNetwork, zoneNodeMap);
+            GeometryWriter.writeGpkg(geometries, zoneNodeMap, inputEdgesGpkg, outputFilePath);
             endTime = System.currentTimeMillis();
             log.info("Batch " + counter + " writing time: " + (endTime - startTime));
 
-            break; // break for debugging only
+            // break; // break for debugging only
         }
     }
 
@@ -352,15 +345,13 @@ public class CalculateData {
             counter++;
             Set<String> origins = Sets.newHashSet(originBatch);
             log.info("BATCH " + counter + ": calc PT matrices for " + Time.writeTime(startTime) + " - " + Time.writeTime(endTime));
-            PtData<String> matrices = PtIndicators.calculatePtIndicators(
+            PtData<String> matrices = PtCalculator.calculatePtIndicators(
                     raptorData, origins, destinations, this.zoneCoordMap, startTime, endTime, 120, raptorParameters, this.numberOfThreads, trainDetector);
 
             log.info("BATCH " + counter + ": write PT matrices to " + outputDirectory + (prefix.isEmpty() ? "" : (" with prefix " + prefix)));
-            IndicatorIO.writeAsCsv(matrices,outputDirectory + "/" + prefix + "_" + "batch" + counter + ".csv.gz");
-            break;
+            PtWriter.writeAsCsv(matrices,outputDirectory + "/" + prefix + "_" + "batch" + counter + ".csv.gz");
+            // break; // for debugging only
         }
-
-
     }
 
     private static <T> void combineMatrices(FloatMatrix<T> matrix1, FloatMatrix<T> matrix2) {
@@ -385,7 +376,28 @@ public class CalculateData {
         return null;
     }
 
-    private <T> Map<T, Node> buildZoneNodeMap(Map<T, Coord> zoneCoordMap, Network xy2lNetwork, Network routingNetwork) {
+    public static Map<String, Coord> buildZoneCoordMap(String filename) throws IOException {
+        String expectedHeader = "ZONE;POINT_INDEX;X;Y";
+        Map<String, Coord> zoneCoordMap = new HashMap<>();
+        try (BufferedReader reader = IOUtils.getBufferedReader(filename)) {
+            String header = reader.readLine();
+            if (!expectedHeader.equals(header)) {
+                throw new RuntimeException("Bad header, expected '" + expectedHeader + "', got: '" + header + "'.");
+            }
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = StringUtils.explode(line, ';');
+                String zoneId = parts[0];
+                double x = Double.parseDouble(parts[2]);
+                double y = Double.parseDouble(parts[3]);
+                Coord coord = new Coord(x, y);
+                zoneCoordMap.put(zoneId,coord);
+            }
+        }
+        return zoneCoordMap;
+    }
+
+    public static <T> Map<T, Node> buildZoneNodeMap(Map<T, Coord> zoneCoordMap, Network xy2lNetwork, Network routingNetwork) {
         Map<T, Node> zoneNodeMap = new HashMap<>();
         for (Map.Entry<T, Coord> e : zoneCoordMap.entrySet()) {
             T zoneId = e.getKey();
@@ -405,52 +417,4 @@ public class CalculateData {
             this.weight = weight;
         }
     }
-
-/*    public static void main(String[] args) throws IOException {
-        String zonesShapeFilename = args[0];
-        String zonesIdAttributeName = args[1];
-        String facilitiesFilename = args[2];
-        String networkFilename = args[3];
-        String transitScheduleFilename = args[4];
-        String eventsFilename = args[5];
-        String outputDirectory = args[6];
-        int numberOfPointsPerZone = Integer.parseInt(args[7]);
-        int numberOfThreads = Integer.parseInt(args[8]);
-        String[] timesCarStr = args[9].split(";");
-        String[] timesPtStr = args[10].split(";");
-        Set<String> modes = CollectionUtils.stringToSet(args[11]);
-
-        double[] timesCar = new double[timesCarStr.length];
-        for (int i = 0; i < timesCarStr.length; i++)
-            timesCar[i] = Time.parseTime(timesCarStr[i]);
-
-        double[] timesPt = new double[timesPtStr.length];
-        for (int i = 0; i < timesPtStr.length; i++)
-            timesPt[i] = Time.parseTime(timesPtStr[i]);
-
-        Config config = ConfigUtils.createConfig();
-        Random r = new Random(4711);
-
-        CalculateSkimMatrices skims = new CalculateSkimMatrices(outputDirectory, numberOfThreads);
-
-        skims.calculateSamplingPointsPerZoneFromFacilities(facilitiesFilename, numberOfPointsPerZone, zonesShapeFilename, zonesIdAttributeName, r, f -> 1);
-        skims.writeSamplingPointsToFile(new File(outputDirectory, ZONE_LOCATIONS_FILENAME));
-
-        // alternative if you don't have facilities, use the network:
-        // skims.calculateSamplingPointsPerZoneFromNetwork(networkFilename, numberOfPointsPerZone, zonesShapeFilename, zonesIdAttributeName, r);
-
-        // or load pre-calculated sampling points from an existing file:
-        // skims.loadSamplingPointsFromFile("coordinates.csv");
-
-        if (modes.contains(TransportMode.car)) {
-            skims.calculateNetworkMatrices(networkFilename, config, null, l -> true);
-        }
-
-        if (modes.contains(TransportMode.pt)) {
-            skims.calculatePTMatrices(networkFilename, transitScheduleFilename, timesPt[0], timesPt[1], config, null, (line, route) -> route.getTransportMode().equals("train"));
-        }
-
-        skims.calculateBeelineMatrix();
-    }*/
-
 }

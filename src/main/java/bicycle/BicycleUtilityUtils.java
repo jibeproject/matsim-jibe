@@ -6,20 +6,17 @@ import org.matsim.contrib.bicycle.BicycleUtils;
 /**
  * @author dziemke
  */
-class BicycleUtilityUtils {
+public class BicycleUtilityUtils {
 
     static double computeLinkBasedScore( Link link, double marginalUtilityOfComfort_m,
                                          double marginalUtilityOfInfrastructure_m, double marginalUtilityOfGradient_m_100m ) {
-        String surface = (String) link.getAttributes().getAttribute(BicycleUtils.SURFACE);
-        String type = (String) link.getAttributes().getAttribute(BicycleUtils.WAY_TYPE);
-        String cyclewaytype = (String) link.getAttributes().getAttribute(BicycleUtils.CYCLEWAY);
 
         double distance = link.getLength();
 
-        double comfortFactor = BicycleUtilityUtils.getComfortFactor(surface, type);
+        double comfortFactor = BicycleUtilityUtils.getComfortFactor(link);
         double comfortDisutility = marginalUtilityOfComfort_m * (1. - comfortFactor) * distance;
 
-        double infrastructureFactor = BicycleUtilityUtils.getInfrastructureFactor(type, cyclewaytype);
+        double infrastructureFactor = BicycleUtilityUtils.getInfrastructureFactor(link);
         double infrastructureDisutility = marginalUtilityOfInfrastructure_m * (1. - infrastructureFactor) * distance;
 
         double gradientFactor = BicycleUtilityUtils.getGradientFactor(link);
@@ -27,7 +24,7 @@ class BicycleUtilityUtils {
         return (infrastructureDisutility + comfortDisutility + gradientDisutility);
     }
 
-    static double getGradientFactor( Link link ) {
+    public static double getGradientFactor( Link link ) {
         double gradient = 0.;
 
         if (link.getFromNode().getCoord().hasZ() && link.getToNode().getCoord().hasZ()) {
@@ -44,7 +41,11 @@ class BicycleUtilityUtils {
     }
 
     // TODO Combine this with speeds?
-    static double getComfortFactor( String surface, String type ) {
+    public static double getComfortFactor(Link link) {
+
+        String surface = (String) link.getAttributes().getAttribute(BicycleUtils.SURFACE);
+        String type = (String) link.getAttributes().getAttribute(BicycleUtils.WAY_TYPE);
+
         double comfortFactor = 1.0;
         if (surface != null) {
             switch (surface) {
@@ -92,7 +93,11 @@ class BicycleUtilityUtils {
         return comfortFactor;
     }
 
-    static double getInfrastructureFactor( String type, String cyclewaytype ) {
+    public static double getInfrastructureFactor(Link link) {
+
+        String type = (String) link.getAttributes().getAttribute(BicycleUtils.WAY_TYPE);
+        String cyclewaytype = (String) link.getAttributes().getAttribute(BicycleUtils.CYCLEWAY);
+
         double infrastructureFactor = 1.0;
         if (type != null) {
             if (type.equals("trunk")) {

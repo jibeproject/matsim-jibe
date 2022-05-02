@@ -1,6 +1,6 @@
 package ch.sbb.matsim;
 
-import ch.sbb.matsim.analysis.skims.CalculateData;
+import ch.sbb.matsim.analysis.CalculateData;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
@@ -20,9 +20,10 @@ public class GlasstSkims {
 
     public static void main(String[] args) throws IOException, FactoryException {
 
-        if(args.length != 5) {
+        if(args.length != 6) {
             throw new RuntimeException("Program requires 5 arguments: \n" +
-                    "(1) Network File Path \n" +
+                    "(0) Network File Path \n" +
+                    "(1) Zone coordinates File \n" +
                     "(2) Public Transport Network File Path \n" +
                     "(3) Public Transport Schedule File Path \n" +
                     "(4) Output File Path \n" +
@@ -30,10 +31,11 @@ public class GlasstSkims {
         }
 
         String networkPath = args[0];
-        String ptNetworkPath = args[1];
-        String ptSchedulePath = args[2];
-        String outputDirectory = args[3];
-        int numberOfThreads = Integer.parseInt(args[4]);;
+        String zoneCoordinatesFile = args[1];
+        String ptNetworkPath = args[2];
+        String ptSchedulePath = args[3];
+        String outputDirectory = args[4];
+        int numberOfThreads = Integer.parseInt(args[5]);
 
         // Setup Config
         Config config = ConfigUtils.createConfig();
@@ -41,7 +43,7 @@ public class GlasstSkims {
 
         // Setup Indicator Calculator
         CalculateData calc = new CalculateData(outputDirectory,numberOfThreads, null);
-        calc.loadSamplingPointsFromFile("/Users/corinstaves/Documents/manchester/GLASST/OA_samplingPoints.csv");
+        calc.loadSamplingPointsFromFile(zoneCoordinatesFile);
 
         // CAR
         FreespeedTravelTimeAndDisutility freeSpeed = new FreespeedTravelTimeAndDisutility(config.planCalcScore());
@@ -49,23 +51,8 @@ public class GlasstSkims {
                 null, TransportMode.car,
                 l -> !((boolean) l.getAttributes().getAttribute("motorway")));
 
-        // PUBLIC TRANSPORT CALCULATIONS
+        // PUBLIC TRANSPORT CALCULATIONS (WORK IN PROGRESS)
         calc.calculatePtIndicators(ptNetworkPath,ptSchedulePath,28200,29400,config,"pt_",(l, r) -> true);
     }
-
-    private static class DistanceAsTravelDisutility implements TravelDisutility {
-        public DistanceAsTravelDisutility() {
-        }
-
-        public double getLinkTravelDisutility(Link link, double time, Person person, Vehicle vehicle) {
-            return link.getLength();
-        }
-
-        public double getLinkMinimumTravelDisutility(Link link) {
-            return link.getLength();
-        }
-    }
-
-
 
 }

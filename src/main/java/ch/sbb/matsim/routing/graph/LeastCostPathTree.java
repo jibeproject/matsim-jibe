@@ -1,6 +1,6 @@
 package ch.sbb.matsim.routing.graph;
 
-import ch.sbb.matsim.analysis.skims.TravelAttribute;
+import ch.sbb.matsim.analysis.TravelAttribute;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.core.router.util.TravelDisutility;
@@ -145,22 +145,13 @@ public class LeastCostPathTree {
         return attributes;
     }
 
-    public int[] getNodeArray(int nodeIndex) {
-        int nodesUsed = getLinksUsed(nodeIndex) + 1;
-        int[] nodeArray = new int[nodesUsed];
-        nodeArray[nodesUsed-1] = nodeIndex;
-        for(int i = nodesUsed ; i > 1 ; i--) {
-            nodeArray[i-2] = getComingFromNode(nodeArray[i-1]);
-        }
-        return nodeArray;
-    }
-
     public int[] getLinkArray(int nodeIndex) {
         int linksUsed = getLinksUsed(nodeIndex);
         int[] linkArray = new int[linksUsed];
         int currNode = nodeIndex;
         for(int i = linksUsed ; i > 0 ; i--) {
-            linkArray[i-1] = getComingFromLink(currNode);
+            int linkIdx = getComingFromLink(currNode);
+            linkArray[i-1] = (int) this.graph.getLink(linkIdx).getAttributes().getAttribute("edgeID");
             currNode = getComingFromNode(currNode);
         }
         return linkArray;

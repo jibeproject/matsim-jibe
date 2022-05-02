@@ -2,8 +2,9 @@
  * Copyright (C) Schweizerische Bundesbahnen SBB, 2018.
  */
 
-package ch.sbb.matsim.analysis.skims;
+package ch.sbb.matsim.analysis.io;
 
+import ch.sbb.matsim.analysis.data.AccessibilityData;
 import com.google.common.math.LongMath;
 import org.apache.log4j.Logger;
 import org.matsim.core.utils.io.IOUtils;
@@ -17,9 +18,9 @@ import java.util.Map;
  *
  * @author mrieser / SBB
  */
-public final class AccessibilityIO {
+public final class AccessibilityWriter {
 
-    private final static Logger log = Logger.getLogger(AccessibilityIO.class);
+    private final static Logger log = Logger.getLogger(AccessibilityWriter.class);
 
     private final static String SEP = ";";
     private final static String NL = "\n";

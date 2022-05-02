@@ -1,4 +1,7 @@
-package ch.sbb.matsim.analysis.skims;
+package ch.sbb.matsim.analysis.data;
+
+import ch.sbb.matsim.analysis.matrix.FloatMatrix;
+import ch.sbb.matsim.analysis.matrix.ShortMatrix;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -7,14 +10,14 @@ import java.util.Set;
 
 public class IndicatorData<T> {
 
-    final Map<T, Integer> orig2index;
-    final Map<T, Integer> dest2index;
-    final FloatMatrix<T> travelTimeMatrix;
-    final FloatMatrix<T> distanceMatrix;
-    final ShortMatrix<T> linkCountMatrix;
-    final ArrayList<FloatMatrix> attributeMatrices = new ArrayList();
+    public final Map<T, Integer> orig2index;
+    public final Map<T, Integer> dest2index;
+    public final FloatMatrix<T> travelTimeMatrix;
+    public final FloatMatrix<T> distanceMatrix;
+    public final ShortMatrix<T> linkCountMatrix;
+    public final ArrayList<FloatMatrix> attributeMatrices = new ArrayList();
 
-    IndicatorData(Set<T> origins, Set<T> destinations, int attributeCount) {
+    public IndicatorData(Set<T> origins, Set<T> destinations, int attributeCount) {
         int origSize = origins.size();
         int destSize = destinations.size();
 

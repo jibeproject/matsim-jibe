@@ -1,5 +1,6 @@
-package ch.sbb.matsim.analysis.skims;
+package ch.sbb.matsim.analysis;
 
+import ch.sbb.matsim.analysis.calc.PtCalculator;
 import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorCore.TravelInfo;
 
 import java.util.ArrayList;
@@ -13,7 +14,7 @@ import java.util.Map;
  * average adaption times, connection frequency and connection shares based
  * on the rooftop-algorithm from Niek Guis (ca. 2015).
  *
- * For more details, see {@link PtIndicators}.
+ * For more details, see {@link PtCalculator}.
  *
  * @author mrieser / Simunto
  */

@@ -2,8 +2,10 @@
  * Copyright (C) Schweizerische Bundesbahnen SBB, 2018.
  */
 
-package ch.sbb.matsim.analysis.skims;
+package ch.sbb.matsim.analysis.calc;
 
+import ch.sbb.matsim.analysis.TravelAttribute;
+import ch.sbb.matsim.analysis.data.GeometryData;
 import ch.sbb.matsim.routing.graph.Graph;
 import ch.sbb.matsim.routing.graph.LeastCostPathTree;
 import org.matsim.api.core.v01.Id;
@@ -17,6 +19,7 @@ import org.matsim.core.utils.misc.Counter;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleUtils;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -42,11 +45,11 @@ public final class GeometryCalculator {
     }
 
     public static <T> GeometryData<T> calculate(Network routingNetwork, Set<T> origins, Set<T> destinations, Map<T, Node> zoneNodeMap,
-                                                TravelTime travelTime, TravelDisutility travelDisutility, int numberOfThreads) {
+                                                TravelTime travelTime, TravelDisutility travelDisutility, LinkedHashMap<String, TravelAttribute> travelAttributes, int numberOfThreads) {
         Graph routingGraph = new Graph(routingNetwork);
 
         // prepare calculation
-        GeometryData<T> geometryData = new GeometryData<>(origins, destinations);
+        GeometryData<T> geometryData = new GeometryData<>(origins, destinations, travelAttributes.keySet());
 
         // do calculation
         ConcurrentLinkedQueue<T> originZones = new ConcurrentLinkedQueue<>(origins);
@@ -54,7 +57,8 @@ public final class GeometryCalculator {
         Counter counter = new Counter("PathGeometries zone ", " / " + origins.size());
         Thread[] threads = new Thread[numberOfThreads];
         for (int i = 0; i < numberOfThreads; i++) {
-            RowWorker<T> worker = new RowWorker<>(originZones, destinations, routingGraph, zoneNodeMap, geometryData, travelTime, travelDisutility, counter);
+            RowWorker<T> worker = new RowWorker<>(originZones, destinations, routingGraph, zoneNodeMap,
+                    geometryData, travelTime, travelDisutility, travelAttributes, counter);
             threads[i] = new Thread(worker, "PathGeometries-" + i);
             threads[i].start();
         }
@@ -79,13 +83,16 @@ public final class GeometryCalculator {
         private final GeometryData<T> geometryData;
         private final TravelTime travelTime;
         private final TravelDisutility travelDisutility;
+        private final TravelAttribute[] travelAttributes;
+        private final String[] attributeNames;
+        private final int attributeCount;
         private final Counter counter;
 
         private final static Vehicle VEHICLE = VehicleUtils.getFactory().createVehicle(Id.create("theVehicle", Vehicle.class), VehicleUtils.getDefaultVehicleType());
         private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
 
         RowWorker(ConcurrentLinkedQueue<T> originZones, Set<T> destinationZones, Graph graph, Map<T, Node> zoneNodeMap, GeometryData<T> geometryData,
-                  TravelTime travelTime, TravelDisutility travelDisutility, Counter counter) {
+                  TravelTime travelTime, TravelDisutility travelDisutility, LinkedHashMap<String, TravelAttribute> travelAttributes, Counter counter) {
             this.originZones = originZones;
             this.destinationZones = destinationZones;
             this.graph = graph;
@@ -93,11 +100,15 @@ public final class GeometryCalculator {
             this.geometryData = geometryData;
             this.travelTime = travelTime;
             this.travelDisutility = travelDisutility;
+            this.attributeCount = travelAttributes == null ? 0 : travelAttributes.size();
+            this.travelAttributes = travelAttributes == null ? null : travelAttributes.values().toArray(new TravelAttribute[attributeCount]);
+            this.attributeNames = travelAttributes == null ? null : travelAttributes.keySet().toArray(new String[attributeCount]);
             this.counter = counter;
         }
 
         public void run() {
-            LeastCostPathTree lcpTree = new LeastCostPathTree(this.graph, this.travelTime, this.travelDisutility, null);
+
+            LeastCostPathTree lcpTree = new LeastCostPathTree(this.graph, this.travelTime, this.travelDisutility, this.travelAttributes);
 
             while (true) {
                 T fromZoneId = this.originZones.poll();
@@ -113,10 +124,22 @@ public final class GeometryCalculator {
                     for (T toZoneId : this.destinationZones) {
                         Node toNode = this.zoneNodeMap.get(toZoneId);
                         if (toNode != null) {
-                            int[] nodesPassed = lcpTree.getNodeArray(toNode.getId().index());
-                            int[] linksTravelled = lcpTree.getLinkArray(toNode.getId().index());
-                            this.geometryData.nodeGeometries.set(fromZoneId,toZoneId,nodesPassed);
-                            this.geometryData.linksTravelled.set(fromZoneId,toZoneId,linksTravelled);
+                            int nodeIndex = toNode.getId().index();
+
+                            int[] linksTravelled = lcpTree.getLinkArray(nodeIndex);
+                            double tt = lcpTree.getTime(nodeIndex);
+                            double dist = lcpTree.getDistance(nodeIndex);
+                            double cost = lcpTree.getCost(nodeIndex);
+
+                            this.geometryData.linksTravelled.set(fromZoneId, toZoneId, linksTravelled);
+                            this.geometryData.travelTimeMatrix.set(fromZoneId, toZoneId, (float) tt);
+                            this.geometryData.distanceMatrix.set(fromZoneId, toZoneId, (float) dist);
+                            this.geometryData.costMatrix.set(fromZoneId, toZoneId, (float) cost);
+
+                            for(int i = 0 ; i < attributeCount ; i++) {
+                                double attr = lcpTree.getAttribute(nodeIndex,i);
+                                this.geometryData.attributeMatrices.get(attributeNames[i]).add(fromZoneId, toZoneId, (float) attr);
+                            }
                         }
                     }
                 }

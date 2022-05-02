@@ -1,6 +1,6 @@
-package ch.sbb.matsim.analysis.skims;
+package ch.sbb.matsim.analysis;
 
-import ch.sbb.matsim.analysis.skims.RooftopUtils.ODConnection;
+import ch.sbb.matsim.analysis.RooftopUtils.ODConnection;
 import org.junit.Assert;
 import org.junit.Test;
 import org.matsim.core.utils.misc.Time;

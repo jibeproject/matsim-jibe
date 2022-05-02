@@ -1,6 +1,7 @@
-package ch.sbb.matsim.analysis.skims;
+package ch.sbb.matsim.analysis.calc;
 
-import ch.sbb.matsim.analysis.skims.RooftopUtils.ODConnection;
+import ch.sbb.matsim.analysis.RooftopUtils;
+import ch.sbb.matsim.analysis.data.PtData;
 import ch.sbb.matsim.routing.pt.raptor.*;
 import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorCore.TravelInfo;
 
@@ -59,9 +60,9 @@ import org.matsim.pt.transitSchedule.api.TransitStopFacility;
  *
  * @author mrieser / SBB
  */
-public class PtIndicators {
+public class PtCalculator {
 
-    private PtIndicators() {
+    private PtCalculator() {
     }
 
     public static <T> PtData<T> calculatePtIndicators(SwissRailRaptorData raptorData, Set<T> origins, Set<T> destinations, Map<T, Coord> zoneCoordMap, double minDepartureTime,
@@ -205,7 +206,7 @@ public class PtIndicators {
                 egressTimes.put(stop.getId(), egressTime);
             }
 
-            List<ODConnection> connections = buildODConnections(trees, accessTimes, egressTimes);
+            List<RooftopUtils.ODConnection> connections = buildODConnections(trees, accessTimes, egressTimes);
             if (connections.isEmpty()) {
                 return;
             }
@@ -216,7 +217,7 @@ public class PtIndicators {
 
             this.pti.adaptionTimeMatrix.add(fromZoneId, toZoneId, (float) avgAdaptionTime);
 
-            Map<ODConnection, Double> connectionShares = RooftopUtils.calcConnectionShares(connections, minDepartureTime, maxDepartureTime);
+            Map<RooftopUtils.ODConnection, Double> connectionShares = RooftopUtils.calcConnectionShares(connections, minDepartureTime, maxDepartureTime);
 
             float accessTime = 0;
             float egressTime = 0;
@@ -228,8 +229,8 @@ public class PtIndicators {
             double totalInVehTime = 0;
             double trainInVehTime = 0;
 
-            for (Map.Entry<ODConnection, Double> e : connectionShares.entrySet()) {
-                ODConnection connection = e.getKey();
+            for (Map.Entry<RooftopUtils.ODConnection, Double> e : connectionShares.entrySet()) {
+                RooftopUtils.ODConnection connection = e.getKey();
                 double share = e.getValue();
 
                 accessTime += share * accessTimes.get(connection.travelInfo.departureStop).floatValue();
@@ -280,8 +281,8 @@ public class PtIndicators {
             this.pti.dataCountMatrix.add(fromZoneId, toZoneId, 1);
         }
 
-        private List<ODConnection> buildODConnections(List<Map<Id<TransitStopFacility>, TravelInfo>> trees, Map<Id<TransitStopFacility>, Double> accessTimes, Map<Id<TransitStopFacility>, Double> egressTimes) {
-            List<ODConnection> connections = new ArrayList<>();
+        private List<RooftopUtils.ODConnection> buildODConnections(List<Map<Id<TransitStopFacility>, TravelInfo>> trees, Map<Id<TransitStopFacility>, Double> accessTimes, Map<Id<TransitStopFacility>, Double> egressTimes) {
+            List<RooftopUtils.ODConnection> connections = new ArrayList<>();
 
             for (Map<Id<TransitStopFacility>, TravelInfo> tree : trees) {
                 for (Map.Entry<Id<TransitStopFacility>, Double> egressEntry : egressTimes.entrySet()) {
@@ -290,7 +291,7 @@ public class PtIndicators {
                     TravelInfo info = tree.get(egressStopId);
                     if (info != null && !info.isWalkOnly()) {
                         Double accessTime = accessTimes.get(info.departureStop);
-                        ODConnection connection = new ODConnection(info.ptDepartureTime, info.ptTravelTime, accessTime, egressTime, info.transferCount, info);
+                        RooftopUtils.ODConnection connection = new RooftopUtils.ODConnection(info.ptDepartureTime, info.ptTravelTime, accessTime, egressTime, info.transferCount, info);
                         connections.add(connection);
                     }
                 }

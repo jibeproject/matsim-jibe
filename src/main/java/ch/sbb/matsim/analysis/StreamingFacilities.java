@@ -1,4 +1,4 @@
-package ch.sbb.matsim.analysis.skims;
+package ch.sbb.matsim.analysis;
 
 import org.matsim.api.core.v01.Id;
 import org.matsim.facilities.ActivityFacilities;

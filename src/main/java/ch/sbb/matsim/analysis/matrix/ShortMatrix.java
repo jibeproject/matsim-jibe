@@ -2,7 +2,7 @@
  * Copyright (C) Schweizerische Bundesbahnen SBB, 2018.
  */
 
-package ch.sbb.matsim.analysis.skims;
+package ch.sbb.matsim.analysis.matrix;
 
 import java.util.Arrays;
 import java.util.HashMap;

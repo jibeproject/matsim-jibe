@@ -1,4 +1,6 @@
-package ch.sbb.matsim.analysis.skims;
+package ch.sbb.matsim.analysis.data;
+
+import ch.sbb.matsim.analysis.matrix.FloatMatrix;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -6,8 +8,8 @@ import java.util.Set;
 
 public class PtData<T> {
 
-    final Map<T, Integer> orig2index;
-    final Map<T, Integer> dest2index;
+    public final Map<T, Integer> orig2index;
+    public final Map<T, Integer> dest2index;
 
     public final FloatMatrix<T> adaptionTimeMatrix;
     public final FloatMatrix<T> frequencyMatrix;
@@ -22,7 +24,7 @@ public class PtData<T> {
 
     public final FloatMatrix<T> dataCountMatrix; // how many values/routes were taken into account to calculate the averages
 
-    PtData(Set<T> origins, Set<T> destinations) {
+    public PtData(Set<T> origins, Set<T> destinations) {
         int origSize = origins.size();
         int destSize = destinations.size();
 
