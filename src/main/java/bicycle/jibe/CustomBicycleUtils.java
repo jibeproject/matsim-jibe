@@ -1,9 +1,90 @@
 package bicycle.jibe;
 
+import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.contrib.bicycle.BicycleUtils;
 
+import static bicycle.jibe.CycleProtection.*;
+import static bicycle.jibe.CycleSafety.*;
+
+
 public class CustomBicycleUtils {
+
+    public static CycleSafety getLinkSafety(Link link) {
+
+        CycleSafety safety = GREEN;
+
+        if((boolean) link.getAttributes().getAttribute("allowsCar")) {
+            int speedLimit = (int) link.getAttributes().getAttribute("speedLimitMPH");
+            double aadt = (double) link.getAttributes().getAttribute("aadt");
+            String cycleosm = (String) link.getAttributes().getAttribute("cycleosm");
+            String cyclewaytype = (String) link.getAttributes().getAttribute(BicycleUtils.CYCLEWAY);
+
+            CycleProtection protection = getCycleProtectionType(cycleosm,cyclewaytype);
+
+            if(speedLimit <= 20) {
+                if(protection.equals(LANE)) {
+                    if (aadt >= 4000) {
+                        safety = AMBER;
+                    }
+                } else if (protection.equals(MIXED)) {
+                    if (aadt >= 4000) {
+                        safety = RED;
+                    } else if (aadt >= 2000) {
+                        safety = AMBER;
+                    }
+                }
+            } else if (speedLimit <= 30) {
+                if(protection.equals(LANE)) {
+                    if (aadt >= 4000) {
+                        safety = RED;
+                    } else {
+                        safety = AMBER;
+                    }
+                } else if (protection.equals(MIXED)) {
+                    if (aadt >= 2000) {
+                        safety = RED;
+                    } else {
+                        safety = AMBER;
+                    }
+                }
+            } else if (speedLimit <= 40) {
+                if (protection.equals(LANE) || protection.equals(MIXED)) {
+                    safety = RED;
+                } else if (protection.equals(PROTECTED)) {
+                    safety = AMBER;
+                }
+            } else {
+                if (!protection.equals(OFFROAD)) {
+                    safety = RED;
+                }
+            }
+        }
+        return safety;
+    }
+
+    public static CycleProtection getCycleProtectionType(String cycleosm, String cycleway) {
+        switch (cycleosm) {
+            case "offroad":
+                return OFFROAD;
+            case "protected":
+                return PROTECTED;
+            case "painted":
+                return LANE;
+            case "integrated":
+                return MIXED;
+            default:
+                switch(cycleway) {
+                    case "track":
+                        return PROTECTED;
+                    case "share_busway":
+                    case "lane":
+                        return LANE;
+                    default:
+                        return MIXED;
+                }
+        }
+    }
 
     public static double getInfrastructureFactor(Link link) {
 

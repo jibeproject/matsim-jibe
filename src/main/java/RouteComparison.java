@@ -4,6 +4,7 @@ import bicycle.BicycleTravelTime;
 import bicycle.BicycleUtilityUtils;
 import bicycle.jibe.CustomBicycleDisutility;
 import bicycle.jibe.CustomBicycleUtils;
+import bicycle.jibe.SafeRoute;
 import ch.sbb.matsim.analysis.CalculateData;
 import ch.sbb.matsim.analysis.TravelAttribute;
 import ch.sbb.matsim.analysis.calc.GeometryCalculator;
@@ -26,6 +27,8 @@ import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.opengis.referencing.FactoryException;
+
+import static bicycle.jibe.CycleSafety.*;
 
 import java.io.IOException;
 import java.util.*;
@@ -115,6 +118,12 @@ public class RouteComparison {
 
         travelDisutilities.put("jibe", tdJibe);
 
+        // Green only
+        TravelDisutility greenOnly = new SafeRoute((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME),
+                planCalcScoreConfigGroup, ttCycle, 100, 100);
+
+        travelDisutilities.put("green", greenOnly);
+
         // DEFINE ADDITIONAL ROUTE ATTRIBUTES TO INCLUDE IN GPKG (DOES NOT AFFECT ROUTING)
         LinkedHashMap<String,TravelAttribute> attributes = new LinkedHashMap<>();
         attributes.put("infrastructureFactor",l -> CustomBicycleUtils.getInfrastructureFactor(l) * l.getLength());
@@ -122,12 +131,15 @@ public class RouteComparison {
         attributes.put("comfortFactor", l -> BicycleUtilityUtils.getComfortFactor(l) * l.getLength());
         attributes.put("avgTrafficSpeed",l -> (double) l.getAttributes().getAttribute("trafficSpeedKPH") * l.getLength());
         attributes.put("ndvi",l -> CustomBicycleUtils.getNdviFactor(l) * l.getLength());
+        attributes.put("prop_green",l -> CustomBicycleUtils.getLinkSafety(l).equals(GREEN) ? l.getLength() : 0.);
+        attributes.put("prop_amber",l -> CustomBicycleUtils.getLinkSafety(l).equals(AMBER) ? l.getLength() : 0.);
+        attributes.put("prop_red",l -> CustomBicycleUtils.getLinkSafety(l).equals(RED) ? l.getLength() : 0.);
 
         // RUN ROUTING ALGORITHMS AND STORE EDGE IDS
         HashMap<String, GeometryData> geometries = new HashMap<>(travelDisutilities.size());
         for(Map.Entry<String,TravelDisutility> e : travelDisutilities.entrySet()) {
             log.info("Calculating geometries for route " + e.getKey());
-            GeometryData<String> routeData = GeometryCalculator.calculate(network,routingZones,routingZones,
+            GeometryData<String> routeData = GeometryCalculator.calculate(networkBike,routingZones,routingZones,
                     zoneNodeMap,ttCycle,e.getValue(),attributes, 10);
             geometries.put(e.getKey(),routeData);
         }
@@ -139,7 +151,7 @@ public class RouteComparison {
     private static Network extractModeSpecificNetwork(Network network, String transportMode) {
         Network modeSpecificNetwork = NetworkUtils.createNetwork();
         new TransportModeNetworkFilter(network).filter(modeSpecificNetwork, Collections.singleton(transportMode));
-        NetworkUtils.runNetworkCleaner(modeSpecificNetwork);
+        //NetworkUtils.runNetworkCleaner(modeSpecificNetwork);
         return modeSpecificNetwork;
     }
 }

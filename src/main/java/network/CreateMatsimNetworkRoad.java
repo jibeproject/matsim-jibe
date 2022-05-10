@@ -149,10 +149,19 @@ public class CreateMatsimNetworkRoad {
             }
             l2.setAllowedModes(allowedModesRtn);
 
-            // Freespeed
-            double maxSpeed = ((Integer) edge.getAttribute("maxsped")).doubleValue() * 0.44704;
-            l1.setFreespeed(maxSpeed);
-            l2.setFreespeed(maxSpeed);
+            // Are cars allowed on this link? (necessary for mode-specific filtered networks)
+            l1.getAttributes().putAttribute("allowsCar",l1.getAllowedModes().contains("car"));
+            l2.getAttributes().putAttribute("allowsCar",l2.getAllowedModes().contains("car"));
+
+            // Speed limit
+            int speedLimit = (int) edge.getAttribute("maxsped");
+            l1.getAttributes().putAttribute("speedLimitMPH",speedLimit);
+            l2.getAttributes().putAttribute("speedLimitMPH",speedLimit);
+
+            // Freespeed (use speed limit)
+            double freespeed = speedLimit * 0.44704;
+            l1.setFreespeed(freespeed);
+            l2.setFreespeed(freespeed);
 
             // Capacity
             int laneCapacity;
@@ -230,8 +239,8 @@ public class CreateMatsimNetworkRoad {
 
             // Add AADT attribute
             double avgAadt = (double) edge.getAttribute("aadt_mp");
-            l1.getAttributes().putAttribute("averageaadt.imp",avgAadt);
-            l2.getAttributes().putAttribute("averageaadt.imp",avgAadt);
+            l1.getAttributes().putAttribute("aadt",avgAadt);
+            l2.getAttributes().putAttribute("aadt",avgAadt);
 
             // Add NDVImean attribute
             Double NDVImean = (Double) edge.getAttribute("NDVImen");

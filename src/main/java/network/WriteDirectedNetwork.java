@@ -4,6 +4,7 @@ import bicycle.BicycleLinkSpeedCalculatorDefaultImpl;
 import bicycle.BicycleTravelDisutility;
 import bicycle.BicycleTravelTime;
 import bicycle.jibe.CustomBicycleDisutility;
+import bicycle.jibe.CustomBicycleUtils;
 import com.google.common.math.LongMath;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.log4j.Logger;
@@ -28,6 +29,7 @@ import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
 import org.matsim.core.network.io.MatsimNetworkReader;
+import org.matsim.core.network.io.NetworkWriter;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.opengis.feature.simple.SimpleFeature;
@@ -69,6 +71,7 @@ public class WriteDirectedNetwork {
         // Use bicycle only network
         Network modeSpecificNetwork = NetworkUtils.createNetwork();
         new TransportModeNetworkFilter(network).filter(modeSpecificNetwork, Collections.singleton(TransportMode.bike));
+        //new NetworkWriter(modeSpecificNetwork).write("/Users/corinstaves/Documents/manchester/JIBE/network/networkBike.xml");
 
         // Setup config
         Config config = ConfigUtils.createConfig();
@@ -96,10 +99,10 @@ public class WriteDirectedNetwork {
         int counter = 0;
         int forwardLinks = 0;
         int backwardLinks = 0;
-        for (Link link : network.getLinks().values()) {
+        for (Link link : modeSpecificNetwork.getLinks().values()) {
             counter++;
             if (LongMath.isPowerOfTwo(counter)) {
-                log.info("Processing link " + counter + " / " + network.getLinks().size());
+                log.info("Processing link " + counter + " / " + modeSpecificNetwork.getLinks().size());
             }
             int edgeID = (int) link.getAttributes().getAttribute("edgeID");
             boolean fwd = (boolean) link.getAttributes().getAttribute("fwd");
@@ -153,6 +156,7 @@ public class WriteDirectedNetwork {
             featureBuilder.add(length / cycleTime * 3.6);
             featureBuilder.add((double) link.getAttributes().getAttribute("bikeSpeed") * 3.6);
             featureBuilder.add(!((Double) link.getAttributes().getAttribute("bikeSpeed")).isNaN());
+            featureBuilder.add(CustomBicycleUtils.getLinkSafety(link).toString());
             featureBuilder.add(cycleDisutilityBerlin / length);
             featureBuilder.add(cycleDisutilityJibe / length);
             SimpleFeature feature = featureBuilder.buildFeature(null);
@@ -194,6 +198,7 @@ public class WriteDirectedNetwork {
         builder.add("cycleKPHmatsim",Double.class);
         builder.add("cycleKPHstrava",Double.class);
         builder.add("strava",Boolean.class);
+        builder.add("cycleSafety",String.class);
         builder.add("cycleDisutilityBerlin",Double.class);
         builder.add("cycleDisutilityJibe",Double.class);
 
