@@ -1,6 +1,6 @@
 package ch.sbb.matsim;
 
-import bicycle.BicycleLinkSpeedCalculatorDefaultImpl;
+import bicycle.speed.BicycleLinkSpeedCalculatorDefaultImpl;
 import bicycle.BicycleTravelDisutility;
 import bicycle.BicycleTravelTime;
 import ch.sbb.matsim.analysis.CalculateData;
@@ -71,10 +71,10 @@ public class JibeSkims {
 
         // Set additional attributes (to be aggregated)
         TravelAttribute[] travelAttributes = new TravelAttribute[4];
-        travelAttributes[0] = link -> (double) link.getAttributes().getAttribute("averageaadt.imp") * link.getLength();
-        travelAttributes[1] = link -> ((Integer) link.getAttributes().getAttribute("quietness")).doubleValue() * link.getLength();
-        travelAttributes[2] = link -> (double) link.getAttributes().getAttribute("slope") * link.getLength();
-        travelAttributes[3] = link -> (double) link.getAttributes().getAttribute("NDVImean") * link.getLength();
+        travelAttributes[0] = (link,d) -> (double) link.getAttributes().getAttribute("averageaadt.imp") * link.getLength();
+        travelAttributes[1] = (link,d) -> ((Integer) link.getAttributes().getAttribute("quietness")).doubleValue() * link.getLength();
+        travelAttributes[2] = (link,d) -> (double) link.getAttributes().getAttribute("slope") * link.getLength();
+        travelAttributes[3] = (link,d) -> (double) link.getAttributes().getAttribute("NDVImean") * link.getLength();
 
         CalculateData calc = new CalculateData(outputDirectory,numberOfThreads, 5);
         calc.loadSamplingPointsFromFile(zoneCoordinatesFile);

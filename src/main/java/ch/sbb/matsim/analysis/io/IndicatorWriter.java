@@ -4,13 +4,17 @@
 
 package ch.sbb.matsim.analysis.io;
 
+import ch.sbb.matsim.analysis.data.GeometryData;
 import ch.sbb.matsim.analysis.data.IndicatorData;
 import com.google.common.math.LongMath;
 import org.apache.log4j.Logger;
+import org.locationtech.jts.geom.LineString;
 import org.matsim.core.utils.io.IOUtils;
 
 import java.io.*;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Helper methods to write and read matrices as CSV files (well, actually semi-colon separated files).
@@ -23,43 +27,99 @@ public final class IndicatorWriter {
 
     private final static String SEP = ",";
     private final static String NL = "\n";
+    private final static String SHORTEST_DISTANCE_ROUTE_NAME = "shortestDistance";
+    private final static String LEAST_TIME_ROUTE_NAME = "fastest";
 
-    public static<T> void writeAsCsv(IndicatorData<T> networkData, String filename) throws IOException {
+    public static<T> void writeAsCsv(IndicatorData indicatorData, String filename) throws IOException {
+        HashMap<String, IndicatorData> multiIndicatorData = new HashMap<>();
+        multiIndicatorData.put("NA",indicatorData);
+        writeAsCsv(multiIndicatorData, filename);
+    }
+
+    public static<T> void writeAsCsv(HashMap<String, IndicatorData> multiIndicatorData, String filename) throws IOException {
         try (BufferedWriter writer = IOUtils.getBufferedWriter(filename)) {
-            int attributeCount = networkData.attributeMatrices.size();
-            writer.write("FROM" + SEP + "TO" + SEP + "TIME" + SEP + "DISTANCE" + SEP + "LINKS");
-            for(int i = 0 ; i < attributeCount ; i++) {
-                writer.write(SEP + "ATTR_" + i);
-            }
-            writer.write(NL);
 
-            T[] fromZoneIds = getSortedIds(networkData.orig2index);
-            T[] toZoneIds = getSortedIds(networkData.dest2index);
-            int counter = 0;
-            for (T fromZoneId : fromZoneIds) {
-                counter++;
-                if(LongMath.isPowerOfTwo(counter)) {
-                    log.info("Writing zone " + counter + " / " + fromZoneIds.length);
-                }
-                for (T toZoneId : toZoneIds) {
-                    writer.write(fromZoneId.toString());
-                    writer.append(SEP);
-                    writer.write(toZoneId.toString());
-                    writer.append(SEP);
-                    writer.write(Float.toString(networkData.travelTimeMatrix.get(fromZoneId, toZoneId)));
-                    writer.append(SEP);
-                    writer.write(Float.toString(networkData.distanceMatrix.get(fromZoneId, toZoneId)));
-                    writer.append(SEP);
-                    writer.write(Short.toString(networkData.linkCountMatrix.get(fromZoneId, toZoneId)));
-                    for(int i = 0 ; i < attributeCount ; i++) {
-                        writer.append(SEP);
-                        writer.write(Float.toString(networkData.attributeMatrices.get(i).get(fromZoneId,toZoneId)));
+            final Set<String> attributes = multiIndicatorData.entrySet().iterator().next().getValue().attributeMatrices.keySet();
+
+            // If there is a "shortest distance route", sort detour info
+            IndicatorData shortestDistanceData = multiIndicatorData.get(SHORTEST_DISTANCE_ROUTE_NAME);
+            IndicatorData leastTimeData = multiIndicatorData.get(LEAST_TIME_ROUTE_NAME);
+
+            // Write header
+            writer.write(createHeader(attributes));
+
+            for (Map.Entry<String,IndicatorData> entry : multiIndicatorData.entrySet()) {
+
+                log.info("Writing indicators for route " + entry.getKey());
+
+                IndicatorData<T> indicatorData = entry.getValue();
+
+                // Prep
+                T[] fromZoneIds = getSortedIds(indicatorData.orig2index);
+                T[] toZoneIds = getSortedIds(indicatorData.dest2index);
+
+                // Loop through zone IDs
+                int counter = 0;
+                for (T fromZoneId : fromZoneIds) {
+                    counter++;
+                    if (LongMath.isPowerOfTwo(counter)) {
+                        log.info("Processing zone " + counter + " / " + fromZoneIds.length);
                     }
-                    writer.append(NL);
+                    for (T toZoneId : toZoneIds) {
+                        if(indicatorData.linkCountMatrix.get(fromZoneId,toZoneId) > 0) {
+                            double distanceM = indicatorData.distanceMatrix.get(fromZoneId,toZoneId);
+                            double timeS = indicatorData.travelTimeMatrix.get(fromZoneId,toZoneId);
+                            Double distanceDetour = null;
+                            if(shortestDistanceData != null) {
+                                double shortestDistanceM = shortestDistanceData.distanceMatrix.get(fromZoneId,toZoneId);
+                                distanceDetour = distanceM / shortestDistanceM;
+                            }
+                            Double timeDetour = null;
+                            if(leastTimeData != null) {
+                                double leastTimeS = leastTimeData.travelTimeMatrix.get(fromZoneId,toZoneId);
+                                timeDetour = timeS / leastTimeS;
+                            }
+                            writer.write(entry.getKey());
+                            writer.write(SEP + fromZoneId.toString());
+                            writer.write(SEP + toZoneId.toString());
+                            writer.write(SEP + indicatorData.costMatrix.get(fromZoneId,toZoneId));
+                            writer.write(SEP + distanceM);
+                            writer.write(SEP + timeS);
+                            writer.write(SEP + 3.6 * distanceM / timeS);
+                            writer.write(SEP + distanceDetour);
+                            writer.write(SEP + timeDetour);
+                            for(String attribute : attributes) {
+                                double attr = indicatorData.attributeMatrices.get(attribute).get(fromZoneId,toZoneId);
+                                if(!attribute.startsWith("c_")) {
+                                    attr /= distanceM;
+                                }
+                                writer.write(SEP + attr);
+                            }
+                            writer.write(NL);
+                        }
+                    }
                 }
             }
-            writer.flush();
         }
+        log.info("Finished writing.");
+    }
+
+    private static String createHeader(Set<String> attributes) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Route");
+        builder.append(SEP + "From");
+        builder.append(SEP + "To");
+        builder.append(SEP + "cost");
+        builder.append(SEP + "distance_m");
+        builder.append(SEP + "tt_s");
+        builder.append(SEP + "avgSpeed_kph");
+        builder.append(SEP + "distance_detour");
+        builder.append(SEP + "time_detour");
+        for(String attribute : attributes) {
+            builder.append(SEP + attribute);
+        }
+        builder.append(NL);
+        return builder.toString();
     }
 
     private static <T> T[] getSortedIds(Map<T, Integer> id2index) {

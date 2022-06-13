@@ -16,9 +16,8 @@ import org.matsim.core.scenario.ScenarioUtils;
 import org.opengis.feature.simple.SimpleFeature;
 
 import java.io.File;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 // Script to create a MATSim Road network .xml file using the Edges and Nodes from JIBE WP2
 
@@ -55,6 +54,9 @@ public class CreateMatsimNetworkRoad {
         // Create network links
         edges.forEach((id,edge) -> addLinkToNetwork(id,edge,net,fac));
 
+        // Write conflicting traffic at junction attribute
+        addJunctionAadt(net);
+
         // Write network
         new NetworkWriter(net).write(networkFile);
     }
@@ -74,8 +76,8 @@ public class CreateMatsimNetworkRoad {
             String roadType = (String) edge.getAttribute("roadtyp");
             String oneWaySummary = (String) edge.getAttribute("onwysmm");
 
-            int lanesOut = Integer.max(1, (int) edge.getAttribute("lns_frw"));
-            int lanesRtn = Integer.max(1, (int) edge.getAttribute("lns_bck"));
+            int lanesOut = Integer.max(1, (int) edge.getAttribute("lns_no_f"));
+            int lanesRtn = Integer.max(1, (int) edge.getAttribute("lns_no_b"));
 
             Node origNode = net.getNodes().get(Id.createNodeId(origNodeId));
             Node destNode = net.getNodes().get(Id.createNodeId(destNodeId));
@@ -198,8 +200,8 @@ public class CreateMatsimNetworkRoad {
             l2.setCapacity(laneCapacity * lanesRtn);
 
             // Cycle lane
-            l1.getAttributes().putAttribute("cycleway",edge.getAttribute("cyclwy_l"));
-            l2.getAttributes().putAttribute("cycleway",edge.getAttribute("cyclwy_r"));
+            l1.getAttributes().putAttribute("cycleway",edge.getAttribute("cyclwy_f"));
+            l2.getAttributes().putAttribute("cycleway",edge.getAttribute("cyclwy_b"));
 
             // OSM Cycle lane type
             String cycleosm = (String) edge.getAttribute("cycleosm");
@@ -208,16 +210,6 @@ public class CreateMatsimNetworkRoad {
             }
             l1.getAttributes().putAttribute("cycleosm",cycleosm);
             l2.getAttributes().putAttribute("cycleosm",cycleosm);
-
-            // Cycle speed from STRAVA
-            Double ttBikeFwd = (Double) edge.getAttribute("tt_bike_fwd");
-            Double ttBikeRev = (Double) edge.getAttribute("tt_bike_rev");
-
-            if(ttBikeFwd == null) ttBikeFwd = Double.NaN;
-            if(ttBikeRev == null) ttBikeRev = Double.NaN;
-
-            l1.getAttributes().putAttribute("bikeSpeed",length / ttBikeFwd);
-            l2.getAttributes().putAttribute("bikeSpeed",length / ttBikeRev);
 
             // Surface
             String surface = (String) edge.getAttribute("surface");
@@ -238,32 +230,81 @@ public class CreateMatsimNetworkRoad {
             l2.getAttributes().putAttribute("motorway",motorway);
 
             // Add AADT attribute
-            double avgAadt = (double) edge.getAttribute("aadt_mp");
-            l1.getAttributes().putAttribute("aadt",avgAadt);
-            l2.getAttributes().putAttribute("aadt",avgAadt);
+            Double aadt = (Double) edge.getAttribute("aadt_hgv_im");
+            if(aadt == null) aadt = Double.NaN;
+            l1.getAttributes().putAttribute("aadt",aadt);
+            l2.getAttributes().putAttribute("aadt",aadt);
 
             // Add NDVImean attribute
-            Double NDVImean = (Double) edge.getAttribute("NDVImen");
-            if(NDVImean == null) {
-                NDVImean = 0.;
+            Double ndvi = (Double) edge.getAttribute("NDVImen");
+            if(ndvi == null) {
+                ndvi = 0.;
                 log.warn("Null NDVI for edge " + edgeID + ". Set to 0.");
             }
-            l1.getAttributes().putAttribute("ndvi",NDVImean);
-            l2.getAttributes().putAttribute("ndvi",NDVImean);
+            l1.getAttributes().putAttribute("ndvi",ndvi);
+            l2.getAttributes().putAttribute("ndvi",ndvi);
+
+            // Add VGVI attribute
+            Double vgvi = (Double) edge.getAttribute("VGVI_mean");
+            if(vgvi == null) {
+                vgvi = 0.0293269 + 1.0927493 * ndvi;
+            }
+            l1.getAttributes().putAttribute("vgvi",vgvi);
+            l2.getAttributes().putAttribute("vgvi",vgvi);
 
             // Car speed
-            double trafficSpeed = (double) edge.getAttribute("spedKPH");
-            l1.getAttributes().putAttribute("trafficSpeedKPH",trafficSpeed);
-            l2.getAttributes().putAttribute("trafficSpeedKPH",trafficSpeed);
+            Double veh85percSpeedKPH = (Double) edge.getAttribute("spedKPH");
+            if(veh85percSpeedKPH == null) veh85percSpeedKPH = Double.NaN;
+            l1.getAttributes().putAttribute("veh85percSpeedKPH",veh85percSpeedKPH);
+            l2.getAttributes().putAttribute("veh85percSpeedKPH",veh85percSpeedKPH);
 
             // Quietness
             Integer quietness = (Integer) edge.getAttribute("quitnss");
             if(quietness == null) {
-                quietness = 0;
+                quietness = 10;
                 log.warn("Null quietness for edge " + edgeID + ". Set to 0.");
             }
             l1.getAttributes().putAttribute("quietness",quietness);
             l2.getAttributes().putAttribute("quietness",quietness);
+
+            // Street lighting
+            double streetLights = (double) edge.getAttribute("strtlgh");
+            l1.getAttributes().putAttribute("streetLights",streetLights);
+            l2.getAttributes().putAttribute("streetLights",streetLights);
+
+            // Junction
+            String junction = (String) edge.getAttribute("junctin");
+            l1.getAttributes().putAttribute("junction",junction);
+            l2.getAttributes().putAttribute("junction",junction);
+
+            // Shannon diversity index
+            Double shannon = (Double) edge.getAttribute("shannon");
+            if(shannon == null) shannon = 0.;
+            l1.getAttributes().putAttribute("shannon",shannon);
+            l2.getAttributes().putAttribute("shannon",shannon);
+
+            // POIs
+            Double POIs = (Double) edge.getAttribute("indp_sc");
+            if(POIs == null) POIs = 0.;
+            l1.getAttributes().putAttribute("POIs",POIs);
+            l2.getAttributes().putAttribute("POIs",POIs);
+
+            // Negative POIs
+            Double negPOIs = (Double) edge.getAttribute("ngp_scr");
+            if(negPOIs == null) negPOIs = 0.;
+            l1.getAttributes().putAttribute("negPOIs",negPOIs);
+            l2.getAttributes().putAttribute("negPOIs",negPOIs);
+
+            // HVG-generating POIs
+            Double hgvPOIs = (Double) edge.getAttribute("negpoi_hgv_score");
+            if(hgvPOIs == null) hgvPOIs = 0.;
+            l1.getAttributes().putAttribute("hgvPOIs",hgvPOIs);
+            l2.getAttributes().putAttribute("hgvPOIs",hgvPOIs);
+
+            // Crime
+            double crime = (double) edge.getAttribute("crim_cnt");
+            l1.getAttributes().putAttribute("crime",crime);
+            l2.getAttributes().putAttribute("crime",crime);
 
             // Average width
             double avgWidth = (double) edge.getAttribute("avg_wdt_mp");
@@ -278,6 +319,39 @@ public class CreateMatsimNetworkRoad {
             // Add links to network
             net.addLink(l1);
             net.addLink(l2);
+        }
+    }
+
+    private static void addJunctionAadt(Network net) {
+        Map<Node,Double> nodeAadtMap = net.getNodes().values().stream().collect(Collectors.toMap(x -> x, x -> 0.));
+
+        // Store AADT values for every link arriving at each node
+        for (Link link : net.getLinks().values()) {
+            if((boolean) link.getAttributes().getAttribute("allowsCar")) {
+                Node toNode = link.getToNode();
+                double oldVal = nodeAadtMap.get(toNode);
+                Double val = (Double) link.getAttributes().getAttribute("aadt");
+                if(val.isNaN()) {
+                    val = 1570.;
+                }
+                nodeAadtMap.put(toNode, oldVal + val);
+            }
+        }
+
+        // Store as link attribute
+        for (Link link : net.getLinks().values()) {
+            Node toNode = link.getToNode();
+            Double allLinks = nodeAadtMap.get(toNode);
+            Double thisLink;
+            if((boolean) link.getAttributes().getAttribute("allowsCar")) {
+                thisLink = (Double) link.getAttributes().getAttribute("aadt");
+                if(thisLink.isNaN()) {
+                    thisLink = 1570.;
+                }
+            } else {
+                thisLink = 0.;
+            }
+            link.getAttributes().putAttribute("jctAadt",allLinks - thisLink);
         }
     }
 }

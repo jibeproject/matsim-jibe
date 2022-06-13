@@ -1,4 +1,4 @@
-package bicycle;
+package bicycle.speed;
 
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
@@ -36,9 +36,7 @@ public class BicycleLinkSpeedCalculatorDefaultImpl implements BicycleLinkSpeedCa
     }
     @Override
     public double getMaximumVelocityForLink(Link link, Vehicle vehicle) {
-
-        // prior to matsim 12.0 routers would not pass a vehicle. This is why we have a fallback for a default value from the config
-        double maxBicycleSpeed = vehicle == null ? bicycleConfigGroup.getMaxBicycleSpeedForRouting() : vehicle.getType().getMaximumVelocity();
+        double maxBicycleSpeed = vehicle.getType().getMaximumVelocity();
         double bicycleInfrastructureFactor = computeInfrastructureFactor(link);
         double surfaceFactor = computeSurfaceFactor(link);
         double gradientFactor = computeGradientFactor(link);
@@ -57,7 +55,7 @@ public class BicycleLinkSpeedCalculatorDefaultImpl implements BicycleLinkSpeedCa
      * Negative gradients (downhill):
      * Not linear; highest speeds at 5% or 6% gradient; at gradients higher than 6% braking
      */
-    private double computeGradientFactor(Link link) {
+    public double computeGradientFactor(Link link) {
 
         double factor = 1;
         if (link.getFromNode().getCoord().hasZ() && link.getToNode().getCoord().hasZ()) {

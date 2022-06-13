@@ -1,18 +1,18 @@
-import bicycle.BicycleLinkSpeedCalculatorDefaultImpl;
-import bicycle.BicycleTravelDisutility;
+import bicycle.speed.BicycleLinkSpeedCalculatorDefaultImpl;
 import bicycle.BicycleTravelTime;
-import bicycle.BicycleUtilityUtils;
-import bicycle.jibe.CustomBicycleDisutility;
+import ch.sbb.matsim.analysis.calc.IndicatorCalculator;
+import ch.sbb.matsim.analysis.data.IndicatorData;
+import ch.sbb.matsim.analysis.io.IndicatorWriter;
+import bicycle.jibe.JibeCycleRoute;
 import bicycle.jibe.CustomBicycleUtils;
-import bicycle.jibe.SafeRoute;
 import ch.sbb.matsim.analysis.CalculateData;
 import ch.sbb.matsim.analysis.TravelAttribute;
 import ch.sbb.matsim.analysis.calc.GeometryCalculator;
 import ch.sbb.matsim.analysis.data.GeometryData;
 import ch.sbb.matsim.analysis.io.GeometryWriter;
-import disutility.DistanceAsTravelDisutility;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
@@ -23,12 +23,12 @@ import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
 import org.matsim.core.network.io.MatsimNetworkReader;
-import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
+import org.matsim.vehicles.Vehicle;
+import org.matsim.vehicles.VehicleType;
+import org.matsim.vehicles.VehicleUtils;
 import org.opengis.referencing.FactoryException;
-
-import static bicycle.jibe.CycleSafety.*;
 
 import java.io.IOException;
 import java.util.*;
@@ -37,27 +37,24 @@ import java.util.stream.Collectors;
 public class RouteComparison {
 
     private final static Logger log = Logger.getLogger(RouteComparison.class);
+    private final static double MAX_BIKE_SPEED = 16 / 3.6;
 
     public static void main(String[] args) throws IOException, FactoryException {
 
-        if(args.length < 6) {
-            throw new RuntimeException("Program requires at least 6 arguments: \n" +
+        if(args.length < 4 | args.length == 5) {
+            throw new RuntimeException("Program requires at least 4 arguments: \n" +
                     "(0) MATSim network file path \n" +
                     "(1) Zone coordinates file \n" +
                     "(2) Edges file path \n" +
                     "(3) Output file path \n" +
-                    "(4) Zone 1 \n" +
-                    "(5) Zone 2 \n" +
-                    "(6+) Additional zones for routing");
+                    "(4+) OPTIONAL: Names of zones to be used for routing");
         }
 
         String networkFilePath = args[0];
         String zoneCoordinates = args[1];
         String edgesFilePath = args[2];
-        String outputFilePath = args[3];
-        Set<String> routingZones = Arrays.stream(args).skip(4).
-                map(s -> s.replaceAll("\\s+", "")).
-                collect(Collectors.toSet());
+        String outputFile = args[3];
+
 
         // Setup config
         Config config = ConfigUtils.createConfig();
@@ -79,73 +76,113 @@ public class RouteComparison {
         Network networkBike = extractModeSpecificNetwork(network, TransportMode.bike);
 
         // Create zone-coord map and remove spaces
-        Map<String, Coord> zoneCoordMap = CalculateData.buildZoneCoordMap(zoneCoordinates).entrySet().stream().
-                filter(map -> routingZones.contains(map.getKey().replaceAll("\\s+", ""))).
-                collect(Collectors.toMap(map -> map.getKey().replaceAll("\\s+", ""), map -> map.getValue()));
+        Map<String, Coord> zoneCoordMap;
+        zoneCoordMap = CalculateData.buildZoneCoordMap(zoneCoordinates);
+
+        Set<String> routingZones;
+        if (args.length == 4) {
+            routingZones = zoneCoordMap.keySet();
+        } else {
+            routingZones = Arrays.stream(args).skip(4).
+                    map(s -> s.replaceAll("\\s+", "")).
+                    collect(Collectors.toSet());
+            zoneCoordMap = zoneCoordMap.entrySet().stream().
+                    filter(map -> routingZones.contains(map.getKey().replaceAll("\\s+", ""))).
+                    collect(Collectors.toMap(map -> map.getKey().replaceAll("\\s+", ""), Map.Entry::getValue));
+        }
 
         // Create zone-node map
         Map<String, Node> zoneNodeMap = CalculateData.buildZoneNodeMap(zoneCoordMap,networkBike,networkBike);
 
+        // CREATE BICYCLE VEHICLE
+        VehicleType type = VehicleUtils.createVehicleType(Id.create("bicycle", VehicleType.class));
+        type.setMaximumVelocity(MAX_BIKE_SPEED);
+        Vehicle bike = VehicleUtils.createVehicle(Id.createVehicleId(1), type);
 
         // TRAVEL TIMES
         BicycleLinkSpeedCalculatorDefaultImpl linkSpeedCalculator = new BicycleLinkSpeedCalculatorDefaultImpl((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME));
         TravelTime ttCycle = new BicycleTravelTime(linkSpeedCalculator);
 
+        // Get marginal cost of time
+        PlanCalcScoreConfigGroup.ModeParams bicycleParams = planCalcScoreConfigGroup.getModes().get(bicycleConfigGroup.getBicycleMode());
+        double marginalCostOfTime_s = -(bicycleParams.getMarginalUtilityOfTraveling() / 3600.0) + planCalcScoreConfigGroup.getPerforming_utils_hr() / 3600.0;
+        double marginalCostOfDistance_m = -(bicycleParams.getMonetaryDistanceRate() * planCalcScoreConfigGroup.getMarginalUtilityOfMoney())
+                - bicycleParams.getMarginalUtilityOfDistance();
+        double marginalCostOfGradient_m_100m = -(bicycleConfigGroup.getMarginalUtilityOfGradient_m_100m());
+        double marginalCostOfComfort_m = -(bicycleConfigGroup.getMarginalUtilityOfComfort_m());
+
+
+        log.info("Marginal cost of time (s): " + marginalCostOfTime_s);
+        log.info("Marginal cost of distance (m): " + marginalCostOfDistance_m);
+        log.info("Marginal cost of gradient (m/100m): " + marginalCostOfGradient_m_100m);
+        log.info("Marginal cost of surface comfort (m): " + marginalCostOfComfort_m);
+
         // DEFINE TRAVEL DISUTILITIES HERE
-        Map<String,TravelDisutility> travelDisutilities = new HashMap<>();
+        Map<String,TravelDisutility> travelDisutilities = new LinkedHashMap<>();
 
         // Shortest distance
-        travelDisutilities.put("shortestDistance", new DistanceAsTravelDisutility());
+        travelDisutilities.put("shortestDistance", new JibeCycleRoute(ttCycle, 0,1,
+                0,0,0,0,0));
 
-        // Least time
-        travelDisutilities.put("fastest", new OnlyTimeDependentTravelDisutility(ttCycle));
+        // Fastest
+        travelDisutilities.put("fastest", new JibeCycleRoute(ttCycle,1,0,
+                0,0,0,0,0));
 
-        // Berlin disutility (default from bicycle MATSim contrib)
-        TravelDisutility tdBerlin = new BicycleTravelDisutility((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME),
-                planCalcScoreConfigGroup, ttCycle);
-
-        log.info("Marginal costs for TU Berlin cycle algorithm:");
-        ((BicycleTravelDisutility) tdBerlin).printDefaultParams(log);
-
-        travelDisutilities.put("berlin", tdBerlin);
-
-        // JIBE custom disutility
-        TravelDisutility tdJibe = new CustomBicycleDisutility((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME),
-                planCalcScoreConfigGroup, ttCycle);
-
-        log.info("Marginal costs for JIBE cycle algorithm:");
-        ((CustomBicycleDisutility) tdJibe).printMarginalCosts(log);
-
-        travelDisutilities.put("jibe", tdJibe);
-
-        // Green only
-        TravelDisutility greenOnly = new SafeRoute((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME),
-                planCalcScoreConfigGroup, ttCycle, 100, 100);
-
-        travelDisutilities.put("green", greenOnly);
+        for(int i = 0 ; i < 5 ; i++) {
+            for(int j = 0 ; j < 5 ; j++) {
+                for(int k = 0 ; k < 5 ; k++) {
+                    String name = "t_" + i + "_" + j + "_" + k;
+                    travelDisutilities.put(name,new JibeCycleRoute(ttCycle, marginalCostOfTime_s,marginalCostOfDistance_m,
+                            marginalCostOfGradient_m_100m,marginalCostOfComfort_m,
+                            i*1e-3,j*1e-3,k*1e-4));
+                }
+            }
+        }
 
         // DEFINE ADDITIONAL ROUTE ATTRIBUTES TO INCLUDE IN GPKG (DOES NOT AFFECT ROUTING)
         LinkedHashMap<String,TravelAttribute> attributes = new LinkedHashMap<>();
-        attributes.put("infrastructureFactor",l -> CustomBicycleUtils.getInfrastructureFactor(l) * l.getLength());
-        attributes.put("gradientFactor", l -> BicycleUtilityUtils.getGradientFactor(l) * l.getLength());
-        attributes.put("comfortFactor", l -> BicycleUtilityUtils.getComfortFactor(l) * l.getLength());
-        attributes.put("avgTrafficSpeed",l -> (double) l.getAttributes().getAttribute("trafficSpeedKPH") * l.getLength());
-        attributes.put("ndvi",l -> CustomBicycleUtils.getNdviFactor(l) * l.getLength());
-        attributes.put("prop_green",l -> CustomBicycleUtils.getLinkSafety(l).equals(GREEN) ? l.getLength() : 0.);
-        attributes.put("prop_amber",l -> CustomBicycleUtils.getLinkSafety(l).equals(AMBER) ? l.getLength() : 0.);
-        attributes.put("prop_red",l -> CustomBicycleUtils.getLinkSafety(l).equals(RED) ? l.getLength() : 0.);
+        attributes.put("vgvi",(l,td) -> CustomBicycleUtils.getVgviFactor(l) * l.getLength());
+        attributes.put("lighting",(l,td) -> CustomBicycleUtils.getLightingFactor(l) * l.getLength());
+        attributes.put("shannon", (l,td) -> CustomBicycleUtils.getShannonFactor(l) * l.getLength());
+        attributes.put("crime", (l,td) -> CustomBicycleUtils.getCrimeFactor(l) * l.getLength());
+        attributes.put("POIs",(l,td) -> CustomBicycleUtils.getPoiFactor(l) * l.getLength());
+        attributes.put("negPOIs",(l,td) -> CustomBicycleUtils.getNegativePoiFactor(l) * l.getLength());
+        attributes.put("freightPOIs",(l,td) -> CustomBicycleUtils.getFreightPoiFactor(l) * l.getLength());
+        attributes.put("attractiveness", (l,td) -> CustomBicycleUtils.getAttractiveness(l) * l.getLength());
+        attributes.put("stress",(l,td) -> CustomBicycleUtils.getStress(l) * l.getLength());
+        attributes.put("jctStress",(l,td) -> CustomBicycleUtils.getJunctionStress(l));
+        attributes.put("c_tot",(l,td) -> td.getLinkTravelDisutility(l,0,null, bike));
+        attributes.put("c_time",(l,td) -> ((JibeCycleRoute) td).getTimeComponent(l,0,null,bike));
+        attributes.put("c_dist",(l,td) -> ((JibeCycleRoute) td).getDistanceComponent(l));
+        attributes.put("c_grad",(l,td) -> ((JibeCycleRoute) td).getGradientComponent(l));
+        attributes.put("c_surf",(l,td) -> ((JibeCycleRoute) td).getSurfaceComponent(l));
+        attributes.put("c_attr",(l,td) -> ((JibeCycleRoute) td).getAttractivenessComponent(l));
+        attributes.put("c_stress",(l,td) -> ((JibeCycleRoute) td).getStressComponent(l));
+        attributes.put("c_jct",(l,td) -> ((JibeCycleRoute) td).getJunctionComponent(l));
 
-        // RUN ROUTING ALGORITHMS AND STORE EDGE IDS
-        HashMap<String, GeometryData> geometries = new HashMap<>(travelDisutilities.size());
-        for(Map.Entry<String,TravelDisutility> e : travelDisutilities.entrySet()) {
-            log.info("Calculating geometries for route " + e.getKey());
-            GeometryData<String> routeData = GeometryCalculator.calculate(networkBike,routingZones,routingZones,
-                    zoneNodeMap,ttCycle,e.getValue(),attributes, 10);
-            geometries.put(e.getKey(),routeData);
+
+        // FOR CALCULATING ATTRIBUTES ONLY
+        if(outputFile.endsWith(".csv")) {
+            HashMap<String, IndicatorData> indicators = new HashMap<>(travelDisutilities.size());
+            for(Map.Entry<String,TravelDisutility> e : travelDisutilities.entrySet()) {
+                log.info("Calculating geometries for route " + e.getKey());
+                IndicatorData<String> indicatorData = IndicatorCalculator.calculate(networkBike,routingZones,routingZones,
+                        zoneNodeMap,ttCycle,e.getValue(),attributes, bike,10);
+                indicators.put(e.getKey(),indicatorData);
+            }
+            IndicatorWriter.writeAsCsv(indicators,outputFile);
+        } else if(outputFile.endsWith(".gpkg")) {
+            HashMap<String, GeometryData> geometries = new HashMap<>(travelDisutilities.size());
+            for(Map.Entry<String,TravelDisutility> e : travelDisutilities.entrySet()) {
+                log.info("Calculating geometries for route " + e.getKey());
+                GeometryData<String> routeData = GeometryCalculator.calculate(networkBike,routingZones,routingZones,
+                        zoneNodeMap,ttCycle,e.getValue(),attributes,bike,10);
+                geometries.put(e.getKey(),routeData);
+            }
+            GeometryWriter.writeGpkg(geometries,zoneNodeMap,edgesFilePath,outputFile);
+        } else {
+            log.error("Unable to output results: please specify output file as .gpkg or .csv");
         }
-
-        // WRITE TO GPKG
-        GeometryWriter.writeGpkg(geometries,zoneNodeMap,edgesFilePath,outputFilePath);
     }
 
     private static Network extractModeSpecificNetwork(Network network, String transportMode) {

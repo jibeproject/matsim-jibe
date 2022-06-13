@@ -45,7 +45,9 @@ public final class GeometryCalculator {
     }
 
     public static <T> GeometryData<T> calculate(Network routingNetwork, Set<T> origins, Set<T> destinations, Map<T, Node> zoneNodeMap,
-                                                TravelTime travelTime, TravelDisutility travelDisutility, LinkedHashMap<String, TravelAttribute> travelAttributes, int numberOfThreads) {
+                                                TravelTime travelTime, TravelDisutility travelDisutility,
+                                                LinkedHashMap<String, TravelAttribute> travelAttributes,
+                                                Vehicle vehicle, int numberOfThreads) {
         Graph routingGraph = new Graph(routingNetwork);
 
         // prepare calculation
@@ -58,7 +60,7 @@ public final class GeometryCalculator {
         Thread[] threads = new Thread[numberOfThreads];
         for (int i = 0; i < numberOfThreads; i++) {
             RowWorker<T> worker = new RowWorker<>(originZones, destinations, routingGraph, zoneNodeMap,
-                    geometryData, travelTime, travelDisutility, travelAttributes, counter);
+                    geometryData, travelTime, travelDisutility, travelAttributes, vehicle, counter);
             threads[i] = new Thread(worker, "PathGeometries-" + i);
             threads[i].start();
         }
@@ -86,13 +88,13 @@ public final class GeometryCalculator {
         private final TravelAttribute[] travelAttributes;
         private final String[] attributeNames;
         private final int attributeCount;
+        private final Vehicle vehicle;
         private final Counter counter;
 
-        private final static Vehicle VEHICLE = VehicleUtils.getFactory().createVehicle(Id.create("theVehicle", Vehicle.class), VehicleUtils.getDefaultVehicleType());
         private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
 
         RowWorker(ConcurrentLinkedQueue<T> originZones, Set<T> destinationZones, Graph graph, Map<T, Node> zoneNodeMap, GeometryData<T> geometryData,
-                  TravelTime travelTime, TravelDisutility travelDisutility, LinkedHashMap<String, TravelAttribute> travelAttributes, Counter counter) {
+                  TravelTime travelTime, TravelDisutility travelDisutility, LinkedHashMap<String, TravelAttribute> travelAttributes, Vehicle vehicle, Counter counter) {
             this.originZones = originZones;
             this.destinationZones = destinationZones;
             this.graph = graph;
@@ -103,7 +105,15 @@ public final class GeometryCalculator {
             this.attributeCount = travelAttributes == null ? 0 : travelAttributes.size();
             this.travelAttributes = travelAttributes == null ? null : travelAttributes.values().toArray(new TravelAttribute[attributeCount]);
             this.attributeNames = travelAttributes == null ? null : travelAttributes.keySet().toArray(new String[attributeCount]);
+            if(vehicle != null) {
+                this.vehicle = vehicle;
+            } else {
+                this.vehicle = VehicleUtils.getFactory().createVehicle(Id.create("theVehicle", Vehicle.class), VehicleUtils.getDefaultVehicleType());
+            }
+
+
             this.counter = counter;
+
         }
 
         public void run() {
@@ -119,7 +129,7 @@ public final class GeometryCalculator {
                 this.counter.incCounter();
                 Node fromNode = this.zoneNodeMap.get(fromZoneId);
                 if (fromNode != null) {
-                    lcpTree.calculate(fromNode.getId().index(), 0, PERSON, VEHICLE);
+                    lcpTree.calculate(fromNode.getId().index(), 0, PERSON, vehicle);
 
                     for (T toZoneId : this.destinationZones) {
                         Node toNode = this.zoneNodeMap.get(toZoneId);

@@ -44,12 +44,13 @@ public final class IndicatorCalculator {
     }
 
     public static <T> IndicatorData<T> calculate(Network routingNetwork, Set<T> origins, Set<T> destinations, Map<T, Node> zoneNodeMap,
-                                                 TravelTime travelTime, TravelDisutility travelDisutility, TravelAttribute[] travelAttributes, int numberOfThreads) {
+                                                 TravelTime travelTime, TravelDisutility travelDisutility,
+                                                 LinkedHashMap<String, TravelAttribute> travelAttributes,
+                                                 Vehicle vehicle, int numberOfThreads) {
         Graph routingGraph = new Graph(routingNetwork);
 
         // prepare calculation
-        int attributeCount = travelAttributes != null ? travelAttributes.length : 0;
-        IndicatorData<T> networkIndicators = new IndicatorData<>(origins, destinations, attributeCount);
+        IndicatorData<T> networkIndicators = new IndicatorData<>(origins, destinations, travelAttributes.keySet());
 
         // do calculation
         ConcurrentLinkedQueue<T> originZones = new ConcurrentLinkedQueue<>(origins);
@@ -57,7 +58,8 @@ public final class IndicatorCalculator {
         Counter counter = new Counter("NetworkRouting zone ", " / " + origins.size());
         Thread[] threads = new Thread[numberOfThreads];
         for (int i = 0; i < numberOfThreads; i++) {
-            RowWorker<T> worker = new RowWorker<>(originZones, destinations, routingGraph, zoneNodeMap, networkIndicators, travelTime, travelDisutility, travelAttributes, counter);
+            RowWorker<T> worker = new RowWorker<>(originZones, destinations, routingGraph, zoneNodeMap, networkIndicators,
+                    travelTime, travelDisutility, travelAttributes, vehicle, counter);
             threads[i] = new Thread(worker, "NetworkRouting-" + i);
             threads[i].start();
         }
@@ -83,14 +85,16 @@ public final class IndicatorCalculator {
         private final TravelTime travelTime;
         private final TravelDisutility travelDisutility;
         private final TravelAttribute[] travelAttributes;
+        private final String[] attributeNames;
         private final int attributeCount;
+        private final Vehicle vehicle;
         private final Counter counter;
 
-        private final static Vehicle VEHICLE = VehicleUtils.getFactory().createVehicle(Id.create("theVehicle", Vehicle.class), VehicleUtils.getDefaultVehicleType());
         private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
 
-        RowWorker(ConcurrentLinkedQueue<T> originZones, Set<T> destinationZones, Graph graph, Map<T, Node> zoneNodeMap, IndicatorData<T> indicatorData,
-                  TravelTime travelTime, TravelDisutility travelDisutility, TravelAttribute[] travelAttributes, Counter counter) {
+        RowWorker(ConcurrentLinkedQueue<T> originZones, Set<T> destinationZones, Graph graph, Map<T, Node> zoneNodeMap,
+                  IndicatorData<T> indicatorData, TravelTime travelTime, TravelDisutility travelDisutility,
+                  LinkedHashMap<String, TravelAttribute> travelAttributes, Vehicle vehicle, Counter counter) {
             this.originZones = originZones;
             this.destinationZones = destinationZones;
             this.graph = graph;
@@ -98,8 +102,14 @@ public final class IndicatorCalculator {
             this.indicatorData = indicatorData;
             this.travelTime = travelTime;
             this.travelDisutility = travelDisutility;
-            this.travelAttributes = travelAttributes;
-            this.attributeCount = travelAttributes != null ? travelAttributes.length : 0;
+            this.attributeCount = travelAttributes == null ? 0 : travelAttributes.size();
+            this.travelAttributes = travelAttributes == null ? null : travelAttributes.values().toArray(new TravelAttribute[attributeCount]);
+            this.attributeNames = travelAttributes == null ? null : travelAttributes.keySet().toArray(new String[attributeCount]);
+            if(vehicle != null) {
+                this.vehicle = vehicle;
+            } else {
+                this.vehicle = VehicleUtils.getFactory().createVehicle(Id.create("theVehicle", Vehicle.class), VehicleUtils.getDefaultVehicleType());
+            }
             this.counter = counter;
         }
 
@@ -114,7 +124,7 @@ public final class IndicatorCalculator {
                 this.counter.incCounter();
                 Node fromNode = this.zoneNodeMap.get(fromZoneId);
                 if (fromNode != null) {
-                    lcpTree.calculate(fromNode.getId().index(), 0, PERSON, VEHICLE);
+                    lcpTree.calculate(fromNode.getId().index(), 0, PERSON, vehicle);
 
                     for (T toZoneId : this.destinationZones) {
                         Node toNode = this.zoneNodeMap.get(toZoneId);
@@ -122,14 +132,17 @@ public final class IndicatorCalculator {
                             int nodeIndex = toNode.getId().index();
                             double tt = lcpTree.getTime(nodeIndex);
                             double dist = lcpTree.getDistance(nodeIndex);
+                            double cost = lcpTree.getCost(nodeIndex);
                             int nodeCount = lcpTree.getLinksUsed(nodeIndex);
 
                             this.indicatorData.travelTimeMatrix.add(fromZoneId, toZoneId, (float) tt);
                             this.indicatorData.distanceMatrix.add(fromZoneId, toZoneId, (float) dist);
+                            this.indicatorData.costMatrix.set(fromZoneId, toZoneId, (float) cost);
                             this.indicatorData.linkCountMatrix.add(fromZoneId, toZoneId, (short) nodeCount);
+
                             for(int i = 0 ; i < attributeCount ; i++) {
                                 double attr = lcpTree.getAttribute(nodeIndex, i);
-                                this.indicatorData.attributeMatrices.get(i).add(fromZoneId, toZoneId, (float) attr);
+                                this.indicatorData.attributeMatrices.get(attributeNames[i]).add(fromZoneId, toZoneId, (float) attr);
                             }
                         } else {
                             // this might happen if a zone has no geometry, for whatever reason...

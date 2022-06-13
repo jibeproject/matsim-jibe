@@ -185,7 +185,7 @@ public class CalculateData {
             log.info("INITIATING BATCH " + counter + " OF " + numberOfBatches);
             long startTime = System.currentTimeMillis();
             IndicatorData<String> netIndicators = IndicatorCalculator.calculate(
-                    modeSpecificNetwork, origins, destinations, zoneNodeMap, tt, td, aggregatedAttributes, this.numberOfThreads);
+                    modeSpecificNetwork, origins, destinations, zoneNodeMap, tt, td, null,null, this.numberOfThreads);
             long endTime = System.currentTimeMillis();
             log.info("Batch " + counter + " calculation time: " + (endTime - startTime));
 
@@ -278,7 +278,7 @@ public class CalculateData {
             log.info("INITIATING BATCH " + counter + " OF " + numberOfBatches);
             long startTime = System.currentTimeMillis();
             GeometryData<String> geometries = GeometryCalculator.calculate(
-                    modeSpecificNetwork, origins, destinations, zoneNodeMap, tt, td, null, this.numberOfThreads);
+                    modeSpecificNetwork, origins, destinations, zoneNodeMap, tt, td, null,null, this.numberOfThreads);
             long endTime = System.currentTimeMillis();
             log.info("Batch " + counter + " calculation time: " + (endTime - startTime));
 

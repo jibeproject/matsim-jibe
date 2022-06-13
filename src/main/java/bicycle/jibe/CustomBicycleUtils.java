@@ -1,6 +1,5 @@
 package bicycle.jibe;
 
-import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.contrib.bicycle.BicycleUtils;
 
@@ -10,19 +9,79 @@ import static bicycle.jibe.CycleSafety.*;
 
 public class CustomBicycleUtils {
 
-    public static CycleSafety getLinkSafety(Link link) {
+    public static double getStress(Link link) {
+
+        double stress = 0;
+
+        if((boolean) link.getAttributes().getAttribute("allowsCar")) {
+            String junction = (String) link.getAttributes().getAttribute("junction");
+            if (junction.equals("roundabout") || junction.equals("circular")) {
+                stress = 1.;
+            } else {
+                double speedLimit = ((Integer) link.getAttributes().getAttribute("speedLimitMPH")).doubleValue();
+                double speed85perc = (double) link.getAttributes().getAttribute("veh85percSpeedKPH") * 0.621371;
+                Double aadt = (double) link.getAttributes().getAttribute("aadt");
+                if(aadt.isNaN()) aadt = 1570.;
+                CycleProtection protection = getCycleProtectionType(link);
+
+                if(speed85perc >= speedLimit*1.1) {
+                    speedLimit = speed85perc;
+                }
+
+                double intercept;
+                double speedFactor;
+                double aadtFactor;
+
+                if(protection.equals(OFFROAD)) {
+                    intercept = 0;
+                    speedFactor = 0;
+                    aadtFactor = 0;
+                } else if(protection.equals(PROTECTED)) {
+                    intercept = -1.5;
+                    speedFactor = 0.05;
+                    aadtFactor = 0;
+                } else if (protection.equals(LANE)) {
+                    intercept = -1.625;
+                    speedFactor = 0.0625;
+                    aadtFactor = 0.000125;
+                } else {
+                    intercept = -1.25;
+                    speedFactor = 0.0583;
+                    aadtFactor = 0.000167;
+                }
+
+                double freightPoiFactor = getFreightPoiFactor(link);
+
+                stress = intercept + speedFactor * speedLimit + aadtFactor * aadt + freightPoiFactor * 0.1;
+
+                if(stress < 0.) {
+                    stress = 0;
+                } else if (stress > 1.) {
+                    stress = 1;
+                }
+            }
+        }
+
+        return stress;
+    }
+
+    public static double getJunctionStress(Link link) {
+        double jctAadt = (double) link.getAttributes().getAttribute("jctAadt");
+        return Math.sqrt(jctAadt);
+    }
+
+    public static CycleSafety getDftCategory(Link link) {
 
         CycleSafety safety = GREEN;
 
         if((boolean) link.getAttributes().getAttribute("allowsCar")) {
             int speedLimit = (int) link.getAttributes().getAttribute("speedLimitMPH");
-            double aadt = (double) link.getAttributes().getAttribute("aadt");
-            String cycleosm = (String) link.getAttributes().getAttribute("cycleosm");
-            String cyclewaytype = (String) link.getAttributes().getAttribute(BicycleUtils.CYCLEWAY);
+            double speed85perc = (double) link.getAttributes().getAttribute("veh85percSpeedKPH") * 0.621371;
+            Double aadt = (Double) link.getAttributes().getAttribute("aadt");
+            if(aadt.isNaN()) aadt = 3260.;
+            CycleProtection protection = getCycleProtectionType(link);
 
-            CycleProtection protection = getCycleProtectionType(cycleosm,cyclewaytype);
-
-            if(speedLimit <= 20) {
+            if((speedLimit <= 20 && speed85perc <= 22) || (speed85perc <= 30 && aadt <= 1000)) {
                 if(protection.equals(LANE)) {
                     if (aadt >= 4000) {
                         safety = AMBER;
@@ -34,7 +93,7 @@ public class CustomBicycleUtils {
                         safety = AMBER;
                     }
                 }
-            } else if (speedLimit <= 30) {
+            } else if (speedLimit <= 20 || (speedLimit <= 30 && speed85perc <= 33)) {
                 if(protection.equals(LANE)) {
                     if (aadt >= 4000) {
                         safety = RED;
@@ -48,7 +107,7 @@ public class CustomBicycleUtils {
                         safety = AMBER;
                     }
                 }
-            } else if (speedLimit <= 40) {
+            } else if (speedLimit <= 30 || (speedLimit <= 40 && speed85perc <= 44)) {
                 if (protection.equals(LANE) || protection.equals(MIXED)) {
                     safety = RED;
                 } else if (protection.equals(PROTECTED)) {
@@ -63,7 +122,11 @@ public class CustomBicycleUtils {
         return safety;
     }
 
-    public static CycleProtection getCycleProtectionType(String cycleosm, String cycleway) {
+    public static CycleProtection getCycleProtectionType(Link link) {
+
+        String cycleosm = (String) link.getAttributes().getAttribute("cycleosm");
+        String cycleway = (String) link.getAttributes().getAttribute(BicycleUtils.CYCLEWAY);
+
         switch (cycleosm) {
             case "offroad":
                 return OFFROAD;
@@ -121,7 +184,7 @@ public class CustomBicycleUtils {
 
     public static double getTrafficSpeedFactor(Link link) {
 
-        double trafficSpeed = (double) link.getAttributes().getAttribute("trafficSpeedKPH");
+        double trafficSpeed = (double) link.getAttributes().getAttribute("veh85percSpeedKPH");
 
         if(trafficSpeed >= 100) {
             return 0.0;
@@ -130,9 +193,60 @@ public class CustomBicycleUtils {
         }
     }
 
+    public static double getQuietnessFactor(Link link) {
+        int quietness = (int) link.getAttributes().getAttribute("quietness");
+        return quietness / 100.;
+    }
+
     public static double getNdviFactor(Link link) {
         double ndvi = (double) link.getAttributes().getAttribute("ndvi");
-        return ndvi;
+        return 1. - ndvi;
+    }
+
+    public static double getVgviFactor(Link link) {
+        Double vgvi = (double) link.getAttributes().getAttribute("vgvi");
+        return 1. - vgvi;
+    }
+
+    public static double getLightingFactor(Link link) {
+        double lights = (double) link.getAttributes().getAttribute("streetLights");
+        return 1. - Math.min(1.,lights / link.getLength());
+    }
+
+    public static double getShannonFactor(Link link) {
+        double shannon = (double) link.getAttributes().getAttribute("shannon");
+        return 1. - Math.min(1.,shannon / 3.);
+    }
+
+    public static double getPoiFactor(Link link) {
+        double pois = (double) link.getAttributes().getAttribute("POIs");
+        return 1 - Math.min(1., pois / link.getLength());
+    }
+
+    public static double getNegativePoiFactor(Link link) {
+        double negPois = (double) link.getAttributes().getAttribute("negPOIs");
+        return Math.min(1.,negPois / link.getLength());
+    }
+
+    public static double getFreightPoiFactor(Link link) {
+        double hgvPois = (double) link.getAttributes().getAttribute("hgvPOIs");
+        return Math.min(1.,hgvPois / link.getLength());
+    }
+
+    public static double getCrimeFactor(Link link) {
+        double crime = (double) link.getAttributes().getAttribute("crime");
+        return Math.min(1.,crime / link.getLength());
+    }
+
+    public static double getAttractiveness(Link link) {
+        double vgvi = getVgviFactor(link);
+        double lighting = getLightingFactor(link);
+        double shannon = getShannonFactor(link);
+        double pois = getPoiFactor(link);
+        double negativePois = getNegativePoiFactor(link);
+        double crime = getCrimeFactor(link);
+
+        return (vgvi + lighting + shannon + pois + negativePois + crime) / 6;
     }
 
     public static double cycleLaneAdjustment(String cycleosm, String cycleway) {
@@ -142,13 +256,13 @@ public class CustomBicycleUtils {
             case "offroad": factor = 1.0; break;
             case "protected": factor = 0.8; break;
             case "painted": factor = 0.6; break;
-            case "integrated": factor = 0.4; break;
+            case "integrated": factor = 0.0; break;
             case "dismount": factor = 0.0; break;
             default:
                 switch(cycleway) {
                     case "track": factor = 1.0; break;
-                    case "share_busway": factor = 0.8; break;
-                    case "lane": factor = 0.4; break;
+                    case "share_busway": factor = 0.6; break;
+                    case "lane": factor = 0.6; break;
                     default: factor = 0.0;
                 }
         }

@@ -30,7 +30,7 @@ public class LeastCostPathTree {
     private final Graph graph;
     private final TravelTime tt;
     private final TravelDisutility td;
-    private final TravelAttribute ta[];
+    private final TravelAttribute[] ta;
     private final int attributeCount;
     private final int entriesPerNode;
     private final double[] data; // minimum 3 entries per node: time, cost, distance
@@ -41,7 +41,7 @@ public class LeastCostPathTree {
     private final Graph.LinkIterator inLI;
     private final NodeMinHeap pq;
 
-    public LeastCostPathTree(Graph graph, TravelTime tt, TravelDisutility td, TravelAttribute ta[]) {
+    public LeastCostPathTree(Graph graph, TravelTime tt, TravelDisutility td, TravelAttribute[] ta) {
         this.graph = graph;
         this.tt = tt;
         this.td = td;
@@ -101,7 +101,7 @@ public class LeastCostPathTree {
                         pq.decreaseKey(toNode, newCost);
                         setData(toNode, newCost, newTime, currDistance + link.getLength(), newLinksUsed);
                         for(int i = 0 ; i < attributeCount ; i++) {
-                            double newAttr = currAttr[i] + this.ta[i].getTravelAttribute(link);
+                            double newAttr = currAttr[i] + this.ta[i].getTravelAttribute(link,td);
                             setAttribute(toNode, i, newAttr);
                         }
                         this.comingFromNode[toNode] = nodeIdx;
@@ -110,7 +110,7 @@ public class LeastCostPathTree {
                 } else {
                     setData(toNode, newCost, newTime, currDistance + link.getLength(), newLinksUsed);
                     for(int i = 0 ; i < attributeCount ; i++) {
-                        double newAttr = currAttr[i] + this.ta[i].getTravelAttribute(link);
+                        double newAttr = currAttr[i] + this.ta[i].getTravelAttribute(link,td);
                         setAttribute(toNode, i, newAttr);
                     }
                     pq.insert(toNode);

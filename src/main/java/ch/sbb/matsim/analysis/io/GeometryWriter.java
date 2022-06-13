@@ -78,6 +78,9 @@ public final class GeometryWriter {
         GeometryData shortestDistanceData = multiGeometryData.get(SHORTEST_DISTANCE_ROUTE_NAME);
         GeometryData leastTimeData = multiGeometryData.get(LEAST_TIME_ROUTE_NAME);
 
+        // Read in edges file (put back in loop if necessary...)
+        Map<Integer, SimpleFeature> networkFeatures = GpkgReader.readEdges(new File(inputEdgesGpkg));
+
         // Build routes
         for (Map.Entry<String,GeometryData> entry : multiGeometryData.entrySet()) {
 
@@ -89,9 +92,6 @@ public final class GeometryWriter {
             T[] fromZoneIds = getSortedIds(geometryData.orig2index);
             T[] toZoneIds = getSortedIds(geometryData.dest2index);
 
-            // Read in edges file
-            Map<Integer, SimpleFeature> networkFeatures = GpkgReader.readEdges(new File(inputEdgesGpkg));
-
             // Loop through zone IDs
             int counter = 0;
             for (T fromZoneId : fromZoneIds) {
@@ -101,7 +101,12 @@ public final class GeometryWriter {
                     log.info("Processing zone " + counter + " / " + fromZoneIds.length);
                 }
                 for (T toZoneId : toZoneIds) {
-                    int[] edges = (int[]) geometryData.linksTravelled.get(fromZoneId,toZoneId);
+                    int[] edges;
+                    if(geometryData.linksTravelled != null) {
+                        edges = (int[]) geometryData.linksTravelled.get(fromZoneId,toZoneId);
+                    } else {
+                        edges = new int[]{};
+                    }
                     if(edges.length > 0) {
                         LineString path = buildPath(startCoord,edges,geometryFactory,networkFeatures);
                         double distanceM = geometryData.distanceMatrix.get(fromZoneId,toZoneId);
@@ -129,7 +134,10 @@ public final class GeometryWriter {
                         routeFeatureBuilder.add(timeDetour);
                         for(String attribute : attributes) {
                             double attr = geometryData.attributeMatrices.get(attribute).get(fromZoneId,toZoneId);
-                            routeFeatureBuilder.add(attr / distanceM);
+                            if(!attribute.startsWith("c_")) {
+                                attr /= distanceM;
+                            }
+                            routeFeatureBuilder.add(attr);
                         }
                         SimpleFeature feature = routeFeatureBuilder.buildFeature(null);
                         routeCollection.add(feature);
@@ -210,8 +218,7 @@ public final class GeometryWriter {
         Coordinate[] path = new Coordinate[]{};
         Coordinate refCoord = new Coordinate(startNode.getX(),startNode.getY());
 
-        for (int i = 0 ; i < edgeIDs.length ; i++) {
-            int edgeId = edgeIDs[i];
+        for (int edgeId : edgeIDs) {
             SimpleFeature edge = networkFeatures.get(edgeId);
             Coordinate[] coords = new Coordinate[0];
             try {
@@ -223,17 +230,17 @@ public final class GeometryWriter {
             Coordinate lastCoord = coords[coords.length - 1];
 
             // Check if link is forward or reversed
-            if(refCoord.equals2D(firstCoord)) {
+            if (refCoord.equals2D(firstCoord)) {
                 refCoord = lastCoord;
             } else {
-                if(!refCoord.equals2D(lastCoord)) {
+                if (!refCoord.equals2D(lastCoord)) {
                     throw new RuntimeException("Edge " + edgeId + " does not line up with previous edge");
                 }
                 ArrayUtils.reverse(coords);
                 refCoord = firstCoord;
             }
 
-            path = ArrayUtils.addAll(path,coords);
+            path = ArrayUtils.addAll(path, coords);
         }
 
         return geometryFactory.createLineString(path);
