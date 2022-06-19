@@ -204,7 +204,7 @@ public class CreateMatsimNetworkRoad {
             l2.getAttributes().putAttribute("cycleway",edge.getAttribute("cyclwy_b"));
 
             // OSM Cycle lane type
-            String cycleosm = (String) edge.getAttribute("cycleosm");
+            String cycleosm = (String) edge.getAttribute("cyclesm");
             if(cycleosm == null) {
                 cycleosm = "null";
             }
@@ -351,7 +351,8 @@ public class CreateMatsimNetworkRoad {
             } else {
                 thisLink = 0.;
             }
-            link.getAttributes().putAttribute("jctAadt",allLinks - thisLink);
+            link.getAttributes().putAttribute("jctAadt",allLinks);
+            link.getAttributes().putAttribute("jctAadtConf",allLinks - thisLink);
         }
     }
 }

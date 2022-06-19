@@ -7,9 +7,9 @@ import static bicycle.jibe.CycleProtection.*;
 import static bicycle.jibe.CycleSafety.*;
 
 
-public class CustomBicycleUtils {
+public class CustomUtilityUtils {
 
-    public static double getStress(Link link) {
+    public static double getCycleStress(Link link) {
 
         double stress = 0;
 
@@ -61,11 +61,42 @@ public class CustomBicycleUtils {
                 }
             }
         }
+        return stress;
+    }
+
+    public static double getWalkStress(Link link) {
+        double stress = 0;
+
+        if((boolean) link.getAttributes().getAttribute("allowsCar")) {
+            double speedLimit = ((Integer) link.getAttributes().getAttribute("speedLimitMPH")).doubleValue();
+            double speed85perc = (double) link.getAttributes().getAttribute("veh85percSpeedKPH") * 0.621371;
+            Double aadt = (double) link.getAttributes().getAttribute("aadt");
+            if(aadt.isNaN()) aadt = 1570.;
+
+            if(speed85perc >= speedLimit*1.1) {
+                speedLimit = speed85perc;
+            }
+
+            double freightPoiFactor = getFreightPoiFactor(link);
+
+            stress = -1.625 + 0.0625 * speedLimit + 0.000125 * aadt + 0.2 * freightPoiFactor;
+
+            if(stress < 0.) {
+                stress = 0;
+            } else if (stress > 1.) {
+                stress = 1;
+            }
+        }
 
         return stress;
     }
 
-    public static double getJunctionStress(Link link) {
+    public static double getCycleJunctionStress(Link link) {
+        double jctAadtConf = (double) link.getAttributes().getAttribute("jctAadtConf");
+        return Math.sqrt(jctAadtConf);
+    }
+
+    public static double getWalkJunctionStress(Link link) {
         double jctAadt = (double) link.getAttributes().getAttribute("jctAadt");
         return Math.sqrt(jctAadt);
     }
@@ -238,15 +269,35 @@ public class CustomBicycleUtils {
         return Math.min(1.,crime / link.getLength());
     }
 
-    public static double getAttractiveness(Link link) {
+    public static double  getGradient(Link link) {
+        double gradient = 0.;
+        if (link.getFromNode().getCoord().hasZ() && link.getToNode().getCoord().hasZ()) {
+            double fromZ = link.getFromNode().getCoord().getZ();
+            double toZ = link.getToNode().getCoord().getZ();
+            gradient = (toZ - fromZ) / link.getLength();
+        }
+
+        return gradient;
+    }
+
+    public static double getDayAttractiveness(Link link) {
         double vgvi = getVgviFactor(link);
-        double lighting = getLightingFactor(link);
-        double shannon = getShannonFactor(link);
         double pois = getPoiFactor(link);
+        double shannon = getShannonFactor(link);
         double negativePois = getNegativePoiFactor(link);
         double crime = getCrimeFactor(link);
 
-        return (vgvi + lighting + shannon + pois + negativePois + crime) / 6;
+        return vgvi/3 + (pois + shannon)/6 + (negativePois + crime)/6;
+    }
+
+    public static double getNightAttractiveness(Link link) {
+        double pois = getPoiFactor(link);
+        double shannon = getShannonFactor(link);
+        double lighting = getLightingFactor(link);
+        double negativePois = getNegativePoiFactor(link);
+        double crime = getCrimeFactor(link);
+
+        return (pois + shannon)/6 + (lighting + negativePois + crime)*2/9;
     }
 
     public static double cycleLaneAdjustment(String cycleosm, String cycleway) {

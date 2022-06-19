@@ -12,7 +12,7 @@ import org.matsim.vehicles.Vehicle;
  * Custom bicycle disutility for JIBE
  * based on BicycleTravelDisutility by Dominik Ziemke
  */
-public class JibeCycleRoute implements TravelDisutility {
+public class JibeWalkRoute implements TravelDisutility {
 
     private final double marginalCostOfTime_s;
     private final double marginalCostOfDistance_m;
@@ -24,11 +24,11 @@ public class JibeCycleRoute implements TravelDisutility {
 
     private final TravelTime timeCalculator;
 
-    public JibeCycleRoute(TravelTime timeCalculator,
-                          double marginalCostOfTime_s, double marginalCostOfDistance_m,
-                          double marginalCostOfGradient_m_100m, double marginalCostOfComfort_m,
-                          double marginalCostAttractiveness_m, double marginalCostStress_m,
-                          double marginalCostJunction) {
+    public JibeWalkRoute(TravelTime timeCalculator,
+                         double marginalCostOfTime_s, double marginalCostOfDistance_m,
+                         double marginalCostOfGradient_m_100m, double marginalCostOfComfort_m,
+                         double marginalCostAttractiveness_m, double marginalCostStress_m,
+                         double marginalCostJunction) {
 
         this.marginalCostOfTime_s = marginalCostOfTime_s;
         this.marginalCostOfDistance_m = marginalCostOfDistance_m;
@@ -58,20 +58,16 @@ public class JibeCycleRoute implements TravelDisutility {
         double gradientFactor = BicycleUtilityUtils.getGradientFactor(link);
         disutility += marginalCostOfGradient_m_100m * gradientFactor * distance;
 
-        // Comfort of surface
-        double comfortFactor = BicycleUtilityUtils.getComfortFactor(link);
-        disutility += marginalCostOfComfort_m * (1. - comfortFactor) * distance;
-
         // Attractiveness factors
         double attractiveness = CustomUtilityUtils.getDayAttractiveness(link);
         disutility += marinalCostAttractiveness_m * attractiveness * distance;
 
         // Stress factors
-        double stress = CustomUtilityUtils.getCycleStress(link);
+        double stress = CustomUtilityUtils.getWalkStress(link);
         disutility += marginalCostStress_m * stress * distance;
 
         // Junction stress factor
-        double junctionStress = CustomUtilityUtils.getCycleJunctionStress(link);
+        double junctionStress = CustomUtilityUtils.getWalkJunctionStress(link);
         disutility += marginalCostJunction * junctionStress;
 
         return disutility;
