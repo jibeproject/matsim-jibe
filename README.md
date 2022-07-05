@@ -22,10 +22,9 @@ Can specify one or multiple routing algorithms in this code by defining differen
 In the current code there are 4 routing possibilities:
 - shortest distance
 - fastest
-- berlin (default form the MATSim bicycle extension)
-- jibe (an example custom algorithm which considers infrastructure quality, surface, ndvi, gradient, and traffic speed)
+- jibe (our custom jibe algorithm)
 
-The routes are written to a .gpkg file along with some attributes (e.g. distance, travel time, cost) which can be defined within the code.
+You can specify the results to be written to a .gpkg file (with geometries) or .csv file (without geometries). 
 
 You can try the following postcodes as an example. These can be passed into the code in arguments 6–11.
 
