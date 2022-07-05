@@ -22,7 +22,6 @@ import org.matsim.api.core.v01.network.Node;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
 import org.matsim.core.network.io.MatsimNetworkReader;
@@ -56,10 +55,10 @@ public class RouteComparison {
 
         if(args.length < 4 | args.length == 5) {
             throw new RuntimeException("Program requires at least 4 arguments: \n" +
-                    "(0) MATSim network file path \n" +
-                    "(1) Zone coordinates file \n" +
-                    "(2) Edges file path \n" +
-                    "(3) Output file path \n" +
+                    "(0) MATSim network file path (.xml) \n" +
+                    "(1) Zone coordinates file (.csv) \n" +
+                    "(2) Edges file path (.gpkg) \n" +
+                    "(3) Output file path (.gpkg) \n" +
                     "(4+) OPTIONAL: Names of zones to be used for routing");
         }
 
@@ -162,8 +161,8 @@ public class RouteComparison {
             for(int j = 0 ; j <= 2 ; j++) {
                 for(int k = 0 ; k <= 10 ; k = k+2) {
                     String name = "t_" + i + "_" + j + "_" + k;
-                    travelDisutilities.put(name,new JibeDisutility(MODE, tt, marginalCostOfTime_s,marginalCostOfDistance_m,
-                            marginalCostOfGradient_m_100m,marginalCostOfComfort_m,
+                    travelDisutilities.put(name,new JibeDisutility(MODE, tt, MARGINAL_COST_TIME,MARGINAL_COST_DISTANCE,
+                            marginalCostOfGradient,marginalCostOfSurfaceComfort,
                             i*1e-3,j*1e-3,k*1e-2));
                 }
             }

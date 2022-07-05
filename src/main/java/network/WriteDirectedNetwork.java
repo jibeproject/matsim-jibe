@@ -61,9 +61,9 @@ public class WriteDirectedNetwork {
 
         if(args.length != 3) {
             throw new RuntimeException("Program requires 3 arguments:\n" +
-                    "(0) MATSim network file path\n" +
-                    "(1) Input edges gpkg\n" +
-                    "(2) Output edges gpkg");
+                    "(0) MATSim network file (.xml)\n" +
+                    "(1) Input edges (.gpkg)\n" +
+                    "(2) Output edges (.gpkg)");
         }
 
         String matsimNetworkPath = args[0];

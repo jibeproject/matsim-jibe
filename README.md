@@ -14,6 +14,7 @@ file to MATSim must be defined in this code.
 Creates a directed 2-way edges file (.gpkg) using the matsim network given, which whatever attributes that might be useful 
 (the attributes to be written can be specified in this code).
 This is useful for visualisations in which attributes are different in each direction.
+Note that the output from this code is only meant for visualisation, it is not meant to be taken as input anywhere else.
 
 ### RouteComparison.java
 

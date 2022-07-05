@@ -30,9 +30,9 @@ public class CreateMatsimNetworkRoad {
 
         if(args.length != 3) {
             throw new RuntimeException("Program requires 3 arguments: \n" +
-                    "(0) Nodes file \n" +
-                    "(1) Edges file \n" +
-                    "(2) Output network file \n");
+                    "(0) Nodes file (.gpkg) \n" +
+                    "(1) Edges file (.gpkg) \n" +
+                    "(2) Output network file (.xml) \n");
         }
 
         final File nodesFile = new File(args[0]);
@@ -55,8 +55,8 @@ public class CreateMatsimNetworkRoad {
         // Create network links
         edges.forEach((id,edge) -> addLinkToNetwork(id,edge,net,fac));
 
-        // Write conflicting traffic at junction attribute
-        addJunctionAadt(net);
+        // Write crossing attributes
+        addCrossingAttributes(net);
 
         // Write network
         new NetworkWriter(net).write(networkFile);
@@ -74,7 +74,7 @@ public class CreateMatsimNetworkRoad {
         }
         node.getAttributes().putAttribute("bikeCrossing",cycleCrossing);
 
-        // Walk junction type
+        // Walk crossing type
         String pedCrossing = (String) point.getAttribute("ped_cros");
         if(pedCrossing == null) {
             pedCrossing = "null";
@@ -379,10 +379,7 @@ public class CreateMatsimNetworkRoad {
         }
     }
 
-    private static void addJunctionAadt(Network net) {
-//        Map<Node,Double> nodeAadtMap = net.getNodes().values().stream().collect(Collectors.toMap(x -> x, x -> 0.));
-//        Map<Node,Double> nodeSpeedMap = net.getNodes().values().stream().collect(Collectors.toMap(x -> x, x -> 0.));
-
+    private static void addCrossingAttributes(Network net) {
         Map<Node,List<Link>> linksTo = net.getNodes().values().stream().collect(Collectors.toMap(n -> n, n -> new ArrayList<>()));
         Map<Node,List<Link>> linksFrom = net.getNodes().values().stream().collect(Collectors.toMap(n -> n, n -> new ArrayList<>()));
         Map<Node,Boolean> isJunction = net.getNodes().values().stream().collect(Collectors.toMap(n -> n, n -> false));
@@ -393,6 +390,7 @@ public class CreateMatsimNetworkRoad {
             linksFrom.get(link.getFromNode()).add(link);
         }
 
+        // Check whether each link is a junction (i.e. there are more than 2 links connected to node)
         for (Node node : net.getNodes().values()) {
             boolean junction = Stream.concat(linksFrom.get(node).stream(),linksTo.get(node).stream())
                     .mapToInt(l -> (int) l.getAttributes().getAttribute("edgeID"))

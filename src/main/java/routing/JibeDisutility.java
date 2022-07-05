@@ -54,7 +54,7 @@ public class JibeDisutility implements TravelDisutility {
         double distance = link.getLength();
 
         // Travel time disutility
-        double disutility = marginalCostOfTime_s * 2 * travelTime;
+        double disutility = marginalCostOfTime_s * travelTime;
 
         // Distance disutility (0 by default)
         disutility += marginalCostOfDistance_m * distance;
@@ -91,7 +91,7 @@ public class JibeDisutility implements TravelDisutility {
 
     public double getTimeComponent(Link link, double time, Person person, Vehicle vehicle) {
         double travelTime = timeCalculator.getLinkTravelTime(link, time, person, vehicle);
-        return marginalCostOfTime_s * 2 * travelTime;
+        return marginalCostOfTime_s * travelTime;
     }
 
     public double getDistanceComponent(Link link) {
