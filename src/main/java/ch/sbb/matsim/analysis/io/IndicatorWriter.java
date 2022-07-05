@@ -83,6 +83,7 @@ public final class IndicatorWriter {
                             writer.write(SEP + fromZoneId.toString());
                             writer.write(SEP + toZoneId.toString());
                             writer.write(SEP + indicatorData.costMatrix.get(fromZoneId,toZoneId));
+                            writer.write(SEP + indicatorData.linkCountMatrix.get(fromZoneId,toZoneId));
                             writer.write(SEP + distanceM);
                             writer.write(SEP + timeS);
                             writer.write(SEP + 3.6 * distanceM / timeS);
@@ -110,6 +111,7 @@ public final class IndicatorWriter {
         builder.append(SEP + "From");
         builder.append(SEP + "To");
         builder.append(SEP + "cost");
+        builder.append(SEP + "links");
         builder.append(SEP + "distance_m");
         builder.append(SEP + "tt_s");
         builder.append(SEP + "avgSpeed_kph");

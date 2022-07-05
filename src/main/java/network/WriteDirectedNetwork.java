@@ -1,10 +1,15 @@
 package network;
 
-import bicycle.BicycleTravelTime;
-import bicycle.WalkTravelTime;
-import bicycle.speed.BicycleLinkSpeedCalculatorDefaultImpl;
-import bicycle.speed.BicycleLinkSpeedCalculatorGradOnlyImpl;
-import bicycle.jibe.CustomUtilityUtils;
+import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
+import routing.travelTime.BicycleTravelTime;
+import routing.Gradient;
+import routing.travelTime.WalkTravelTime;
+import data.Crossing;
+import data.CycleProtection;
+import routing.utility.LinkAttractiveness;
+import routing.utility.JctStress;
+import routing.travelTime.speed.BicycleLinkSpeedCalculatorDefaultImpl;
+import routing.utility.LinkStress;
 import com.google.common.math.LongMath;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.log4j.Logger;
@@ -35,12 +40,11 @@ import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
-import org.opengis.feature.type.AttributeDescriptor;
 import org.opengis.referencing.FactoryException;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
+import java.util.Collections;
 import java.util.Map;
 
 // Writes network with links in both directions (useful for visualisations where out/return details are different)
@@ -49,6 +53,9 @@ public class WriteDirectedNetwork {
 
     private final static Logger log = Logger.getLogger(WriteDirectedNetwork.class);
     private final static double MAX_BIKE_SPEED = 16 / 3.6;
+
+    // Make non-null if you want to filter the network to only a specific mode (e.g. "walk" or "bike")
+    private final static String MODE_FILTER = null;
 
     public static void main(String[] args) throws FactoryException, IOException {
 
@@ -71,10 +78,12 @@ public class WriteDirectedNetwork {
         Network network = NetworkUtils.createNetwork();
         new MatsimNetworkReader(network).readFile(matsimNetworkPath);
 
-        // Use mode-specific network
-//        Network modeSpecificNetwork = NetworkUtils.createNetwork();
-//        new TransportModeNetworkFilter(network).filter(modeSpecificNetwork, Collections.singleton(TransportMode.bike));
-//        network = modeSpecificNetwork;
+        // Filter network to a specific mode (if applicable)
+        if(MODE_FILTER != null) {
+            Network modeSpecificNetwork = NetworkUtils.createNetwork();
+            new TransportModeNetworkFilter(network).filter(modeSpecificNetwork, Collections.singleton(MODE_FILTER));
+            network = modeSpecificNetwork;
+        }
 
         // Setup config
         Config config = ConfigUtils.createConfig();
@@ -96,8 +105,7 @@ public class WriteDirectedNetwork {
 
         // Prepare geopackage data
         final GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory();
-        final List<AttributeDescriptor> descriptors = edges.entrySet().iterator().next().getValue().getFeatureType().getAttributeDescriptors();
-        final SimpleFeatureType TYPE = createFeatureType(descriptors);
+        final SimpleFeatureType TYPE = createFeatureType();
         final SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(TYPE);
         final DefaultFeatureCollection collection = new DefaultFeatureCollection("Routes",TYPE);
 
@@ -143,6 +151,8 @@ public class WriteDirectedNetwork {
             double cycleTime = ttCycle.getLinkTravelTime(link,0,null,bike);
             double walkTime = ttWalk.getLinkTravelTime(link,0,null,null);
 
+            // AADT
+            Double aadt = (Double) link.getAttributes().getAttribute("aadt");
 
             // Reverse if not in forward direction
             if(!fwd) {
@@ -158,25 +168,36 @@ public class WriteDirectedNetwork {
             featureBuilder.add(fwd);
             featureBuilder.add(length / cycleTime * 3.6);
             featureBuilder.add(length / walkTime * 3.6);
-            featureBuilder.add(!((Double) link.getAttributes().getAttribute("aadt")).isNaN());
+            featureBuilder.add(!aadt.isNaN());
+            featureBuilder.add((int) link.getNumberOfLanes());
+            featureBuilder.add(aadt);
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.car));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.bike));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.walk));
-            featureBuilder.add(CustomUtilityUtils.getGradient(link));
-            featureBuilder.add(CustomUtilityUtils.getCycleProtectionType(link).toString());
-            featureBuilder.add(CustomUtilityUtils.getVgviFactor(link));
-            featureBuilder.add(CustomUtilityUtils.getLightingFactor(link));
-            featureBuilder.add(CustomUtilityUtils.getShannonFactor(link));
-            featureBuilder.add(CustomUtilityUtils.getCrimeFactor(link));
-            featureBuilder.add(CustomUtilityUtils.getPoiFactor(link));
-            featureBuilder.add(CustomUtilityUtils.getNegativePoiFactor(link));
-            featureBuilder.add(CustomUtilityUtils.getFreightPoiFactor(link));
-            featureBuilder.add(CustomUtilityUtils.getDayAttractiveness(link));
-            featureBuilder.add(CustomUtilityUtils.getCycleStress(link));
-            featureBuilder.add(CustomUtilityUtils.getCycleJunctionStress(link));
+            featureBuilder.add(Gradient.getGradient(link));
+            featureBuilder.add(CycleProtection.getType(link).toString());
+            featureBuilder.add(link.getAttributes().getAttribute("endsAtJct"));
+            featureBuilder.add(link.getAttributes().getAttribute("crossVehicles"));
+            featureBuilder.add(Crossing.getType(link,"bike").toString());
+            featureBuilder.add(Crossing.getType(link, "walk").toString());
+            featureBuilder.add(link.getAttributes().getAttribute("crossLanes"));
+            featureBuilder.add(link.getAttributes().getAttribute("crossAadt"));
+            featureBuilder.add(link.getAttributes().getAttribute("crossSpeedLimitMPH"));
+            featureBuilder.add(link.getAttributes().getAttribute("cross85PercSpeed"));
+            featureBuilder.add(LinkAttractiveness.getVgviFactor(link));
+            featureBuilder.add(LinkAttractiveness.getLightingFactor(link));
+            featureBuilder.add(LinkAttractiveness.getShannonFactor(link));
+            featureBuilder.add(LinkAttractiveness.getCrimeFactor(link));
+            featureBuilder.add(LinkAttractiveness.getPoiFactor(link));
+            featureBuilder.add(LinkAttractiveness.getNegativePoiFactor(link));
+            featureBuilder.add(LinkStress.getFreightPoiFactor(link));
+            featureBuilder.add(LinkAttractiveness.getDayAttractiveness(link));
+            featureBuilder.add(LinkStress.getStress(link, TransportMode.bike));
+            featureBuilder.add(JctStress.getJunctionStress(link,TransportMode.bike));
+            featureBuilder.add(LinkStress.getStress(link,TransportMode.walk));
+            featureBuilder.add(JctStress.getJunctionStress(link,TransportMode.walk));
             SimpleFeature feature = featureBuilder.buildFeature(null);
             collection.add(feature);
-
         }
 
         log.info(forwardLinks + " edges in the correct direction");
@@ -195,14 +216,13 @@ public class WriteDirectedNetwork {
         out.close();
     }
 
-    private static SimpleFeatureType createFeatureType(List<AttributeDescriptor> descriptors) throws FactoryException {
+    private static SimpleFeatureType createFeatureType() throws FactoryException {
 
         SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
         builder.setName("links");
         builder.setCRS(CRS.decode("EPSG:27700")); // <- Coordinate reference system
 
-        // add attributes in order todo: sort out bck/fwd
-        //builder.addAll(descriptors);
+        // add attributes in order
         builder.add("path", LineString.class);
         builder.add("edgeID",Integer.class);
         builder.add("osmID",Integer.class);
@@ -210,11 +230,21 @@ public class WriteDirectedNetwork {
         builder.add("cycleSpeedKPH",Double.class);
         builder.add("walkSpeedKPH",Double.class);
         builder.add("mainNetwork",Boolean.class);
+        builder.add("lanes",Integer.class);
+        builder.add("aadt",Double.class);
         builder.add("car",Boolean.class);
         builder.add("bike",Boolean.class);
         builder.add("walk",Boolean.class);
         builder.add("gradient",Double.class);
-        builder.add("protectionType",String.class);
+        builder.add("bikeProtectionType",String.class);
+        builder.add("endsAtJct",Boolean.class);
+        builder.add("crossesVehicles",Boolean.class);
+        builder.add("crossingTypeBike",String.class);
+        builder.add("crossingTypeWalk",String.class);
+        builder.add("crossingLanes",Double.class);
+        builder.add("crossingAADT",Double.class);
+        builder.add("crossingSpeedLimit",Double.class);
+        builder.add("crossing85PercSpeed",Double.class);
         builder.add("f_vgvi",Double.class);
         builder.add("f_lighting",Double.class);
         builder.add("f_shannon",Double.class);
@@ -223,9 +253,10 @@ public class WriteDirectedNetwork {
         builder.add("f_negPOIs",Double.class);
         builder.add("f_freightPOIs",Double.class);
         builder.add("f_attractiveness",Double.class);
-        builder.add("f_stress",Double.class);
-        builder.add("f_jctStress",Double.class);
-
+        builder.add("f_bikeStress",Double.class);
+        builder.add("f_bikeStressJct",Double.class);
+        builder.add("f_walkStress",Double.class);
+        builder.add("f_walkStressJct",Double.class);
 
         // build the type
         final SimpleFeatureType TYPE = builder.buildFeatureType();

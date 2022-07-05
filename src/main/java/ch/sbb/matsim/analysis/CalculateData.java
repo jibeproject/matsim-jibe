@@ -378,7 +378,7 @@ public class CalculateData {
 
     public static Map<String, Coord> buildZoneCoordMap(String filename) throws IOException {
         String expectedHeader = "ZONE;POINT_INDEX;X;Y";
-        Map<String, Coord> zoneCoordMap = new HashMap<>();
+        Map<String, Coord> zoneCoordMap = new LinkedHashMap<>();
         try (BufferedReader reader = IOUtils.getBufferedReader(filename)) {
             String header = reader.readLine();
             if (!expectedHeader.equals(header)) {

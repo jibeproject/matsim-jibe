@@ -127,6 +127,7 @@ public final class GeometryWriter {
                         routeFeatureBuilder.add(fromZoneId.toString());
                         routeFeatureBuilder.add(toZoneId.toString());
                         routeFeatureBuilder.add(geometryData.costMatrix.get(fromZoneId,toZoneId));
+                        routeFeatureBuilder.add(edges.length);
                         routeFeatureBuilder.add(distanceM);
                         routeFeatureBuilder.add(timeS);
                         routeFeatureBuilder.add(3.6 * distanceM / timeS);
@@ -177,6 +178,7 @@ public final class GeometryWriter {
         builder.length(8).add("From", String.class);
         builder.length(8).add("To", String.class);
         builder.add("cost", Double.class);
+        builder.add("links",Double.class);
         builder.add("distance_m", Double.class);
         builder.add("tt_s", Double.class);
         builder.add("avgSpeed_kph", Double.class);

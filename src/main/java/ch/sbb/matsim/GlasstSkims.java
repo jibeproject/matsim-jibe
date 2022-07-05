@@ -14,6 +14,7 @@ import org.opengis.referencing.FactoryException;
 
 import java.io.IOException;
 
+// Build skim matrices for the GLASST project
 public class GlasstSkims {
 
     private final static Logger log = Logger.getLogger(GlasstSkims.class);
@@ -47,12 +48,12 @@ public class GlasstSkims {
 
         // CAR
         FreespeedTravelTimeAndDisutility freeSpeed = new FreespeedTravelTimeAndDisutility(config.planCalcScore());
-        calc.calculateRouteIndicators(networkPath,config,freeSpeed,freeSpeed,"car_",
+        calc.calculateRouteIndicators(networkPath,config,freeSpeed,freeSpeed,"car",
                 null, TransportMode.car,
                 l -> !((boolean) l.getAttributes().getAttribute("motorway")));
 
-        // PUBLIC TRANSPORT CALCULATIONS (WORK IN PROGRESS)
-        calc.calculatePtIndicators(ptNetworkPath,ptSchedulePath,28200,29400,config,"pt_",(l, r) -> true);
+        // PUBLIC TRANSPORT CALCULATIONS
+        calc.calculatePtIndicators(ptNetworkPath,ptSchedulePath,27000,30600,config,"pt",(l, r) -> true);
     }
 
 }

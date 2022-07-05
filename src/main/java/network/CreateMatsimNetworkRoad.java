@@ -18,6 +18,7 @@ import org.opengis.feature.simple.SimpleFeature;
 import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 // Script to create a MATSim Road network .xml file using the Edges and Nodes from JIBE WP2
 
@@ -61,10 +62,26 @@ public class CreateMatsimNetworkRoad {
         new NetworkWriter(net).write(networkFile);
     }
 
-    private static void addNodeToNetwork(int nodeID, SimpleFeature node, Network net, NetworkFactory fac) {
-        int z = (int) node.getAttribute("z_coor");
-        Point p = (Point) node.getAttributes().get(0);
-        net.addNode(fac.createNode(Id.createNodeId(nodeID), new Coord(p.getX(),p.getY(),z)));
+    private static void addNodeToNetwork(int nodeID, SimpleFeature point, Network net, NetworkFactory fac) {
+        int z = (int) point.getAttribute("z_coor");
+        Point p = (Point) point.getAttributes().get(0);
+        Node node = fac.createNode(Id.createNodeId(nodeID), new Coord(p.getX(),p.getY(),z));
+
+        // Cycle crossing type
+        String cycleCrossing = (String) point.getAttribute("cyc_cros");
+        if(cycleCrossing == null) {
+            cycleCrossing = "null";
+        }
+        node.getAttributes().putAttribute("bikeCrossing",cycleCrossing);
+
+        // Walk junction type
+        String pedCrossing = (String) point.getAttribute("ped_cros");
+        if(pedCrossing == null) {
+            pedCrossing = "null";
+        }
+        node.getAttributes().putAttribute("walkCrossing",pedCrossing);
+
+        net.addNode(node);
     }
 
     private static void addLinkToNetwork(int edgeID, SimpleFeature edge, Network net, NetworkFactory fac) {
@@ -75,9 +92,8 @@ public class CreateMatsimNetworkRoad {
         if(origNodeId != destNodeId) {
             String roadType = (String) edge.getAttribute("roadtyp");
             String oneWaySummary = (String) edge.getAttribute("onwysmm");
+            String modalFilter = (String) edge.getAttribute("modalfl");
 
-            int lanesOut = Integer.max(1, (int) edge.getAttribute("lns_no_f"));
-            int lanesRtn = Integer.max(1, (int) edge.getAttribute("lns_no_b"));
 
             Node origNode = net.getNodes().get(Id.createNodeId(origNodeId));
             Node destNode = net.getNodes().get(Id.createNodeId(destNodeId));
@@ -92,15 +108,17 @@ public class CreateMatsimNetworkRoad {
             // OSM ID
             int osmID = (int) edge.getAttribute("osm_id");
             l1.getAttributes().putAttribute("osmID",osmID);
-            l1.getAttributes().putAttribute("osmID",osmID);
+            l2.getAttributes().putAttribute("osmID",osmID);
+
+            // Name
+            String name = (String) edge.getAttribute("name");
+            if(name == null) name = "";
+            l1.getAttributes().putAttribute("name",name);
+            l2.getAttributes().putAttribute("name",name);
 
             // Out or return
             l1.getAttributes().putAttribute("fwd",true);
             l2.getAttributes().putAttribute("fwd",false);
-
-            // Number of lanes
-            l1.setNumberOfLanes(lanesOut);
-            l2.setNumberOfLanes(lanesRtn);
 
             // Length
             l1.setLength(length);
@@ -110,8 +128,6 @@ public class CreateMatsimNetworkRoad {
             Set<String> allowedModesOut = new HashSet<>();
             switch(roadType) {
                 case "Path - Cycling Forbidden":
-                    allowedModesOut.add("walk");
-                    break;
                 case "Cycleway":
                 case "Segregated Cycleway":
                 case "Shared Path":
@@ -140,6 +156,11 @@ public class CreateMatsimNetworkRoad {
             }
             l1.setAllowedModes(allowedModesOut);
 
+            // Don't allow car if there's a modal filter
+            if(!modalFilter.equals("all")) {
+                allowedModesOut.remove("car");
+            }
+
             // Allowed modes return
             Set<String> allowedModesRtn = new HashSet<>(allowedModesOut);
             switch(oneWaySummary) {
@@ -164,6 +185,30 @@ public class CreateMatsimNetworkRoad {
             double freespeed = speedLimit * 0.44704;
             l1.setFreespeed(freespeed);
             l2.setFreespeed(freespeed);
+
+            // Add AADT, width, and number of lanes attribute
+            Double aadt = (Double) edge.getAttribute("aadt_hgv_im");
+            Double width = (Double) edge.getAttribute("avg_wdt");
+            double lanesOut = 1.;
+            double lanesRtn = 1.;
+            double aadtOut = 0.;
+            double aadtRtn = 0.;
+            if(aadt == null) aadt = Double.NaN;
+            if(allowedModesOut.contains("car")) {
+                if(allowedModesRtn.contains("car")) {
+                    lanesOut = estimateNumberOflanes(width / 2.);
+                    lanesRtn = lanesOut;
+                    aadtOut = aadt / 2.;
+                    aadtRtn = aadtOut;
+                } else {
+                    aadtOut = aadt;
+                    lanesOut = estimateNumberOflanes(width);
+                }
+            }
+            l1.setNumberOfLanes(lanesOut);
+            l2.setNumberOfLanes(lanesRtn);
+            l1.getAttributes().putAttribute("aadt",aadtOut);
+            l2.getAttributes().putAttribute("aadt",aadtRtn);
 
             // Capacity
             int laneCapacity;
@@ -229,11 +274,10 @@ public class CreateMatsimNetworkRoad {
             l1.getAttributes().putAttribute("motorway",motorway);
             l2.getAttributes().putAttribute("motorway",motorway);
 
-            // Add AADT attribute
-            Double aadt = (Double) edge.getAttribute("aadt_hgv_im");
-            if(aadt == null) aadt = Double.NaN;
-            l1.getAttributes().putAttribute("aadt",aadt);
-            l2.getAttributes().putAttribute("aadt",aadt);
+            // Do cyclists have to dismount?
+            boolean dismount = roadType.equals("Path - Cycling Forbidden") || cycleosm.equals("dismount");
+            l1.getAttributes().putAttribute("dismount",dismount);
+            l2.getAttributes().putAttribute("dismount",dismount);
 
             // Add NDVImean attribute
             Double ndvi = (Double) edge.getAttribute("NDVImen");
@@ -268,7 +312,8 @@ public class CreateMatsimNetworkRoad {
             l2.getAttributes().putAttribute("quietness",quietness);
 
             // Street lighting
-            double streetLights = (double) edge.getAttribute("strtlgh");
+            Integer streetLights = (Integer) edge.getAttribute("strtlgh");
+            if(streetLights == null) streetLights = 0;
             l1.getAttributes().putAttribute("streetLights",streetLights);
             l2.getAttributes().putAttribute("streetLights",streetLights);
 
@@ -318,41 +363,106 @@ public class CreateMatsimNetworkRoad {
 
             // Add links to network
             net.addLink(l1);
-            net.addLink(l2);
+            if(!l2.getAllowedModes().isEmpty()) {
+                net.addLink(l2);
+            }
+        }
+    }
+
+    private static double estimateNumberOflanes(double width) {
+        if(width <= 6.5) {
+            return 1.;
+        } else if(width <= 9.3) {
+            return 2.;
+        } else {
+            return 3.;
         }
     }
 
     private static void addJunctionAadt(Network net) {
-        Map<Node,Double> nodeAadtMap = net.getNodes().values().stream().collect(Collectors.toMap(x -> x, x -> 0.));
+//        Map<Node,Double> nodeAadtMap = net.getNodes().values().stream().collect(Collectors.toMap(x -> x, x -> 0.));
+//        Map<Node,Double> nodeSpeedMap = net.getNodes().values().stream().collect(Collectors.toMap(x -> x, x -> 0.));
 
-        // Store AADT values for every link arriving at each node
+        Map<Node,List<Link>> linksTo = net.getNodes().values().stream().collect(Collectors.toMap(n -> n, n -> new ArrayList<>()));
+        Map<Node,List<Link>> linksFrom = net.getNodes().values().stream().collect(Collectors.toMap(n -> n, n -> new ArrayList<>()));
+        Map<Node,Boolean> isJunction = net.getNodes().values().stream().collect(Collectors.toMap(n -> n, n -> false));
+
+        // List links arriving at each node
         for (Link link : net.getLinks().values()) {
-            if((boolean) link.getAttributes().getAttribute("allowsCar")) {
-                Node toNode = link.getToNode();
-                double oldVal = nodeAadtMap.get(toNode);
-                Double val = (Double) link.getAttributes().getAttribute("aadt");
-                if(val.isNaN()) {
-                    val = 1570.;
-                }
-                nodeAadtMap.put(toNode, oldVal + val);
-            }
+            linksTo.get(link.getToNode()).add(link);
+            linksFrom.get(link.getFromNode()).add(link);
         }
 
-        // Store as link attribute
+        for (Node node : net.getNodes().values()) {
+            boolean junction = Stream.concat(linksFrom.get(node).stream(),linksTo.get(node).stream())
+                    .mapToInt(l -> (int) l.getAttributes().getAttribute("edgeID"))
+                    .distinct()
+                    .count() > 2;
+            isJunction.put(node,junction);
+        }
+
         for (Link link : net.getLinks().values()) {
-            Node toNode = link.getToNode();
-            Double allLinks = nodeAadtMap.get(toNode);
-            Double thisLink;
-            if((boolean) link.getAttributes().getAttribute("allowsCar")) {
-                thisLink = (Double) link.getAttributes().getAttribute("aadt");
-                if(thisLink.isNaN()) {
-                    thisLink = 1570.;
+
+            boolean endsAtJct = isJunction.get(link.getToNode());
+            boolean crossVehicles = false;
+            double crossAadt = Double.NaN;
+            double crossLanes = Double.NaN;
+            double crossSpeedLimit = Double.NaN;
+            double cross85PercSpeed = Double.NaN;
+
+            if(endsAtJct) {
+                int osmID = (int) link.getAttributes().getAttribute("osmID");
+                String name = (String) link.getAttributes().getAttribute("name");
+                Set<Link> crossingLinks = linksTo.get(link.getToNode())
+                        .stream()
+                        .filter(l -> (boolean) l.getAttributes().getAttribute("allowsCar"))
+                        .filter(l -> !isMatchingRoad(l,osmID,name))
+                        .collect(Collectors.toSet());
+
+                if(!crossingLinks.isEmpty()) {
+
+                    crossVehicles = true;
+
+                    crossLanes = crossingLinks.stream()
+                            .mapToDouble(l -> l.getNumberOfLanes())
+                            .sum();
+                    crossAadt = crossingLinks.stream()
+                            .mapToDouble(l -> (double) l.getAttributes().getAttribute("aadt"))
+                            .sum();
+                    OptionalInt crossSpeedLimitTemp = crossingLinks.stream()
+                            .mapToInt(l -> (int) l.getAttributes().getAttribute("speedLimitMPH"))
+                            .max();
+                    OptionalDouble cross85PercSpeedTemp = crossingLinks.stream()
+                            .mapToDouble(l -> (double) l.getAttributes().getAttribute("veh85percSpeedKPH"))
+                            .max();
+
+                    if(crossSpeedLimitTemp.isPresent()) {
+                        crossSpeedLimit = crossSpeedLimitTemp.getAsInt();
+                    }
+
+                    if(cross85PercSpeedTemp.isPresent()) {
+                        cross85PercSpeed = cross85PercSpeedTemp.getAsDouble();
+                    }
+
                 }
-            } else {
-                thisLink = 0.;
             }
-            link.getAttributes().putAttribute("jctAadt",allLinks);
-            link.getAttributes().putAttribute("jctAadtConf",allLinks - thisLink);
+
+            link.getAttributes().putAttribute("endsAtJct",endsAtJct);
+            link.getAttributes().putAttribute("crossVehicles",crossVehicles);
+            link.getAttributes().putAttribute("crossLanes",crossLanes);
+            link.getAttributes().putAttribute("crossAadt",crossAadt);
+            link.getAttributes().putAttribute("crossSpeedLimitMPH",crossSpeedLimit);
+            link.getAttributes().putAttribute("cross85PercSpeed",cross85PercSpeed);
+        }
+    }
+
+    private static boolean isMatchingRoad(Link link, int osmID, String name) {
+        boolean osmIdMatch = link.getAttributes().getAttribute("osmID").equals(osmID);
+        boolean nameMatch = link.getAttributes().getAttribute("name").equals(name);
+        if(!name.equals("")) {
+            return nameMatch || osmIdMatch;
+        } else {
+            return osmIdMatch;
         }
     }
 }

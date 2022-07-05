@@ -1,7 +1,10 @@
-package bicycle.jibe;
+package routing;
 
 
-import bicycle.BicycleUtilityUtils;
+import routing.utility.LinkAttractiveness;
+import routing.utility.JctStress;
+import routing.utility.LinkComfort;
+import routing.utility.LinkStress;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.core.router.util.TravelDisutility;
@@ -12,8 +15,9 @@ import org.matsim.vehicles.Vehicle;
  * Custom bicycle disutility for JIBE
  * based on BicycleTravelDisutility by Dominik Ziemke
  */
-public class JibeCycleRoute implements TravelDisutility {
+public class JibeDisutility implements TravelDisutility {
 
+    private final String mode;
     private final double marginalCostOfTime_s;
     private final double marginalCostOfDistance_m;
     private final double marginalCostOfGradient_m_100m;
@@ -24,12 +28,13 @@ public class JibeCycleRoute implements TravelDisutility {
 
     private final TravelTime timeCalculator;
 
-    public JibeCycleRoute(TravelTime timeCalculator,
+    public JibeDisutility(String mode, TravelTime timeCalculator,
                           double marginalCostOfTime_s, double marginalCostOfDistance_m,
                           double marginalCostOfGradient_m_100m, double marginalCostOfComfort_m,
                           double marginalCostAttractiveness_m, double marginalCostStress_m,
                           double marginalCostJunction) {
 
+        this.mode = mode;
         this.marginalCostOfTime_s = marginalCostOfTime_s;
         this.marginalCostOfDistance_m = marginalCostOfDistance_m;
         this.marginalCostOfGradient_m_100m = marginalCostOfGradient_m_100m;
@@ -55,23 +60,24 @@ public class JibeCycleRoute implements TravelDisutility {
         disutility += marginalCostOfDistance_m * distance;
 
         // Gradient factor
-        double gradientFactor = BicycleUtilityUtils.getGradientFactor(link);
-        disutility += marginalCostOfGradient_m_100m * gradientFactor * distance;
+        double gradient = Gradient.getGradient(link);
+        if(gradient < 0.) gradient = 0.;
+        disutility += marginalCostOfGradient_m_100m * gradient * distance;
 
         // Comfort of surface
-        double comfortFactor = BicycleUtilityUtils.getComfortFactor(link);
+        double comfortFactor = LinkComfort.getComfortFactor(link);
         disutility += marginalCostOfComfort_m * (1. - comfortFactor) * distance;
 
         // Attractiveness factors
-        double attractiveness = CustomUtilityUtils.getDayAttractiveness(link);
+        double attractiveness = LinkAttractiveness.getDayAttractiveness(link);
         disutility += marinalCostAttractiveness_m * attractiveness * distance;
 
         // Stress factors
-        double stress = CustomUtilityUtils.getCycleStress(link);
+        double stress = LinkStress.getStress(link,mode);
         disutility += marginalCostStress_m * stress * distance;
 
         // Junction stress factor
-        double junctionStress = CustomUtilityUtils.getCycleJunctionStress(link);
+        double junctionStress = JctStress.getJunctionStress(link,mode);
         disutility += marginalCostJunction * junctionStress;
 
         return disutility;
@@ -93,27 +99,28 @@ public class JibeCycleRoute implements TravelDisutility {
     }
 
     public double getGradientComponent(Link link) {
-        double gradientFactor = BicycleUtilityUtils.getGradientFactor(link);
-        return marginalCostOfGradient_m_100m * gradientFactor * link.getLength();
+        double gradient = Gradient.getGradient(link);
+        if(gradient < 0.) gradient = 0.;
+        return marginalCostOfGradient_m_100m * gradient * link.getLength();
     }
 
     public double getSurfaceComponent(Link link) {
-        double comfortFactor = BicycleUtilityUtils.getComfortFactor(link);
+        double comfortFactor = LinkComfort.getComfortFactor(link);
         return marginalCostOfComfort_m * (1. - comfortFactor) * link.getLength();
     }
 
     public double getAttractivenessComponent(Link link) {
-        double attractiveness = CustomUtilityUtils.getDayAttractiveness(link);
+        double attractiveness = LinkAttractiveness.getDayAttractiveness(link);
         return marinalCostAttractiveness_m * attractiveness * link.getLength();
     }
 
     public double getStressComponent(Link link) {
-        double stress = CustomUtilityUtils.getCycleStress(link);
+        double stress = LinkStress.getStress(link, mode);
         return marginalCostStress_m * stress * link.getLength();
     }
 
     public double getJunctionComponent(Link link) {
-        double jctStress = CustomUtilityUtils.getCycleJunctionStress(link);
+        double jctStress = JctStress.getJunctionStress(link, mode);
         return marginalCostJunction * jctStress;
     }
 }
