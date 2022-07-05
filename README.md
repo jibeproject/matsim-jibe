@@ -1,6 +1,13 @@
-**[Work in progress]** This repository contains a collection of tools and code for network conversion, routing, matrix generation, and accessibility calculations for GLASST and JIBE.
+**[Work in progress]** This repository contains a collection of tools and code for network 
+conversion, routing, matrix generation, and accessibility calculations for 
+the JIBE and GLASST projects.
 
-The routing algorithms are based largely on code by the swiss federal railway (SBB) which can be found here:
+The routing algorithms are based largely on code from the "bicycle" MATSim extension which
+can be found here: https://github.com/matsim-org/matsim-libs/tree/master/contribs/bicycle.
+The extension is also described in this paper: https://doi.org/10.1016/j.procs.2017.05.424
+
+The algorithms for effeciently routing between multiple OD pairs are based largely on code 
+by the swiss federal railway (SBB) which can be found here:
 https://github.com/SchweizerischeBundesbahnen/matsim-sbb-extensions
 
 ## Runnable methods:

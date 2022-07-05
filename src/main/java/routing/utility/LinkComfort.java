@@ -3,6 +3,7 @@ package routing.utility;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.contrib.bicycle.BicycleUtils;
 
+// This comfort factor is taken directly from the MATSim "bicycle" extension
 public class LinkComfort {
 
     public static double getComfortFactor(Link link) {
@@ -54,7 +55,7 @@ public class LinkComfort {
                 }
             }
         }
-        return comfortFactor;
+        return (1. - comfortFactor);
     }
 
 }

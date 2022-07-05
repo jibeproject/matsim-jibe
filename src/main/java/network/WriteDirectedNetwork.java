@@ -192,6 +192,7 @@ public class WriteDirectedNetwork {
             featureBuilder.add(LinkAttractiveness.getNegativePoiFactor(link));
             featureBuilder.add(LinkStress.getFreightPoiFactor(link));
             featureBuilder.add(LinkAttractiveness.getDayAttractiveness(link));
+            featureBuilder.add(LinkAttractiveness.getNightAttractiveness(link));
             featureBuilder.add(LinkStress.getStress(link, TransportMode.bike));
             featureBuilder.add(JctStress.getJunctionStress(link,TransportMode.bike));
             featureBuilder.add(LinkStress.getStress(link,TransportMode.walk));
@@ -252,7 +253,8 @@ public class WriteDirectedNetwork {
         builder.add("f_POIs",Double.class);
         builder.add("f_negPOIs",Double.class);
         builder.add("f_freightPOIs",Double.class);
-        builder.add("f_attractiveness",Double.class);
+        builder.add("f_attractiveness_day",Double.class);
+        builder.add("f_attractiveness_night",Double.class);
         builder.add("f_bikeStress",Double.class);
         builder.add("f_bikeStressJct",Double.class);
         builder.add("f_walkStress",Double.class);

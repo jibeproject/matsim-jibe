@@ -46,10 +46,10 @@ public class RouteComparison {
     private final static double MARGINAL_COST_DISTANCE = 0.; // metres
     private final static double MARGINAL_COST_GRADIENT = 0.02; // m/100m
     private final static double MARGINAL_COST_SURFACE = 2e-4;
-    private final static double MARGINAL_COST_ATTRACTIVENESS = 4e-3;
-    private final static double MARGINAL_COST_STRESS = 8e-3;
+    private final static double MARGINAL_COST_ATTRACTIVENESS = 6e-3;
+    private final static double MARGINAL_COST_STRESS = 6e-3;
     private final static double JUNCTION_EQUIVALENT_LENGTH = 10.; // in meters
-    private final static String MODE = TransportMode.bike;
+    private final static String MODE = TransportMode.walk;
 
     public static void main(String[] args) throws IOException, FactoryException {
 
@@ -126,19 +126,12 @@ public class RouteComparison {
             throw new RuntimeException("Routing not set up for mode " + MODE);
         }
 
-        // Modify marginal cost of gradient/surface if walk
-        double marginalCostOfGradient = MARGINAL_COST_GRADIENT;
-        double marginalCostOfSurfaceComfort = MARGINAL_COST_SURFACE;
-
-        if(MODE.equals(TransportMode.walk)) {
-            marginalCostOfGradient /= 2;
-            marginalCostOfSurfaceComfort = 0;
-        }
-
         log.info("Marginal cost of time (s): " + MARGINAL_COST_TIME);
         log.info("Marginal cost of distance (m): " + MARGINAL_COST_DISTANCE);
         log.info("Marginal cost of gradient (m/100m): " + MARGINAL_COST_GRADIENT);
         log.info("Marginal cost of surface comfort (m): " + MARGINAL_COST_SURFACE);
+        log.info("Marginal cost of attractiveness (m): " + MARGINAL_COST_ATTRACTIVENESS);
+        log.info("Marginal cost of stress (m): " + MARGINAL_COST_STRESS);
 
         // DEFINE TRAVEL DISUTILITIES HERE
         Map<String,TravelDisutility> travelDisutilities = new LinkedHashMap<>();
@@ -153,8 +146,9 @@ public class RouteComparison {
 
         // Jibe
         travelDisutilities.put("jibe", new JibeDisutility(MODE,tt,MARGINAL_COST_TIME,MARGINAL_COST_DISTANCE,
-                marginalCostOfGradient,marginalCostOfSurfaceComfort,MARGINAL_COST_ATTRACTIVENESS,MARGINAL_COST_STRESS,
+                MARGINAL_COST_GRADIENT,MARGINAL_COST_SURFACE,MARGINAL_COST_ATTRACTIVENESS,MARGINAL_COST_STRESS,
                 MARGINAL_COST_STRESS*JUNCTION_EQUIVALENT_LENGTH));
+
 
         // Run for testing multiple attractiveness/stress/junction costs
 /*        for(int i = 0 ; i <= 4 ; i++) {
@@ -196,7 +190,7 @@ public class RouteComparison {
             // IF .CSV, CALCULATE ATTRIBUTES ONLY, DO NOT INCLUDE GEOMETRIES
             HashMap<String, IndicatorData> indicators = new HashMap<>(travelDisutilities.size());
             for(Map.Entry<String,TravelDisutility> e : travelDisutilities.entrySet()) {
-                log.info("Calculating geometries for route " + e.getKey());
+                log.info("Calculating attributes for route " + e.getKey());
                 IndicatorData<String> indicatorData = IndicatorCalculator.calculate(modeNetwork,routingZones,routingZones,
                         zoneNodeMap,tt,e.getValue(),attributes, veh,14);
                 indicators.put(e.getKey(),indicatorData);

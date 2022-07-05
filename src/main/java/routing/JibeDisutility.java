@@ -66,7 +66,7 @@ public class JibeDisutility implements TravelDisutility {
 
         // Comfort of surface
         double comfortFactor = LinkComfort.getComfortFactor(link);
-        disutility += marginalCostOfComfort_m * (1. - comfortFactor) * distance;
+        disutility += marginalCostOfComfort_m * comfortFactor * distance;
 
         // Attractiveness factors
         double attractiveness = LinkAttractiveness.getDayAttractiveness(link);
@@ -106,7 +106,7 @@ public class JibeDisutility implements TravelDisutility {
 
     public double getSurfaceComponent(Link link) {
         double comfortFactor = LinkComfort.getComfortFactor(link);
-        return marginalCostOfComfort_m * (1. - comfortFactor) * link.getLength();
+        return marginalCostOfComfort_m * comfortFactor * link.getLength();
     }
 
     public double getAttractivenessComponent(Link link) {

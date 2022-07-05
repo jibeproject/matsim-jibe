@@ -12,27 +12,27 @@ public class LinkAttractiveness {
 
     public static double getLightingFactor (Link link){
         int lights = (int) link.getAttributes().getAttribute("streetLights");
-        return 1. - Math.min(1., lights / link.getLength());
+        return 1. - Math.min(1., 15 * lights / link.getLength());
     }
 
     public static double getShannonFactor (Link link){
         double shannon = (double) link.getAttributes().getAttribute("shannon");
-        return 1. - Math.min(1., shannon / 3.);
+        return 1. - Math.min(1., shannon / 1.6);
     }
 
     public static double getPoiFactor (Link link){
         double pois = (double) link.getAttributes().getAttribute("POIs");
-        return 1 - Math.min(1., pois / link.getLength());
+        return 1 - Math.min(1., 5 * pois / link.getLength());
     }
 
     public static double getNegativePoiFactor (Link link){
         double negPois = (double) link.getAttributes().getAttribute("negPOIs");
-        return Math.min(1., negPois / link.getLength());
+        return Math.min(1., 5 * negPois / link.getLength());
     }
 
     public static double getCrimeFactor (Link link){
         double crime = (double) link.getAttributes().getAttribute("crime");
-        return Math.min(1., crime / link.getLength());
+        return Math.min(1., 4 * crime / link.getLength());
     }
 
     public static double getDayAttractiveness (Link link){
