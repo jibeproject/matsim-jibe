@@ -22,7 +22,6 @@ import org.matsim.api.core.v01.network.Node;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
 import org.matsim.core.network.io.MatsimNetworkReader;
@@ -47,19 +46,19 @@ public class RouteComparison {
     private final static double MARGINAL_COST_DISTANCE = 0.; // metres
     private final static double MARGINAL_COST_GRADIENT = 0.02; // m/100m
     private final static double MARGINAL_COST_SURFACE = 2e-4;
-    private final static double MARGINAL_COST_ATTRACTIVENESS = 4e-3;
-    private final static double MARGINAL_COST_STRESS = 8e-3;
+    private final static double MARGINAL_COST_ATTRACTIVENESS = 6e-3;
+    private final static double MARGINAL_COST_STRESS = 6e-3;
     private final static double JUNCTION_EQUIVALENT_LENGTH = 10.; // in meters
-    private final static String MODE = TransportMode.bike;
+    private final static String MODE = TransportMode.walk;
 
     public static void main(String[] args) throws IOException, FactoryException {
 
         if(args.length < 4 | args.length == 5) {
             throw new RuntimeException("Program requires at least 4 arguments: \n" +
-                    "(0) MATSim network file path \n" +
-                    "(1) Zone coordinates file \n" +
-                    "(2) Edges file path \n" +
-                    "(3) Output file path \n" +
+                    "(0) MATSim network file path (.xml) \n" +
+                    "(1) Zone coordinates file (.csv) \n" +
+                    "(2) Edges file path (.gpkg) \n" +
+                    "(3) Output file path (.gpkg) \n" +
                     "(4+) OPTIONAL: Names of zones to be used for routing");
         }
 
@@ -127,19 +126,12 @@ public class RouteComparison {
             throw new RuntimeException("Routing not set up for mode " + MODE);
         }
 
-        // Modify marginal cost of gradient/surface if walk
-        double marginalCostOfGradient = MARGINAL_COST_GRADIENT;
-        double marginalCostOfSurfaceComfort = MARGINAL_COST_SURFACE;
-
-        if(MODE.equals(TransportMode.walk)) {
-            marginalCostOfGradient /= 2;
-            marginalCostOfSurfaceComfort = 0;
-        }
-
         log.info("Marginal cost of time (s): " + MARGINAL_COST_TIME);
         log.info("Marginal cost of distance (m): " + MARGINAL_COST_DISTANCE);
         log.info("Marginal cost of gradient (m/100m): " + MARGINAL_COST_GRADIENT);
         log.info("Marginal cost of surface comfort (m): " + MARGINAL_COST_SURFACE);
+        log.info("Marginal cost of attractiveness (m): " + MARGINAL_COST_ATTRACTIVENESS);
+        log.info("Marginal cost of stress (m): " + MARGINAL_COST_STRESS);
 
         // DEFINE TRAVEL DISUTILITIES HERE
         Map<String,TravelDisutility> travelDisutilities = new LinkedHashMap<>();
@@ -154,16 +146,17 @@ public class RouteComparison {
 
         // Jibe
         travelDisutilities.put("jibe", new JibeDisutility(MODE,tt,MARGINAL_COST_TIME,MARGINAL_COST_DISTANCE,
-                marginalCostOfGradient,marginalCostOfSurfaceComfort,MARGINAL_COST_ATTRACTIVENESS,MARGINAL_COST_STRESS,
+                MARGINAL_COST_GRADIENT,MARGINAL_COST_SURFACE,MARGINAL_COST_ATTRACTIVENESS,MARGINAL_COST_STRESS,
                 MARGINAL_COST_STRESS*JUNCTION_EQUIVALENT_LENGTH));
+
 
         // Run for testing multiple attractiveness/stress/junction costs
 /*        for(int i = 0 ; i <= 4 ; i++) {
             for(int j = 0 ; j <= 2 ; j++) {
                 for(int k = 0 ; k <= 10 ; k = k+2) {
                     String name = "t_" + i + "_" + j + "_" + k;
-                    travelDisutilities.put(name,new JibeDisutility(MODE, tt, marginalCostOfTime_s,marginalCostOfDistance_m,
-                            marginalCostOfGradient_m_100m,marginalCostOfComfort_m,
+                    travelDisutilities.put(name,new JibeDisutility(MODE, tt, MARGINAL_COST_TIME,MARGINAL_COST_DISTANCE,
+                            marginalCostOfGradient,marginalCostOfSurfaceComfort,
                             i*1e-3,j*1e-3,k*1e-2));
                 }
             }
@@ -197,7 +190,7 @@ public class RouteComparison {
             // IF .CSV, CALCULATE ATTRIBUTES ONLY, DO NOT INCLUDE GEOMETRIES
             HashMap<String, IndicatorData> indicators = new HashMap<>(travelDisutilities.size());
             for(Map.Entry<String,TravelDisutility> e : travelDisutilities.entrySet()) {
-                log.info("Calculating geometries for route " + e.getKey());
+                log.info("Calculating attributes for route " + e.getKey());
                 IndicatorData<String> indicatorData = IndicatorCalculator.calculate(modeNetwork,routingZones,routingZones,
                         zoneNodeMap,tt,e.getValue(),attributes, veh,14);
                 indicators.put(e.getKey(),indicatorData);

@@ -12,7 +12,7 @@ import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 
 /**
- * Custom bicycle disutility for JIBE
+ * Custom walk and bicycle disutility for JIBE
  * based on BicycleTravelDisutility by Dominik Ziemke
  */
 public class JibeDisutility implements TravelDisutility {
@@ -54,7 +54,7 @@ public class JibeDisutility implements TravelDisutility {
         double distance = link.getLength();
 
         // Travel time disutility
-        double disutility = marginalCostOfTime_s * 2 * travelTime;
+        double disutility = marginalCostOfTime_s * travelTime;
 
         // Distance disutility (0 by default)
         disutility += marginalCostOfDistance_m * distance;
@@ -66,7 +66,7 @@ public class JibeDisutility implements TravelDisutility {
 
         // Comfort of surface
         double comfortFactor = LinkComfort.getComfortFactor(link);
-        disutility += marginalCostOfComfort_m * (1. - comfortFactor) * distance;
+        disutility += marginalCostOfComfort_m * comfortFactor * distance;
 
         // Attractiveness factors
         double attractiveness = LinkAttractiveness.getDayAttractiveness(link);
@@ -91,7 +91,7 @@ public class JibeDisutility implements TravelDisutility {
 
     public double getTimeComponent(Link link, double time, Person person, Vehicle vehicle) {
         double travelTime = timeCalculator.getLinkTravelTime(link, time, person, vehicle);
-        return marginalCostOfTime_s * 2 * travelTime;
+        return marginalCostOfTime_s * travelTime;
     }
 
     public double getDistanceComponent(Link link) {
@@ -106,7 +106,7 @@ public class JibeDisutility implements TravelDisutility {
 
     public double getSurfaceComponent(Link link) {
         double comfortFactor = LinkComfort.getComfortFactor(link);
-        return marginalCostOfComfort_m * (1. - comfortFactor) * link.getLength();
+        return marginalCostOfComfort_m * comfortFactor * link.getLength();
     }
 
     public double getAttractivenessComponent(Link link) {

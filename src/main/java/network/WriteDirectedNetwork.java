@@ -61,9 +61,9 @@ public class WriteDirectedNetwork {
 
         if(args.length != 3) {
             throw new RuntimeException("Program requires 3 arguments:\n" +
-                    "(0) MATSim network file path\n" +
-                    "(1) Input edges gpkg\n" +
-                    "(2) Output edges gpkg");
+                    "(0) MATSim network file (.xml)\n" +
+                    "(1) Input edges (.gpkg)\n" +
+                    "(2) Output edges (.gpkg)");
         }
 
         String matsimNetworkPath = args[0];
@@ -192,6 +192,7 @@ public class WriteDirectedNetwork {
             featureBuilder.add(LinkAttractiveness.getNegativePoiFactor(link));
             featureBuilder.add(LinkStress.getFreightPoiFactor(link));
             featureBuilder.add(LinkAttractiveness.getDayAttractiveness(link));
+            featureBuilder.add(LinkAttractiveness.getNightAttractiveness(link));
             featureBuilder.add(LinkStress.getStress(link, TransportMode.bike));
             featureBuilder.add(JctStress.getJunctionStress(link,TransportMode.bike));
             featureBuilder.add(LinkStress.getStress(link,TransportMode.walk));
@@ -252,7 +253,8 @@ public class WriteDirectedNetwork {
         builder.add("f_POIs",Double.class);
         builder.add("f_negPOIs",Double.class);
         builder.add("f_freightPOIs",Double.class);
-        builder.add("f_attractiveness",Double.class);
+        builder.add("f_attractiveness_day",Double.class);
+        builder.add("f_attractiveness_night",Double.class);
         builder.add("f_bikeStress",Double.class);
         builder.add("f_bikeStressJct",Double.class);
         builder.add("f_walkStress",Double.class);

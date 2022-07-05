@@ -1,6 +1,13 @@
-**[Work in progress]** This repository contains a collection of tools and code for network conversion, routing, matrix generation, and accessibility calculations for GLASST and JIBE.
+**[Work in progress]** This repository contains a collection of tools and code for network 
+conversion, routing, matrix generation, and accessibility calculations for 
+the JIBE and GLASST projects.
 
-The routing algorithms are based largely on code by the swiss federal railway (SBB) which can be found here:
+The routing algorithms are based largely on code from the "bicycle" MATSim extension which
+can be found here: https://github.com/matsim-org/matsim-libs/tree/master/contribs/bicycle.
+The extension is also described in this paper: https://doi.org/10.1016/j.procs.2017.05.424
+
+The algorithms for effeciently routing between multiple OD pairs are based largely on code 
+by the swiss federal railway (SBB) which can be found here:
 https://github.com/SchweizerischeBundesbahnen/matsim-sbb-extensions
 
 ## Runnable methods:
@@ -14,6 +21,7 @@ file to MATSim must be defined in this code.
 Creates a directed 2-way edges file (.gpkg) using the matsim network given, which whatever attributes that might be useful 
 (the attributes to be written can be specified in this code).
 This is useful for visualisations in which attributes are different in each direction.
+Note that the output from this code is only meant for visualisation, it is not meant to be taken as input anywhere else.
 
 ### RouteComparison.java
 
