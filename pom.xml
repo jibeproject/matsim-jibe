@@ -54,17 +54,6 @@
 			</releases>
 		</repository>
 		<repository>
-			<id>osgeo</id>
-			<name>OSGeo Release Repository</name>
-			<url>https://repo.osgeo.org/repository/release/</url>
-			<snapshots>
-				<enabled>false</enabled>
-			</snapshots>
-			<releases>
-				<enabled>true</enabled>
-			</releases>
-		</repository>
-		<repository>
 			<id>pt2matsim</id>
 			<url>https://repo.matsim.org/repository/matsim/</url>
 		</repository>
