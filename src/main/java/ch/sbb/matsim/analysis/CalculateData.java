@@ -33,6 +33,7 @@ import ch.sbb.matsim.routing.pt.raptor.RaptorUtils;
 import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorData;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
+import network.NetworkUtils2;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -165,7 +166,7 @@ public class CalculateData {
         //new NetworkWriter(modeSpecificNetwork).write(outputDirectory + "filteredNetwork.xml");
 
         log.info("filter mode-specific network for assigning links to locations");
-        final Network xy2linksNetwork = extractXy2LinksNetwork(modeSpecificNetwork, xy2linksPredicate);
+        final Network xy2linksNetwork = NetworkUtils2.extractXy2LinksNetwork(modeSpecificNetwork, xy2linksPredicate);
 
         log.info("calculating zone-node map");
         Map<String, Node> zoneNodeMap = buildZoneNodeMap(zoneCoordMap, xy2linksNetwork, modeSpecificNetwork);
@@ -214,7 +215,7 @@ public class CalculateData {
         //new NetworkWriter(modeSpecificNetwork).write(outputDirectory + "filteredNetwork.xml");
 
         log.info("filter mode-specific network for assigning links to locations");
-        final Network xy2linksNetwork = extractXy2LinksNetwork(modeSpecificNetwork, xy2linksPredicate);
+        final Network xy2linksNetwork = NetworkUtils2.extractXy2LinksNetwork(modeSpecificNetwork, xy2linksPredicate);
 
         log.info("calculating zone-node map");
         Map<String, Node> zoneNodeMap = buildZoneNodeMap(zoneCoordMap, xy2linksNetwork, modeSpecificNetwork);
@@ -252,7 +253,7 @@ public class CalculateData {
         //new NetworkWriter(modeSpecificNetwork).write(outputDirectory + "filteredNetwork.xml");
 
         log.info("filter mode-specific network for assigning links to locations");
-        final Network xy2linksNetwork = extractXy2LinksNetwork(modeSpecificNetwork, xy2linksPredicate);
+        final Network xy2linksNetwork = NetworkUtils2.extractXy2LinksNetwork(modeSpecificNetwork, xy2linksPredicate);
 
         log.info("calculating zone-node map");
         Map<String, Node> zoneNodeMap = buildZoneNodeMap(zoneCoordMap, xy2linksNetwork, modeSpecificNetwork);
@@ -289,36 +290,6 @@ public class CalculateData {
 
             // break; // break for debugging only
         }
-    }
-
-    private Network extractXy2LinksNetwork(Network network, Predicate<Link> xy2linksPredicate) {
-        Network xy2lNetwork = NetworkUtils.createNetwork();
-        NetworkFactory nf = xy2lNetwork.getFactory();
-        for (Link link : network.getLinks().values()) {
-            if (xy2linksPredicate.test(link)) {
-                // okay, we need that link
-                Node fromNode = link.getFromNode();
-                Node xy2lFromNode = xy2lNetwork.getNodes().get(fromNode.getId());
-                if (xy2lFromNode == null) {
-                    xy2lFromNode = nf.createNode(fromNode.getId(), fromNode.getCoord());
-                    xy2lNetwork.addNode(xy2lFromNode);
-                }
-                Node toNode = link.getToNode();
-                Node xy2lToNode = xy2lNetwork.getNodes().get(toNode.getId());
-                if (xy2lToNode == null) {
-                    xy2lToNode = nf.createNode(toNode.getId(), toNode.getCoord());
-                    xy2lNetwork.addNode(xy2lToNode);
-                }
-                Link xy2lLink = nf.createLink(link.getId(), xy2lFromNode, xy2lToNode);
-                xy2lLink.setAllowedModes(link.getAllowedModes());
-                xy2lLink.setCapacity(link.getCapacity());
-                xy2lLink.setFreespeed(link.getFreespeed());
-                xy2lLink.setLength(link.getLength());
-                xy2lLink.setNumberOfLanes(link.getNumberOfLanes());
-                xy2lNetwork.addLink(xy2lLink);
-            }
-        }
-        return xy2lNetwork;
     }
 
     public final void calculatePtIndicators(String networkFilename, String transitScheduleFilename, double startTime, double endTime, Config config, String outputPrefix, BiPredicate<TransitLine, TransitRoute> trainDetector) throws IOException {

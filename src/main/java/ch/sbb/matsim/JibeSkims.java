@@ -4,7 +4,7 @@ import routing.travelTime.speed.BicycleLinkSpeedCalculatorDefaultImpl;
 import routing.travelTime.BicycleTravelTime;
 import ch.sbb.matsim.analysis.CalculateData;
 import ch.sbb.matsim.analysis.TravelAttribute;
-import routing.DistanceAsTravelDisutility;
+import routing.disutility.DistanceDisutility;
 import org.apache.log4j.Logger;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
@@ -64,7 +64,7 @@ public class JibeSkims {
         TravelTime ttCycle = new BicycleTravelTime(linkSpeedCalculator);
 
         // Set travel disutility calculation (used for routing)
-        TravelDisutility td = new DistanceAsTravelDisutility();
+        TravelDisutility td = new DistanceDisutility();
 
         // Set additional attributes (to be aggregated)
         TravelAttribute[] travelAttributes = new TravelAttribute[4];

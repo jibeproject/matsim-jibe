@@ -12,12 +12,10 @@ import java.util.Random;
 // Builds skim matrices for the GLASST project (using default classes from MATSim-SBB-Extensions)
 public class GlasstSkimsOld {
 
-    private final static Logger log = Logger.getLogger(GlasstSkimsOld.class);
-
     public static void main(String[] args) throws IOException, FactoryException {
 
         if(args.length != 8) {
-            throw new RuntimeException("Program requires 5 arguments: \n" +
+            throw new RuntimeException("Program requires 8 arguments: \n" +
                     "(0) Network File Path \n" +
                     "(1) Zones shapefile \n" +
                     "(2) Zone ID attribute name \n" +
@@ -42,14 +40,14 @@ public class GlasstSkimsOld {
         config.transit().setUseTransit(true);
         Random random = new Random(randomSeed);
         CalculateSkimMatrices skims = new CalculateSkimMatrices(outputDirectory,numberOfThreads);
-        skims.calculateSamplingPointsPerZoneFromNetwork(networkPath,20,zoneShapefile,zoneIdAttributeName, random);
+        skims.calculateSamplingPointsPerZoneFromNetwork(networkPath,5,zoneShapefile,zoneIdAttributeName, random);
 
         // CAR
-        skims.calculateAndWriteNetworkMatrices(networkPath,null,new double[] {0},config,"car",
-                l -> !((boolean) l.getAttributes().getAttribute("motorway")));
+//        skims.calculateAndWriteNetworkMatrices(networkPath,null,new double[] {0},config,null,
+//                l -> !((boolean) l.getAttributes().getAttribute("motorway")));
 
         // PUBLIC TRANSPORT CALCULATIONS
-        skims.calculateAndWritePTMatrices(ptNetworkPath,ptSchedulePath,27000,30600,config,"pt",(l,r) -> r.getTransportMode().equals("rail"));
+        skims.calculateAndWritePTMatrices(ptNetworkPath,ptSchedulePath,27000,30600,config,null,(l,r) -> r.getTransportMode().equals("rail"));
     }
 
 }
