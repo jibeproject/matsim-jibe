@@ -173,8 +173,17 @@ public class CreateMatsimNetworkRoad {
             l2.setAllowedModes(allowedModesRtn);
 
             // Are cars allowed on this link? (necessary for mode-specific filtered networks)
-            l1.getAttributes().putAttribute("allowsCar",l1.getAllowedModes().contains("car"));
-            l2.getAttributes().putAttribute("allowsCar",l2.getAllowedModes().contains("car"));
+            boolean allowsCarOut = allowedModesOut.contains("car");
+            boolean allowsCarRtn = allowedModesRtn.contains("car");
+            boolean allowsCar = allowsCarOut || allowsCarRtn;
+
+            // Are cars allowed in either direction?
+            l1.getAttributes().putAttribute("allowsCar",allowsCar);
+            l2.getAttributes().putAttribute("allowsCar",allowsCar);
+
+            // Are cars allowed in the forward direction?
+            l1.getAttributes().putAttribute("allowsCarFwd", allowsCarOut);
+            l2.getAttributes().putAttribute("allowsCarFwd", allowsCarRtn);
 
             // Speed limit
             int speedLimit = (int) edge.getAttribute("maxsped");
@@ -189,26 +198,28 @@ public class CreateMatsimNetworkRoad {
             // Add AADT, width, and number of lanes attribute
             Double aadt = (Double) edge.getAttribute("aadt_hgv_im");
             Double width = (Double) edge.getAttribute("avg_wdt");
-            double lanesOut = 1.;
-            double lanesRtn = 1.;
             double aadtOut = 0.;
             double aadtRtn = 0.;
+            double lanesOut = 1.;
+            double lanesRtn = 1.;
             if(aadt == null) aadt = Double.NaN;
             if(allowedModesOut.contains("car")) {
                 if(allowedModesRtn.contains("car")) {
-                    lanesOut = estimateNumberOflanes(width / 2.);
-                    lanesRtn = lanesOut;
                     aadtOut = aadt / 2.;
                     aadtRtn = aadtOut;
+                    lanesOut = estimateNumberOflanes(width / 2.);
+                    lanesRtn = lanesOut;
                 } else {
                     aadtOut = aadt;
                     lanesOut = estimateNumberOflanes(width);
                 }
             }
+            l1.getAttributes().putAttribute("aadt",aadt);
+            l2.getAttributes().putAttribute("aadt",aadt);
+            l1.getAttributes().putAttribute("aadtFwd",aadtOut);
+            l2.getAttributes().putAttribute("aadtFwd",aadtRtn);
             l1.setNumberOfLanes(lanesOut);
             l2.setNumberOfLanes(lanesRtn);
-            l1.getAttributes().putAttribute("aadt",aadtOut);
-            l2.getAttributes().putAttribute("aadt",aadtRtn);
 
             // Capacity
             int laneCapacity;
@@ -413,7 +424,7 @@ public class CreateMatsimNetworkRoad {
                 String name = (String) link.getAttributes().getAttribute("name");
                 Set<Link> crossingLinks = linksTo.get(link.getToNode())
                         .stream()
-                        .filter(l -> (boolean) l.getAttributes().getAttribute("allowsCar"))
+                        .filter(l -> (boolean) l.getAttributes().getAttribute("allowsCarFwd"))
                         .filter(l -> !isMatchingRoad(l,osmID,name))
                         .collect(Collectors.toSet());
 
@@ -422,26 +433,17 @@ public class CreateMatsimNetworkRoad {
                     crossVehicles = true;
 
                     crossLanes = crossingLinks.stream()
-                            .mapToDouble(l -> l.getNumberOfLanes())
+                            .mapToDouble(Link::getNumberOfLanes)
                             .sum();
                     crossAadt = crossingLinks.stream()
-                            .mapToDouble(l -> (double) l.getAttributes().getAttribute("aadt"))
+                            .mapToDouble(l -> (double) l.getAttributes().getAttribute("aadtFwd"))
                             .sum();
-                    OptionalInt crossSpeedLimitTemp = crossingLinks.stream()
+                    crossSpeedLimit = crossingLinks.stream()
                             .mapToInt(l -> (int) l.getAttributes().getAttribute("speedLimitMPH"))
-                            .max();
-                    OptionalDouble cross85PercSpeedTemp = crossingLinks.stream()
+                            .max().getAsInt();
+                    cross85PercSpeed = crossingLinks.stream()
                             .mapToDouble(l -> (double) l.getAttributes().getAttribute("veh85percSpeedKPH"))
-                            .max();
-
-                    if(crossSpeedLimitTemp.isPresent()) {
-                        crossSpeedLimit = crossSpeedLimitTemp.getAsInt();
-                    }
-
-                    if(cross85PercSpeedTemp.isPresent()) {
-                        cross85PercSpeed = cross85PercSpeedTemp.getAsDouble();
-                    }
-
+                            .max().getAsDouble();
                 }
             }
 

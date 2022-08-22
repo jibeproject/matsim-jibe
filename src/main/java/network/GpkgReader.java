@@ -2,6 +2,7 @@ package network;
 
 import org.geotools.data.simple.SimpleFeatureReader;
 import org.geotools.geopkg.GeoPackage;
+import org.locationtech.jts.geom.Geometry;
 import org.opengis.feature.simple.SimpleFeature;
 
 import java.io.File;
@@ -53,6 +54,16 @@ public class GpkgReader {
 
         return edges;
 
+    }
+
+    public static Geometry readBoundary(String filePath) throws IOException {
+        GeoPackage geopkg = new GeoPackage(new File(filePath));
+        SimpleFeatureReader r = geopkg.reader(geopkg.features().get(0), null,null);
+        SimpleFeature f = r.next();
+        Geometry boundary = (Geometry) f.getDefaultGeometry();
+        r.close();
+        geopkg.close();
+        return boundary;
     }
 
 }

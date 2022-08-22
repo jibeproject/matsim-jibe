@@ -1,13 +1,13 @@
 import routing.travelTime.WalkTravelTime;
-import routing.utility.LinkAttractiveness;
-import routing.utility.JctStress;
+import routing.disutility.components.LinkAttractiveness;
+import routing.disutility.components.JctStress;
 import routing.travelTime.speed.BicycleLinkSpeedCalculatorDefaultImpl;
 import routing.travelTime.BicycleTravelTime;
 import ch.sbb.matsim.analysis.calc.IndicatorCalculator;
 import ch.sbb.matsim.analysis.data.IndicatorData;
 import ch.sbb.matsim.analysis.io.IndicatorWriter;
-import routing.JibeDisutility;
-import routing.utility.LinkStress;
+import routing.disutility.JibeDisutility;
+import routing.disutility.components.LinkStress;
 import ch.sbb.matsim.analysis.CalculateData;
 import ch.sbb.matsim.analysis.TravelAttribute;
 import ch.sbb.matsim.analysis.calc.GeometryCalculator;
@@ -42,31 +42,23 @@ public class RouteComparison {
     private final static double MAX_BIKE_SPEED = 16 / 3.6;
     private final static Integer SAMPLE_SIZE = 400;
 
-    private final static double MARGINAL_COST_TIME = 2 / 300.; // seconds
-    private final static double MARGINAL_COST_DISTANCE = 0.; // metres
-    private final static double MARGINAL_COST_GRADIENT = 0.02; // m/100m
-    private final static double MARGINAL_COST_SURFACE = 2e-4;
-    private final static double MARGINAL_COST_ATTRACTIVENESS = 6e-3;
-    private final static double MARGINAL_COST_STRESS = 6e-3;
-    private final static double JUNCTION_EQUIVALENT_LENGTH = 10.; // in meters
-    private final static String MODE = TransportMode.walk;
-
     public static void main(String[] args) throws IOException, FactoryException {
 
-        if(args.length < 4 | args.length == 5) {
-            throw new RuntimeException("Program requires at least 4 arguments: \n" +
-                    "(0) MATSim network file path (.xml) \n" +
-                    "(1) Zone coordinates file (.csv) \n" +
-                    "(2) Edges file path (.gpkg) \n" +
-                    "(3) Output file path (.gpkg) \n" +
-                    "(4+) OPTIONAL: Names of zones to be used for routing");
+        if(args.length < 5 | args.length == 6) {
+            throw new RuntimeException("Program requires at least 5 arguments: \n" +
+                    "(0) Mode (walk or bike) \n" +
+                    "(1) MATSim network file path (.xml) \n" +
+                    "(2) Zone coordinates file (.csv) \n" +
+                    "(3) Edges file path (.gpkg) \n" +
+                    "(4) Output file path (.gpkg) \n" +
+                    "(5+) OPTIONAL: Names of zones to be used for routing");
         }
 
-        String networkFilePath = args[0];
-        String zoneCoordinates = args[1];
-        String edgesFilePath = args[2];
-        String outputFile = args[3];
-
+        String mode = args[0];
+        String networkFilePath = args[1];
+        String zoneCoordinates = args[2];
+        String edgesFilePath = args[3];
+        String outputFile = args[4];
 
         // Setup config
         Config config = ConfigUtils.createConfig();
@@ -81,7 +73,7 @@ public class RouteComparison {
 
         // Use mode-specific network
         Network modeNetwork = NetworkUtils.createNetwork();
-        new TransportModeNetworkFilter(network).filter(modeNetwork, Collections.singleton(MODE));
+        new TransportModeNetworkFilter(network).filter(modeNetwork, Collections.singleton(mode));
 
         // Create zone-coord map and remove spaces
         Map<String, Coord> zoneCoordMap;
@@ -89,7 +81,7 @@ public class RouteComparison {
 
         // Determine set of zones to be used for routing
         Set<String> routingZones;
-        if (args.length == 4) {
+        if (args.length == 5) {
             if(SAMPLE_SIZE != null) {
                 log.info("Randomly sampling " + SAMPLE_SIZE + " of " + zoneCoordMap.size() + " zones.");
                 List<String> routingZonesList = new ArrayList<>(zoneCoordMap.keySet());
@@ -99,7 +91,7 @@ public class RouteComparison {
                 routingZones = zoneCoordMap.keySet();
             }
         } else {
-            routingZones = Arrays.stream(args).skip(4).
+            routingZones = Arrays.stream(args).skip(5).
                     map(s -> s.replaceAll("\\s+", "")).
                     collect(Collectors.toSet());
             zoneCoordMap = zoneCoordMap.entrySet().stream().
@@ -113,41 +105,32 @@ public class RouteComparison {
         // CREATE VEHICLE & SET UP TRAVEL TIME
         Vehicle veh;
         TravelTime tt;
-        if(MODE.equals(TransportMode.walk)) {
+        if(mode.equals(TransportMode.walk)) {
             veh = null;
             tt = new WalkTravelTime();
-        } else if (MODE.equals(TransportMode.bike)) {
+        } else if (mode.equals(TransportMode.bike)) {
             VehicleType type = VehicleUtils.createVehicleType(Id.create("routing", VehicleType.class));
             type.setMaximumVelocity(MAX_BIKE_SPEED);
             BicycleLinkSpeedCalculatorDefaultImpl linkSpeedCalculator = new BicycleLinkSpeedCalculatorDefaultImpl((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME));
             veh = VehicleUtils.createVehicle(Id.createVehicleId(1), type);
             tt = new BicycleTravelTime(linkSpeedCalculator);
         } else {
-            throw new RuntimeException("Routing not set up for mode " + MODE);
+            throw new RuntimeException("Routing not set up for mode " + mode);
         }
-
-        log.info("Marginal cost of time (s): " + MARGINAL_COST_TIME);
-        log.info("Marginal cost of distance (m): " + MARGINAL_COST_DISTANCE);
-        log.info("Marginal cost of gradient (m/100m): " + MARGINAL_COST_GRADIENT);
-        log.info("Marginal cost of surface comfort (m): " + MARGINAL_COST_SURFACE);
-        log.info("Marginal cost of attractiveness (m): " + MARGINAL_COST_ATTRACTIVENESS);
-        log.info("Marginal cost of stress (m): " + MARGINAL_COST_STRESS);
 
         // DEFINE TRAVEL DISUTILITIES HERE
         Map<String,TravelDisutility> travelDisutilities = new LinkedHashMap<>();
 
         // Shortest distance
-        travelDisutilities.put("shortestDistance", new JibeDisutility(MODE, tt, 0,1,
+        travelDisutilities.put("shortestDistance", new JibeDisutility(mode, tt, 0,1,
                 0,0,0,0,0));
 
         // Fastest
-        travelDisutilities.put("fastest", new JibeDisutility(MODE, tt,1,0,
+        travelDisutilities.put("fastest", new JibeDisutility(mode, tt,1,0,
                 0,0,0,0,0));
 
         // Jibe
-        travelDisutilities.put("jibe", new JibeDisutility(MODE,tt,MARGINAL_COST_TIME,MARGINAL_COST_DISTANCE,
-                MARGINAL_COST_GRADIENT,MARGINAL_COST_SURFACE,MARGINAL_COST_ATTRACTIVENESS,MARGINAL_COST_STRESS,
-                MARGINAL_COST_STRESS*JUNCTION_EQUIVALENT_LENGTH));
+        travelDisutilities.put("jibe", new JibeDisutility(mode,tt));
 
 
         // Run for testing multiple attractiveness/stress/junction costs
@@ -172,8 +155,8 @@ public class RouteComparison {
         attributes.put("negPOIs",(l,td) -> LinkAttractiveness.getNegativePoiFactor(l) * l.getLength());
         attributes.put("freightPOIs",(l,td) -> LinkStress.getFreightPoiFactor(l) * l.getLength());
         attributes.put("attractiveness", (l,td) -> LinkAttractiveness.getDayAttractiveness(l) * l.getLength());
-        attributes.put("stress",(l,td) -> LinkStress.getStress(l,MODE) * l.getLength());
-        attributes.put("jctStress",(l,td) -> JctStress.getJunctionStress(l,MODE));
+        attributes.put("stress",(l,td) -> LinkStress.getStress(l,mode) * l.getLength());
+        attributes.put("jctStress",(l,td) -> JctStress.getJunctionStress(l,mode));
         attributes.put("c_tot",(l,td) -> td.getLinkTravelDisutility(l,0,null, veh));
         attributes.put("c_time",(l,td) -> ((JibeDisutility) td).getTimeComponent(l,0,null,veh));
         attributes.put("c_dist",(l,td) -> ((JibeDisutility) td).getDistanceComponent(l));

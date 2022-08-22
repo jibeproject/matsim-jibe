@@ -1,10 +1,12 @@
-package routing;
+package routing.disutility;
 
 
-import routing.utility.LinkAttractiveness;
-import routing.utility.JctStress;
-import routing.utility.LinkComfort;
-import routing.utility.LinkStress;
+import org.matsim.api.core.v01.TransportMode;
+import routing.Gradient;
+import routing.disutility.components.LinkAttractiveness;
+import routing.disutility.components.JctStress;
+import routing.disutility.components.LinkComfort;
+import routing.disutility.components.LinkStress;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.core.router.util.TravelDisutility;
@@ -28,6 +30,32 @@ public class JibeDisutility implements TravelDisutility {
 
     private final TravelTime timeCalculator;
 
+    // Default parameters
+    public JibeDisutility(String mode, TravelTime timeCalculator) {
+
+        this.mode = mode;
+        this.marginalCostOfTime_s = 2./300;
+        this.marginalCostOfDistance_m = 0.;
+        this.timeCalculator = timeCalculator;
+
+        if(mode.equals(TransportMode.bike)) {
+            this.marginalCostOfGradient_m_100m = 0.02;
+            this.marginalCostOfComfort_m = 2e-4;
+            this.marinalCostAttractiveness_m = 4e-3;
+            this.marginalCostStress_m = 8e-3;
+            this.marginalCostJunction = 8e-2;
+        } else if(mode.equals(TransportMode.walk)) {
+            this.marginalCostOfGradient_m_100m = 0.01;
+            this.marginalCostOfComfort_m = 0.;
+            this.marinalCostAttractiveness_m = 6e-3;
+            this.marginalCostStress_m = 6e-3;
+            this.marginalCostJunction = 6e-2;
+        } else {
+            throw new RuntimeException("Mode " + mode + " not recognised.");
+        }
+    }
+
+    // Custom parameters
     public JibeDisutility(String mode, TravelTime timeCalculator,
                           double marginalCostOfTime_s, double marginalCostOfDistance_m,
                           double marginalCostOfGradient_m_100m, double marginalCostOfComfort_m,
@@ -42,7 +70,6 @@ public class JibeDisutility implements TravelDisutility {
         this.marinalCostAttractiveness_m = marginalCostAttractiveness_m;
         this.marginalCostStress_m = marginalCostStress_m;
         this.marginalCostJunction = marginalCostJunction;
-
         this.timeCalculator = timeCalculator;
 
     }

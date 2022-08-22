@@ -6,10 +6,10 @@ import routing.Gradient;
 import routing.travelTime.WalkTravelTime;
 import data.Crossing;
 import data.CycleProtection;
-import routing.utility.LinkAttractiveness;
-import routing.utility.JctStress;
+import routing.disutility.components.LinkAttractiveness;
+import routing.disutility.components.JctStress;
 import routing.travelTime.speed.BicycleLinkSpeedCalculatorDefaultImpl;
-import routing.utility.LinkStress;
+import routing.disutility.components.LinkStress;
 import com.google.common.math.LongMath;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.log4j.Logger;
@@ -49,26 +49,29 @@ import java.util.Map;
 
 // Writes network with links in both directions (useful for visualisations where out/return details are different)
 
-public class WriteDirectedNetwork {
+public class WriteNetworkGpkg {
 
-    private final static Logger log = Logger.getLogger(WriteDirectedNetwork.class);
+    private final static Logger log = Logger.getLogger(WriteNetworkGpkg.class);
     private final static double MAX_BIKE_SPEED = 16 / 3.6;
-
-    // Make non-null if you want to filter the network to only a specific mode (e.g. "walk" or "bike")
-    private final static String MODE_FILTER = null;
 
     public static void main(String[] args) throws FactoryException, IOException {
 
-        if(args.length != 3) {
-            throw new RuntimeException("Program requires 3 arguments:\n" +
+        if(args.length < 3 || args.length > 4) {
+            throw new RuntimeException("Program requires 3 or 4 arguments:\n" +
                     "(0) MATSim network file (.xml)\n" +
                     "(1) Input edges (.gpkg)\n" +
-                    "(2) Output edges (.gpkg)");
+                    "(2) Output edges (.gpkg)\n" +
+                    "(3) OPTIONAL: mode (for printing a mode-specific network)");
         }
 
         String matsimNetworkPath = args[0];
         File edgesFile = new File(args[1]);
         File outputEdgesFile = new File(args[2]);
+
+        String modeFilter = null;
+        if(args.length == 4) {
+            modeFilter = args[3];
+        }
 
         // Read edges
         Map<Integer,SimpleFeature> edges = GpkgReader.readEdges(edgesFile);
@@ -79,9 +82,9 @@ public class WriteDirectedNetwork {
         new MatsimNetworkReader(network).readFile(matsimNetworkPath);
 
         // Filter network to a specific mode (if applicable)
-        if(MODE_FILTER != null) {
+        if(modeFilter != null) {
             Network modeSpecificNetwork = NetworkUtils.createNetwork();
-            new TransportModeNetworkFilter(network).filter(modeSpecificNetwork, Collections.singleton(MODE_FILTER));
+            new TransportModeNetworkFilter(network).filter(modeSpecificNetwork, Collections.singleton(modeFilter));
             network = modeSpecificNetwork;
         }
 
@@ -153,6 +156,7 @@ public class WriteDirectedNetwork {
 
             // AADT
             Double aadt = (Double) link.getAttributes().getAttribute("aadt");
+            Double aadtFwd = (Double) link.getAttributes().getAttribute("aadtFwd");
 
             // Reverse if not in forward direction
             if(!fwd) {
@@ -168,9 +172,12 @@ public class WriteDirectedNetwork {
             featureBuilder.add(fwd);
             featureBuilder.add(length / cycleTime * 3.6);
             featureBuilder.add(length / walkTime * 3.6);
+            featureBuilder.add(link.getAttributes().getAttribute("speedLimitMPH"));
+            featureBuilder.add(link.getAttributes().getAttribute("veh85percSpeedKPH"));
             featureBuilder.add(!aadt.isNaN());
             featureBuilder.add((int) link.getNumberOfLanes());
             featureBuilder.add(aadt);
+            featureBuilder.add(aadtFwd);
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.car));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.bike));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.walk));
@@ -230,9 +237,12 @@ public class WriteDirectedNetwork {
         builder.add("fwd",Boolean.class);
         builder.add("cycleSpeedKPH",Double.class);
         builder.add("walkSpeedKPH",Double.class);
+        builder.add("carSpeedLimitMPH",Double.class);
+        builder.add("car85PercSpeedKPH",Double.class);
         builder.add("mainNetwork",Boolean.class);
         builder.add("lanes",Integer.class);
         builder.add("aadt",Double.class);
+        builder.add("aadtFwd",Double.class);
         builder.add("car",Boolean.class);
         builder.add("bike",Boolean.class);
         builder.add("walk",Boolean.class);
