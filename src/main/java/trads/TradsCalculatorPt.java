@@ -65,12 +65,6 @@ public class TradsCalculatorPt {
             accessRoutingModules.put("walk",new TeleportationRoutingModule("walk",scenario,5.3 / 3.6,1.));
             builder.with(new DefaultRaptorStopFinder(new DefaultRaptorIntermodalAccessEgress(),accessRoutingModules));
             SwissRailRaptor raptor = builder.build();
-//            SwissRailRaptor raptor = new SwissRailRaptor(raptorData,
-//                    new DefaultRaptorParametersForPerson(config),
-//                    new ConfigurableRaptorRouteSelector(),
-//                    new DefaultRaptorStopFinder(new DefaultRaptorIntermodalAccessEgress(), accessRoutingModules),
-//                    new DefaultRaptorInVehicleCostCalculator(),
-//                    new DefaultRaptorTransferCostCalculator());
             ActivityFacilitiesFactoryImpl activityFacilitiesFactory = new ActivityFacilitiesFactoryImpl();
 
             PtIndicatorCalculator worker = new PtIndicatorCalculator(odPairsQueue, counter, scenario,raptor, activityFacilitiesFactory);

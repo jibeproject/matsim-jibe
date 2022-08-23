@@ -33,7 +33,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 // THIS SCRIPT IS FOR CONVERTING X/Y COORDINATES IN THE TRAVEL SURVEY TO PATH DATA (E.G. TRAVEL TIMES, DISTANCES, COSTS) USING THE MATSIM NETWORK
-// NOTE: number of threads is limited to the RAM available as the network needs to be duplicated (need about 9GB per thread)
+// NOTE: number of threads for PT is limited to the RAM available as the network needs to be duplicated (need about 9GB per thread)
 
 public class RunTradsAnalysis {
 

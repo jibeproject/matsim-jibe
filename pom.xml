@@ -12,8 +12,8 @@
 	<version>12.14</version>
 
 
-	<name>MATSim-Extensions by SBB</name>
-	<description></description>
+	<name>MATSim JIBE</name>
+	<description>All MATSim-related scripts for JIBE</description>
 	<properties>
 		<matsim.version>13.0</matsim.version>
 		<geotools.version>27-SNAPSHOT</geotools.version>
@@ -119,6 +119,15 @@
 			<version>21.10</version>
 		</dependency>
 	</dependencies>
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.hsqldb</groupId>
+				<artifactId>hsqldb</artifactId>
+				<version>2.7.0</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<build>
 		<plugins>
