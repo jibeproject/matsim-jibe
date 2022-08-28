@@ -1,8 +1,8 @@
 package trads;
 
+import data.Place;
 import org.matsim.api.core.v01.Coord;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -13,78 +13,46 @@ public class TradsTrip {
     private final int tripId;
 
     private final int startTime;
-    
-    private final Coord cOrig;
-    private final Coord cDest;
 
-    private Map<String, Double> costsByMode = new HashMap<>();
-    private Map<String, Double> timesByMode = new HashMap<>();
+    private final Map<Place,Coord> coords;
+    private final Map<Place,Boolean> coordsInsideBoundary;
 
-    private Map<String, Double> distancesByMode = new HashMap<>();
-    private Map<String, Map<String,Object>> attributesByMode = new LinkedHashMap<>();
+    private final Map<String, Map<String,Object>> routeAttributes = new LinkedHashMap<>();
 
-
-    private Boolean originWithinBoundary;
-    private Boolean destinationWithinBoundary;
-
-    private Boolean sameOriginAndDestination;
-
-    public TradsTrip(String householdId, int personId, int tripId, int startTime, Coord cOrig, Coord cDest,
-                     Boolean originWithinBoundary, Boolean destinationWithinBoundary, Boolean sameOriginAndDestination) {
+    public TradsTrip(String householdId, int personId, int tripId, int startTime,
+                     Map<Place,Coord> coords, Map<Place,Boolean> coordsInsideBoundary) {
         this.householdId = householdId;
         this.personId = personId;
         this.tripId = tripId;
         this.startTime = startTime;
-        this.cOrig = cOrig;
-        this.cDest = cDest;
-        this.originWithinBoundary = originWithinBoundary;
-        this.destinationWithinBoundary = destinationWithinBoundary;
-        this.sameOriginAndDestination = sameOriginAndDestination;
+        this.coords = coords;
+        this.coordsInsideBoundary = coordsInsideBoundary;
     }
 
-    public Boolean isOriginWithinBoundary() {
-        return originWithinBoundary;
-    }
+   public Boolean isWithinBoundary(Place place) { return coordsInsideBoundary.get(place); }
 
-    public Boolean isDestinationWithinBoundary() {
-        return destinationWithinBoundary;
-    }
-
-    public Boolean originMatchesDestination() {
-        return sameOriginAndDestination;
-    }
-
-    public boolean isTripWithinBoundary() {
-        if(originWithinBoundary != null && destinationWithinBoundary != null) {
-            return originWithinBoundary && destinationWithinBoundary;
+    public Boolean match(Place a, Place b) {
+        if(coords.get(a) != null && coords.get(b) != null) {
+            return coords.get(a).equals(coords.get(b));
+        } else {
+            return null;
         }
-        else return false;
+    }
+
+    public boolean routable(Place a, Place b) {
+        if(coords.get(a) != null && coords.get(b) != null) {
+            return coordsInsideBoundary.get(a) && coordsInsideBoundary.get(b) && !coords.get(a).equals(coords.get(b));
+        } else {
+            return false;
+        }
     }
 
     public int getStartTime() { return startTime; }
 
-    public Coord getOrigCoord() {
-        return cOrig;
-    }
-    
-    public Coord getDestCoord() {
-        return cDest;
-    }
+    public Coord getCoord(Place place) { return coords.get(place); }
 
-    public void setCost(String mode, Double cost) {
-        costsByMode.put(mode,cost);
-    }
-
-    public void setTime(String mode, Double time) {
-        timesByMode.put(mode,time);
-    }
-
-    public void setDist(String mode, Double distance) {
-        distancesByMode.put(mode,distance);
-    }
-
-    public void setAttributes(String mode, Map<String,Object> attributes) {
-        attributesByMode.put(mode,attributes);
+    public void setAttributes(String route, Map<String,Object> attributes) {
+        routeAttributes.put(route,attributes);
     }
 
     public String getHouseholdId() {
@@ -99,16 +67,10 @@ public class TradsTrip {
         return tripId;
     }
 
-    public double getCost(String mode) {
-        return costsByMode.get(mode);
+    public Object getAttribute(String route, String attr) {
+        if(routeAttributes.get(route) != null) {
+            return routeAttributes.get(route).get(attr);
+        } else return null;
     }
-
-    public double getTime(String mode) {
-        return timesByMode.get(mode);
-    }
-
-    public double getDistance(String mode) { return distancesByMode.get(mode); }
-
-    public Object getAttribute(String mode, String attr) { return attributesByMode.get(mode).get(attr); }
     
 }

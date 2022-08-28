@@ -1,7 +1,7 @@
 package trads;
 
-import ch.sbb.matsim.analysis.TravelAttribute;
 import com.google.common.math.LongMath;
+import data.Place;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -12,6 +12,8 @@ import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.util.*;
+
+import static data.Place.*;
 
 public class TradsIo {
 
@@ -24,6 +26,8 @@ public class TradsIo {
     private final static String SEP = ",";
     private final static String NL = "\n";
 
+    private final static String X_HOUSEHOLD_COORD = "HomeEasting";
+    private final static String Y_HOUSEHOLD_COORD = "HomeNorthing";
 
     private final static String X_ORIGIN_COORD = "StartEasting";
     private final static String Y_ORIGIN_COORD = "StartNorthing";
@@ -36,12 +40,10 @@ public class TradsIo {
     // Reads Survey File with Coordinate Data
     static Set<TradsTrip> readTrips(String filePath, Geometry geometry) throws IOException {
         Set<TradsTrip> trips = new HashSet<>();
-        String recString = "";
+        String recString;
         int counter = 0;
         int badCoords = 0;
         int badTimes = 0;
-        int originsOutsideBoundary = 0;
-        int destinationsOutsideBoundary = 0;
 
         // Open Reader
         BufferedReader in = new BufferedReader(new FileReader(filePath));
@@ -55,6 +57,8 @@ public class TradsIo {
         int posPersonId = findPositionInArray(PERSON_ID, header);
         int posTripId = findPositionInArray(TRIP_ID, header);
         int posStartTime = findPositionInArray(START_TIME, header);
+        int posHomeX = findPositionInArray(X_HOUSEHOLD_COORD, header);
+        int posHomeY = findPositionInArray(Y_HOUSEHOLD_COORD, header);
         int posOrigX = findPositionInArray(X_ORIGIN_COORD, header);
         int posOrigY = findPositionInArray(Y_ORIGIN_COORD, header);
         int posDestX = findPositionInArray(X_DESTINATION_COORD, header);
@@ -80,43 +84,48 @@ public class TradsIo {
                 badTimes++;
             }
 
-            Coord cOrig = null;
-            Coord cDest = null;
-            Boolean originInBoundary = null;
-            Boolean destinationInBoundary = null;
-            Boolean sameOriginDestinationLocation = null;
+            Map<Place,Coord> coords = new HashMap<>(3);
+            Map<Place,Boolean> coordsInBoundary = new HashMap<>(3);
+
+            // Read household coord
             try {
-                double xOrig = Double.parseDouble(lineElements[posOrigX]);
-                double yOrig = Double.parseDouble(lineElements[posOrigY]);
-                double xDest = Double.parseDouble(lineElements[posDestX]);
-                double yDest = Double.parseDouble(lineElements[posDestY]);
-
-                cOrig = CoordUtils.createCoord(xOrig, yOrig);
-                cDest = CoordUtils.createCoord(xDest, yDest);
-
-                sameOriginDestinationLocation = xOrig == xDest && yOrig == yDest;
-
-                originInBoundary = geometry.contains(gf.createPoint(new Coordinate(xOrig, yOrig)));
-                destinationInBoundary = geometry.contains(gf.createPoint(new Coordinate(xDest, yDest)));
-
-                if (!originInBoundary) originsOutsideBoundary++;
-                if (!destinationInBoundary) destinationsOutsideBoundary++;
-
+                double x = Double.parseDouble(lineElements[posHomeX]);
+                double y = Double.parseDouble(lineElements[posHomeY]);
+                coords.put(HOME,CoordUtils.createCoord(x,y));
+                coordsInBoundary.put(HOME,geometry.contains(gf.createPoint(new Coordinate(x,y))));
             } catch (NumberFormatException e) {
-                logger.warn("Unreadable coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
+                logger.warn("Unreadable HOME coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
                 badCoords++;
             }
 
-            trips.add(new TradsTrip(householdId, personId, tripId, startTime, cOrig, cDest,
-                    originInBoundary, destinationInBoundary, sameOriginDestinationLocation));
+            // Read origin coord
+            try {
+                double x = Double.parseDouble(lineElements[posOrigX]);
+                double y = Double.parseDouble(lineElements[posOrigY]);
+                coords.put(ORIGIN, CoordUtils.createCoord(x,y));
+                coordsInBoundary.put(ORIGIN, geometry.contains(gf.createPoint(new Coordinate(x,y))));
+            } catch (NumberFormatException e) {
+                logger.warn("Unreadable ORIGIN coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
+                badCoords++;
+            }
+
+            // Read destination coord
+            try {
+                double x = Double.parseDouble(lineElements[posDestX]);
+                double y = Double.parseDouble(lineElements[posDestY]);
+                coords.put(DESTINATION, CoordUtils.createCoord(x,y));
+                coordsInBoundary.put(DESTINATION,geometry.contains(gf.createPoint(new Coordinate(x,y))));
+            } catch (NumberFormatException e) {
+                logger.warn("Unreadable DESTINATION coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
+                badCoords++;
+            }
+
+            trips.add(new TradsTrip(householdId, personId, tripId, startTime, coords, coordsInBoundary));
         }
         in.close();
-        logger.info(counter + " records processed.");
-        logger.info(trips.size() + " trips read successfuly.");
-        logger.info(originsOutsideBoundary + " trips with origin coordinates outside study area boundary.");
-        logger.info(destinationsOutsideBoundary + " trips with destination coordinates outside study area boundary.");
-        logger.info(badCoords + " trips with no or unreadable coordinates.");
+        logger.info(counter + " trips processed.");
         logger.info(badTimes + " trips with double-value start times.");
+        logger.info(badCoords + " unreadable coordinates.");
 
         return trips;
     }
@@ -136,11 +145,11 @@ public class TradsIo {
     }
 
     // Write results to file
-    static void writeIndicators(Set<TradsTrip> trips, String filePath, Map<String, LinkedHashMap<String, TravelAttribute>> nonPtAttributes, List<String> ptAttributes) {
+    static void writeIndicators(Set<TradsTrip> trips, String filePath, Map<String, List<String>> attributes) {
 
         PrintWriter out = openFileForSequentialWriting(new File(filePath));
 
-        out.println(createHeader(nonPtAttributes,ptAttributes));
+        out.println(createHeader(attributes));
 
         int counter = 0;
         for (TradsTrip trip : trips) {
@@ -148,69 +157,58 @@ public class TradsIo {
             if (LongMath.isPowerOfTwo(counter)) {
                 logger.info(counter + " records written.");
             }
-            out.println(createRow(trip,nonPtAttributes,ptAttributes));
+            out.println(createRow(trip,attributes));
         }
         out.close();
         logger.info("Wrote " + counter + " records to " + filePath);
     }
 
-    private static String createHeader(Map<String,LinkedHashMap<String,TravelAttribute>> nonPtAttributes, List<String> ptAttributes) {
+    private static String createHeader(Map<String,List<String>> attributes) {
         StringBuilder builder = new StringBuilder();
 
         // Trip identifiers
-        builder.append(HOUSEHOLD_ID + SEP + PERSON_ID + SEP + TRIP_ID +
-                SEP + "OriginWithinBoundary" + SEP + "DestinationWithinBoundary" + SEP + "SameOrigAndDest");
+        builder.append(HOUSEHOLD_ID).
+                append(SEP).append(PERSON_ID).
+                append(SEP).append(TRIP_ID).
+                append(SEP).append("HomeWithinBoundary").
+                append(SEP).append("OriginWithinBoundary").
+                append(SEP).append("DestinationWithinBoundary").
+                append(SEP).append("SameHomeAndDest").
+                append(SEP).append("SameOrigAndDest");
 
-        // non-PT attributes
-        for (Map.Entry<String, LinkedHashMap<String,TravelAttribute>> e1 : nonPtAttributes.entrySet()) {
-                String mode = e1.getKey();
-                builder.append(SEP + mode + "_cost");
-                builder.append(SEP + mode + "_time");
-                builder.append(SEP + mode + "_dist");
-            if(e1.getValue() != null) {
-                for (String attributeName : e1.getValue().keySet()) {
-                    builder.append(SEP + mode + "_" + attributeName);
+        // Route attributes
+        for (Map.Entry<String, List<String>> e1 : attributes.entrySet()) {
+            String route = e1.getKey();
+            for (String attributeName : e1.getValue()) {
+                builder.append(SEP).append(route);
+                if(!attributeName.equals("")) {
+                    builder.append("_").append(attributeName);
                 }
             }
         }
-
-        // PT attributes
-        if(ptAttributes != null) {
-            for(String attr : ptAttributes) {
-                builder.append(SEP + "pt_" + attr);
-            }
-        }
-
         return builder.toString();
     }
 
-    private static String createRow(TradsTrip trip, Map<String, LinkedHashMap<String, TravelAttribute>> nonPtAttributes, List<String> ptAttributes) {
+    private static String createRow(TradsTrip trip, Map<String, List<String>> attributes) {
         StringBuilder builder = new StringBuilder();
 
         // Trip identifiers
-        builder.append(trip.getHouseholdId() + SEP + trip.getPersonId() + SEP + trip.getTripId() + SEP +
-                trip.isOriginWithinBoundary() + SEP + trip.isDestinationWithinBoundary() + SEP + trip.originMatchesDestination());
+        builder.append(trip.getHouseholdId()).
+                append(SEP).append(trip.getPersonId()).
+                append(SEP).append(trip.getTripId()).
+                append(SEP).append(trip.isWithinBoundary(HOME)).
+                append(SEP).append(trip.isWithinBoundary(ORIGIN)).
+                append(SEP).append(trip.isWithinBoundary(DESTINATION)).
+                append(SEP).append(trip.match(HOME, DESTINATION)).
+                append(SEP).append(trip.match(ORIGIN, DESTINATION));
 
-        // non-PT attributes
-        for (Map.Entry<String, LinkedHashMap<String,TravelAttribute>> e1 : nonPtAttributes.entrySet()) {
-            String mode = e1.getKey();
-            builder.append(SEP + trip.getCost(mode));
-            builder.append(SEP + trip.getTime(mode));
-            builder.append(SEP + trip.getDistance(mode));
-            if(e1.getValue() != null) {
-                for(String attributeName : e1.getValue().keySet()) {
-                    builder.append(SEP + trip.getAttribute(mode,attributeName));
-                }
+        // Route attributes
+        for (Map.Entry<String, List<String>> e1 : attributes.entrySet()) {
+            String route = e1.getKey();
+            for(String attributeName : e1.getValue()) {
+                builder.append(SEP).append(trip.getAttribute(route, attributeName));
             }
         }
-
-        // PT attributes
-        if (ptAttributes != null) {
-            for(String attributeName : ptAttributes) {
-                builder.append(SEP + trip.getAttribute("pt",attributeName));
-            }
-        }
-
         return builder.toString();
     }
 

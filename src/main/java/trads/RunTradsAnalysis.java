@@ -30,7 +30,8 @@ import org.matsim.vehicles.VehicleUtils;
 
 import java.io.*;
 import java.util.*;
-import java.util.stream.Collectors;
+
+import static data.Place.*;
 
 // THIS SCRIPT IS FOR CONVERTING X/Y COORDINATES IN THE TRAVEL SURVEY TO PATH DATA (E.G. TRAVEL TIMES, DISTANCES, COSTS) USING THE MATSIM NETWORK
 // NOTE: number of threads for PT is limited to the RAM available as the network needs to be duplicated (need about 9GB per thread)
@@ -105,32 +106,39 @@ public class RunTradsAnalysis {
         // Calculate network indicators
         logger.info("Calculating network indicators using " + numberOfThreads + " threads.");
 
-        // NON-PT MODES
-        TradsCalculator calc = new TradsCalculator(numberOfThreads);
+
+        // CALCULATOR
+        TradsCalculator calc = new TradsCalculator(10, trips);
+
+        // beeline
+        calc.beeline("beeline_orig_dest",ORIGIN, DESTINATION);
+        calc.beeline("beeline_home_dest",HOME, DESTINATION);
 
         // car (freespeed only)
-        calc.calculate(trips, "car", null,networkCar, carXy2l, freeSpeed, freeSpeed, null);
+        calc.network("car", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null);
 
         // bike (shortest, fastest, and jibe)
-        calc.calculate(trips, "bike_short", bike, networkBike, null, new DistanceDisutility(), ttBike, activeAttributes(TransportMode.bike, bike));
-        calc.calculate(trips, "bike_fast", bike, networkBike, null, new OnlyTimeDependentTravelDisutility(ttBike), ttBike, activeAttributes(TransportMode.bike, bike));
-        calc.calculate(trips, "bike_jibe", bike, networkBike, null, new JibeDisutility(TransportMode.bike,ttBike), ttBike, activeAttributes(TransportMode.bike, bike));
+        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, null, new DistanceDisutility(), ttBike, activeAttributes(TransportMode.bike));
+        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, null, new OnlyTimeDependentTravelDisutility(ttBike), ttBike, activeAttributes(TransportMode.bike));
+        calc.network("bike_jibe", ORIGIN, DESTINATION, bike, networkBike, null, new JibeDisutility(TransportMode.bike,ttBike), ttBike, activeAttributes(TransportMode.bike));
 
         // walk (shortest, fastest, and jibe)
-        calc.calculate(trips, "walk_short", null, networkWalk, null, new DistanceDisutility(), ttWalk, activeAttributes(TransportMode.walk,null));
-        calc.calculate(trips, "walk_fast", null, networkWalk, null, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, activeAttributes(TransportMode.walk,null));
-        calc.calculate(trips, "walk_jibe", null, networkWalk, null, new JibeDisutility(TransportMode.walk,ttWalk), ttWalk, activeAttributes(TransportMode.walk,null) );
+        calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, null, new DistanceDisutility(), ttWalk, activeAttributes(TransportMode.walk));
+        calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, null, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, activeAttributes(TransportMode.walk));
+        calc.network("walk_jibe", ORIGIN, DESTINATION, null, networkWalk, null, new JibeDisutility(TransportMode.walk,ttWalk), ttWalk, activeAttributes(TransportMode.walk) );
 
-        // PUBLIC TRANSPORT
-        TradsCalculatorPt ptCalc = new TradsCalculatorPt(numberOfThreads);
-        ptCalc.calculate(trips, config, transitScheduleFilePath, transitNetworkFilePath);
+        // distance from home (use walk shortest for this)
+        calc.network("home", HOME, DESTINATION, null, networkWalk, null, new DistanceDisutility(), ttWalk, null);
+
+        // public transport
+        calc.pt("pt", ORIGIN, DESTINATION, config, transitScheduleFilePath, transitNetworkFilePath);
 
         // Write results
         logger.info("Writing results to csv file...");
-        TradsIo.writeIndicators(trips, outputFile, calc.getAttributes(), ptCalc.getPtAttributes());
+        TradsIo.writeIndicators(trips, outputFile, calc.getAllAttributeNames());
     }
 
-    private static LinkedHashMap<String,TravelAttribute> activeAttributes(String mode, Vehicle veh) {
+    private static LinkedHashMap<String,TravelAttribute> activeAttributes(String mode) {
         LinkedHashMap<String,TravelAttribute> attributes = new LinkedHashMap<>();
         attributes.put("vgvi",(l,td) -> LinkAttractiveness.getVgviFactor(l) * l.getLength());
         attributes.put("lighting",(l,td) -> LinkAttractiveness.getLightingFactor(l) * l.getLength());
@@ -142,13 +150,6 @@ public class RunTradsAnalysis {
         attributes.put("attractiveness", (l,td) -> LinkAttractiveness.getDayAttractiveness(l) * l.getLength());
         attributes.put("stressLink",(l,td) -> LinkStress.getStress(l,mode) * l.getLength());
         attributes.put("stressJct",(l,td) -> JctStress.getJunctionStress(l,mode));
-//        attributes.put("costTime",(l,td) -> ((JibeDisutility) td).getTimeComponent(l,0,null,veh));
-//        attributes.put("costDist",(l,td) -> ((JibeDisutility) td).getDistanceComponent(l));
-//        attributes.put("costGrad",(l,td) -> ((JibeDisutility) td).getGradientComponent(l));
-//        attributes.put("costSurf",(l,td) -> ((JibeDisutility) td).getSurfaceComponent(l));
-//        attributes.put("costAttr",(l,td) -> ((JibeDisutility) td).getAttractivenessComponent(l));
-//        attributes.put("costStressLink",(l,td) -> ((JibeDisutility) td).getStressComponent(l));
-//        attributes.put("costStressJct",(l,td) -> ((JibeDisutility) td).getJunctionComponent(l));
         return attributes;
     }
 }

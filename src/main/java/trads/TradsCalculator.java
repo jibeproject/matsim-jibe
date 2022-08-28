@@ -1,51 +1,61 @@
 package trads;
 
 import ch.sbb.matsim.analysis.TravelAttribute;
+import data.Place;
 import org.apache.log4j.Logger;
-import org.matsim.api.core.v01.Coord;
-import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
-import org.matsim.api.core.v01.network.Node;
-import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.router.FastDijkstraFactory;
 import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.utils.misc.Counter;
 import org.matsim.vehicles.Vehicle;
+import trads.calculate.BeelineCalculator;
+import trads.calculate.NetworkIndicatorCalculator;
+import ch.sbb.matsim.routing.pt.raptor.*;
+import org.matsim.api.core.v01.Scenario;
+import org.matsim.core.config.Config;
+import org.matsim.core.network.io.MatsimNetworkReader;
+import org.matsim.core.router.RoutingModule;
+import org.matsim.core.router.TeleportationRoutingModule;
+import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.facilities.ActivityFacilitiesFactoryImpl;
+import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
+import trads.calculate.PtIndicatorCalculator;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.stream.Collectors;
 
 public class TradsCalculator {
 
     private final static Logger logger = Logger.getLogger(TradsCalculator.class);
     private final int numberOfThreads;
-    private final Map<String,LinkedHashMap<String,TravelAttribute>> attributes;
+    private final Set<TradsTrip> trips;
+    private final Map<String, List<String>> allAttributeNames;
 
-    public TradsCalculator(int numberOfThreads) {
+    public TradsCalculator(int numberOfThreads, Set<TradsTrip> trips) {
         this.numberOfThreads = numberOfThreads;
-        this.attributes = new LinkedHashMap<>();
+        this.trips = trips;
+        this.allAttributeNames = new LinkedHashMap<>();
     }
 
-    Map<String,LinkedHashMap<String,TravelAttribute>> getAttributes() {
-        return attributes;
-    }
+    Map<String,List<String>> getAllAttributeNames() { return allAttributeNames; }
 
-    void calculate(Set<TradsTrip> trips, String route, Vehicle vehicle,
-                          Network network, Network xy2lNetwork,
-                          TravelDisutility travelDisutility, TravelTime travelTime,
-                          LinkedHashMap<String,TravelAttribute> travelAttributes) {
+    void network(String route, Place origin, Place destination, Vehicle vehicle,
+                 Network network, Network xy2lNetwork,
+                 TravelDisutility travelDisutility, TravelTime travelTime,
+                 LinkedHashMap<String,TravelAttribute> additionalAttributes) {
 
-        logger.info("Calculating indicators for route " + route);
+        logger.info("Calculating network indicators for route " + route);
 
-        // add attribute data
-        attributes.put(route, travelAttributes);
+        // Specify attribute names
+        List<String> attributeNames = new ArrayList<>(List.of("cost","time","dist"));
+        if(additionalAttributes != null) {
+            attributeNames.addAll(additionalAttributes.keySet());
+        }
+        allAttributeNames.put(route, attributeNames);
 
-        // do calculation
+        // Do calculation
         ConcurrentLinkedQueue<TradsTrip> odPairsQueue = new ConcurrentLinkedQueue<>(trips);
 
         Counter counter = new Counter(route + ": Route ", " / " + trips.size());
@@ -53,9 +63,9 @@ public class TradsCalculator {
         for (int i = 0; i < numberOfThreads; i++) {
             LeastCostPathCalculator dijkstra = new FastDijkstraFactory(false).
                     createPathCalculator(network, travelDisutility, travelTime);
-            NetworkIndicatorCalculator worker = new NetworkIndicatorCalculator(odPairsQueue, counter, route, vehicle,
-                    network, xy2lNetwork, dijkstra, travelDisutility, travelAttributes);
-            threads[i] = new Thread(worker, "IndicatorCalculator-" + route + "-" + i);
+            NetworkIndicatorCalculator worker = new NetworkIndicatorCalculator(odPairsQueue, counter, route,
+                    origin, destination, vehicle, network, xy2lNetwork, dijkstra, travelDisutility, additionalAttributes);
+            threads[i] = new Thread(worker, "NetworkCalculator-" + route + "-" + i);
             threads[i].start();
         }
 
@@ -69,86 +79,78 @@ public class TradsCalculator {
         }
     }
 
-    private static class NetworkIndicatorCalculator implements Runnable {
+    void pt(String route, Place origin, Place destination, Config config, String scheduleFilePath, String networkFilePath) {
 
-        private final ConcurrentLinkedQueue<TradsTrip> trips;
-        private final Counter counter;
-        private final String route;
-        private final Vehicle vehicle;
+        config.transit().setUseTransit(true);
+        Scenario scenario = ScenarioUtils.createScenario(config);
 
-        private final LeastCostPathCalculator pathCalculator;
+        // Specify attribute names
+        List<String> attributeNames = List.of("ptLegs","walkLegs","ptTravelTime","walkTravelTime",
+                "totalTravelTime","ptModes","ptLegTravelTimes","walkLegTravelTimes","walkLegTravelDistances",
+                "accessDistance","egressDistance","walkDistance");
+        allAttributeNames.put(route, attributeNames);
 
-        private final TravelDisutility travelDisutility;
-        private final Network routingNetwork;
-        private final Network xy2lNetwork;
-        private final LinkedHashMap<String, TravelAttribute> travelAttributes;
+        logger.info("loading schedule from " + scheduleFilePath);
+        new TransitScheduleReader(scenario).readFile(scheduleFilePath);
+        new MatsimNetworkReader(scenario.getNetwork()).readFile(networkFilePath);
 
-        NetworkIndicatorCalculator(ConcurrentLinkedQueue<TradsTrip> trips, Counter counter, String route, Vehicle vehicle,
-                                   Network routingNetwork, Network xy2lNetwork,
-                                   LeastCostPathCalculator pathCalculator, TravelDisutility travelDisutility,
-                                   LinkedHashMap<String, TravelAttribute> attributes) {
-            this.trips = trips;
-            this.counter = counter;
-            this.route = route;
-            this.vehicle = vehicle;
-            this.routingNetwork = routingNetwork;
-            this.xy2lNetwork = xy2lNetwork;
-            this.pathCalculator = pathCalculator;
-            this.travelDisutility = travelDisutility;
-            this.travelAttributes = attributes;
+        logger.info("preparing PT route calculation");
+        RaptorStaticConfig raptorConfig = RaptorUtils.createStaticConfig(config);
+        raptorConfig.setOptimization(RaptorStaticConfig.RaptorOptimization.OneToOneRouting);
+        SwissRailRaptorData raptorData = SwissRailRaptorData.create(scenario.getTransitSchedule(), scenario.getTransitVehicles(), raptorConfig, scenario.getNetwork(), null);
+
+        ConcurrentLinkedQueue<TradsTrip> odPairsQueue = new ConcurrentLinkedQueue<>(trips);
+
+        Counter counter = new Counter("Routing PT trip ", " / " + trips.size());
+        Thread[] threads = new Thread[numberOfThreads];
+        for (int i = 0; i < numberOfThreads; i++) {
+            SwissRailRaptor.Builder builder = new SwissRailRaptor.Builder(raptorData, config);
+            Map<String, RoutingModule> accessRoutingModules = new HashMap<>();
+            accessRoutingModules.put("walk",new TeleportationRoutingModule("walk",scenario,5.3 / 3.6,1.));
+            builder.with(new DefaultRaptorStopFinder(new DefaultRaptorIntermodalAccessEgress(),accessRoutingModules));
+            SwissRailRaptor raptor = builder.build();
+            ActivityFacilitiesFactoryImpl activityFacilitiesFactory = new ActivityFacilitiesFactoryImpl();
+
+            PtIndicatorCalculator worker = new PtIndicatorCalculator(odPairsQueue, route, counter, origin,
+                    destination, scenario,raptor, activityFacilitiesFactory, attributeNames);
+            threads[i] = new Thread(worker, "PublicTransportCalculator-" + i);
+            threads[i].start();
         }
 
-        public void run() {
+        // wait until all threads have finished
+        for (Thread thread : threads) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
-            while(true) {
-                TradsTrip trip = this.trips.poll();
-                if(trip == null) {
-                    return;
-                }
+    void beeline(String route, Place origin, Place destination) {
 
-                this.counter.incCounter();
+        logger.info("Calculating beeline distances for route " + route);
 
-                if(trip.isTripWithinBoundary()) {
-                    Coord cOrig = trip.getOrigCoord();
-                    Coord cDest = trip.getDestCoord();
-                    Node nOrig;
-                    Node nDest;
-                    if(xy2lNetwork == null) {
-                        nOrig = NetworkUtils.getNearestNode(routingNetwork,cOrig);
-                        nDest = NetworkUtils.getNearestNode(routingNetwork,cDest);
-                    } else {
-                        nOrig = routingNetwork.getNodes().get(NetworkUtils.getNearestLink(xy2lNetwork, cOrig).getToNode().getId());
-                        nDest = routingNetwork.getNodes().get(NetworkUtils.getNearestLink(xy2lNetwork, cDest).getToNode().getId());
-                    }
+        // Specify attribute names
+        allAttributeNames.put(route, List.of(""));
 
-                    // Calculate least cost path
-                    LeastCostPathCalculator.Path path = pathCalculator.calcLeastCostPath(nOrig, nDest, 28800, null, vehicle);
+        // do calculation
+        ConcurrentLinkedQueue<TradsTrip> odPairsQueue = new ConcurrentLinkedQueue<>(trips);
 
-                    // Set cost, time, and distance
-                    trip.setCost(route, path.travelCost);
-                    trip.setTime(route, path.travelTime);
-                    trip.setDist(route, path.links.stream().mapToDouble(Link::getLength).sum());
+        Counter counter = new Counter(route + ": Route ", " / " + trips.size());
+        Thread[] threads = new Thread[numberOfThreads];
+        for (int i = 0; i < numberOfThreads; i++) {
+            BeelineCalculator worker = new BeelineCalculator(odPairsQueue, counter, route, origin, destination);
+            threads[i] = new Thread(worker, "BeelineCalculator-" + route + "-" + i);
+            threads[i].start();
+        }
 
-                    // Set attribute results
-                    if(travelAttributes != null) {
-                        Map<String,Object> attributeResults = new LinkedHashMap<>();
-                        for (Map.Entry<String,TravelAttribute> e : travelAttributes.entrySet()) {
-                            String name = e.getKey();
-                            double result = path.links.stream().mapToDouble(l -> e.getValue().getTravelAttribute(l,travelDisutility)).sum();
-                            attributeResults.put(name,result);
-                        }
-                        trip.setAttributes(route,attributeResults);
-                    }
-                } else {
-                    // Set everything to NaN
-                    trip.setCost(route,Double.NaN);
-                    trip.setTime(route,Double.NaN);
-                    trip.setDist(route,Double.NaN);
-                    if(travelAttributes != null) {
-                        trip.setAttributes(route,travelAttributes.entrySet().stream().collect(
-                                Collectors.toMap(Map.Entry::getKey, e -> Double.NaN)));
-                    }
-                }
+        // wait until all threads have finished
+        for (Thread thread : threads) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }

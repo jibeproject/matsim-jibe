@@ -3,11 +3,8 @@ package network;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.network.NetworkUtils;
-import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
 import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.network.io.NetworkWriter;
-
-import java.util.Collections;
 
 public class CreateMatsimNetworkSingleMode {
     private final static Logger log = Logger.getLogger(CreateMatsimNetworkSingleMode.class);
@@ -30,18 +27,10 @@ public class CreateMatsimNetworkSingleMode {
         Network fullNetwork = NetworkUtils.createNetwork();
         new MatsimNetworkReader(fullNetwork).readFile(fullNetworkPath);
 
-        // Filter network to a specific mode
-        Network singleModeNetwork = filterAndClean(fullNetwork,mode);
+        // Filter network to a specific mode & clean
+        Network singleModeNetwork = NetworkUtils2.extractModeSpecificNetwork(fullNetwork,mode);
 
         // Write
         new NetworkWriter(singleModeNetwork).write(singleModeNetworkPath);
     }
-
-    public static Network filterAndClean(Network fullNetwork, String mode) {
-        Network modeSpecificNetwork = NetworkUtils.createNetwork();
-        new TransportModeNetworkFilter(fullNetwork).filter(modeSpecificNetwork, Collections.singleton(mode));
-        NetworkUtils.runNetworkCleaner(modeSpecificNetwork);
-        return modeSpecificNetwork;
-    }
-
 }

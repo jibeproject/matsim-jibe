@@ -22,6 +22,17 @@ public class NetworkUtils2 {
         return modeSpecificNetwork;
     }
 
+    public static void identifyDisconnectedLinks(Network network, String transportMode) {
+        Network modeSpecificNetwork = extractModeSpecificNetwork(network, transportMode);
+        for(Link link : network.getLinks().values()) {
+            boolean disconnected = false;
+            if (link.getAllowedModes().contains(transportMode)) {
+                disconnected = !modeSpecificNetwork.getLinks().containsKey(link.getId());
+            }
+            link.getAttributes().putAttribute("disconnected_" + transportMode, disconnected);
+        }
+    }
+
     // Extracts network of usable nearest links to start/end journey (e.g. a car trip cannot start on a motorway)
     public static Network extractXy2LinksNetwork(Network network, Predicate<Link> xy2linksPredicate) {
         Network xy2lNetwork = NetworkUtils.createNetwork();

@@ -181,6 +181,9 @@ public class WriteNetworkGpkg {
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.car));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.bike));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.walk));
+            featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.car));
+            featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.bike));
+            featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.walk));
             featureBuilder.add(Gradient.getGradient(link));
             featureBuilder.add(CycleProtection.getType(link).toString());
             featureBuilder.add(link.getAttributes().getAttribute("endsAtJct"));
@@ -246,6 +249,9 @@ public class WriteNetworkGpkg {
         builder.add("car",Boolean.class);
         builder.add("bike",Boolean.class);
         builder.add("walk",Boolean.class);
+        builder.add("disconnected_car",Boolean.class);
+        builder.add("disconnected_bike",Boolean.class);
+        builder.add("disconnected_walk",Boolean.class);
         builder.add("gradient",Double.class);
         builder.add("bikeProtectionType",String.class);
         builder.add("endsAtJct",Boolean.class);
@@ -270,10 +276,7 @@ public class WriteNetworkGpkg {
         builder.add("f_walkStress",Double.class);
         builder.add("f_walkStressJct",Double.class);
 
-        // build the type
-        final SimpleFeatureType TYPE = builder.buildFeatureType();
-
-        return TYPE;
+        return builder.buildFeatureType();
     }
 
 }

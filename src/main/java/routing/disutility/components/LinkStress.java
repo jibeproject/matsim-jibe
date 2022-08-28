@@ -78,7 +78,7 @@ public class LinkStress {
 
     private static double getWalkStress(Link link) {
 
-        if(!link.getAllowedModes().contains("bike")) {
+        if(!link.getAllowedModes().contains("walk")) {
             return Double.NaN;
         } else {
 

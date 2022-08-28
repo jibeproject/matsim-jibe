@@ -20,6 +20,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.matsim.api.core.v01.TransportMode.*;
+
 // Script to create a MATSim Road network .xml file using the Edges and Nodes from JIBE WP2
 
 public class CreateMatsimNetworkRoad {
@@ -57,6 +59,11 @@ public class CreateMatsimNetworkRoad {
 
         // Write crossing attributes
         addCrossingAttributes(net);
+
+        // Identify disconnected links
+        NetworkUtils2.identifyDisconnectedLinks(net,walk);
+        NetworkUtils2.identifyDisconnectedLinks(net,bike);
+        NetworkUtils2.identifyDisconnectedLinks(net,car);
 
         // Write network
         new NetworkWriter(net).write(networkFile);
@@ -133,8 +140,8 @@ public class CreateMatsimNetworkRoad {
                 case "Shared Path":
                 case "Segregated Shared Path":
                 case "Living Street":
-                    allowedModesOut.add("walk");
-                    allowedModesOut.add("bike");
+                    allowedModesOut.add(walk);
+                    allowedModesOut.add(bike);
                     break;
                 case "Residential Road - Cycling Allowed":
                 case "Minor Road - Cycling Allowed":
@@ -142,14 +149,14 @@ public class CreateMatsimNetworkRoad {
                 case "Main Road Link - Cycling Allowed":
                 case "Trunk Road Link - Cycling Allowed":
                 case "Trunk Road - Cycling Allowed":
-                    allowedModesOut.add("walk");
-                    allowedModesOut.add("bike");
-                    allowedModesOut.add("car");
+                    allowedModesOut.add(walk);
+                    allowedModesOut.add(bike);
+                    allowedModesOut.add(car);
                     break;
                 case "Special Road - Cycling Forbidden":
                 case "motorway_link - Cycling Forbidden":
                 case "motorway - Cycling Forbidden":
-                    allowedModesOut.add("car");
+                    allowedModesOut.add(car);
                     break;
                 default:
                     throw new RuntimeException("Road type " + roadType + " not recognised!");
@@ -158,23 +165,23 @@ public class CreateMatsimNetworkRoad {
 
             // Don't allow car if there's a modal filter
             if(!modalFilter.equals("all")) {
-                allowedModesOut.remove("car");
+                allowedModesOut.remove(car);
             }
 
             // Allowed modes return
             Set<String> allowedModesRtn = new HashSet<>(allowedModesOut);
             switch(oneWaySummary) {
                 case "One Way":
-                    allowedModesRtn.remove("bike");
+                    allowedModesRtn.remove(bike);
                 case "One Way - Two Way Cycling":
-                    allowedModesRtn.remove("car");
+                    allowedModesRtn.remove(car);
                     break;
             }
             l2.setAllowedModes(allowedModesRtn);
 
             // Are cars allowed on this link? (necessary for mode-specific filtered networks)
-            boolean allowsCarOut = allowedModesOut.contains("car");
-            boolean allowsCarRtn = allowedModesRtn.contains("car");
+            boolean allowsCarOut = allowedModesOut.contains(car);
+            boolean allowsCarRtn = allowedModesRtn.contains(car);
             boolean allowsCar = allowsCarOut || allowsCarRtn;
 
             // Are cars allowed in either direction?
@@ -203,8 +210,8 @@ public class CreateMatsimNetworkRoad {
             double lanesOut = 1.;
             double lanesRtn = 1.;
             if(aadt == null) aadt = Double.NaN;
-            if(allowedModesOut.contains("car")) {
-                if(allowedModesRtn.contains("car")) {
+            if(allowedModesOut.contains(car)) {
+                if(allowedModesRtn.contains(car)) {
                     aadtOut = aadt / 2.;
                     aadtRtn = aadtOut;
                     lanesOut = estimateNumberOflanes(width / 2.);
