@@ -204,27 +204,39 @@ public class CreateMatsimNetworkRoad {
 
             // Add AADT, width, and number of lanes attribute
             Double aadt = (Double) edge.getAttribute("aadt_hgv_im");
-            Double width = (Double) edge.getAttribute("avg_wdt");
             double aadtOut = 0.;
             double aadtRtn = 0.;
-            double lanesOut = 1.;
-            double lanesRtn = 1.;
-            if(aadt == null) aadt = Double.NaN;
-            if(allowedModesOut.contains(car)) {
-                if(allowedModesRtn.contains(car)) {
+            if(aadt == null) {
+                aadt = Double.NaN;
+                aadtOut = Double.NaN;
+                aadtRtn = Double.NaN;
+            } else if (allowsCarOut) {
+                if (allowsCarRtn) {
                     aadtOut = aadt / 2.;
                     aadtRtn = aadtOut;
-                    lanesOut = estimateNumberOflanes(width / 2.);
-                    lanesRtn = lanesOut;
                 } else {
                     aadtOut = aadt;
-                    lanesOut = estimateNumberOflanes(width);
                 }
+            } else {
+                aadt = 0.;
             }
             l1.getAttributes().putAttribute("aadt",aadt);
             l2.getAttributes().putAttribute("aadt",aadt);
             l1.getAttributes().putAttribute("aadtFwd",aadtOut);
             l2.getAttributes().putAttribute("aadtFwd",aadtRtn);
+
+            // Width and number of lanes
+            Double width = (Double) edge.getAttribute("avg_wdt");
+            double lanesOut = 1.;
+            double lanesRtn = 1.;
+            if (allowsCarOut) {
+                if (allowsCarRtn) {
+                    lanesOut = estimateNumberOflanes(width / 2.);
+                    lanesRtn = lanesOut;
+                } else {
+                    lanesOut = estimateNumberOflanes(width);
+                }
+            }
             l1.setNumberOfLanes(lanesOut);
             l2.setNumberOfLanes(lanesRtn);
 
@@ -278,7 +290,6 @@ public class CreateMatsimNetworkRoad {
             String surface = (String) edge.getAttribute("surface");
             if(surface == null) {
                 surface = "unknown";
-                log.warn("Null surface for edge " + edgeID + ". Labelled as \"unknown\"");
             }
             l1.getAttributes().putAttribute("surface",surface);
             l2.getAttributes().putAttribute("surface",surface);
@@ -316,7 +327,7 @@ public class CreateMatsimNetworkRoad {
 
             // Car speed
             Double veh85percSpeedKPH = (Double) edge.getAttribute("spedKPH");
-            if(veh85percSpeedKPH == null) veh85percSpeedKPH = Double.NaN;
+            if(veh85percSpeedKPH == null || !allowsCar) veh85percSpeedKPH = Double.NaN;
             l1.getAttributes().putAttribute("veh85percSpeedKPH",veh85percSpeedKPH);
             l2.getAttributes().putAttribute("veh85percSpeedKPH",veh85percSpeedKPH);
 
