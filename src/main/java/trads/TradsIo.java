@@ -29,6 +29,9 @@ public class TradsIo {
     private final static String X_HOUSEHOLD_COORD = "HomeEasting";
     private final static String Y_HOUSEHOLD_COORD = "HomeNorthing";
 
+    private final static String X_MAIN_COORD = "MainEasting";
+    private final static String Y_MAIN_COORD = "MainNorthing";
+
     private final static String X_ORIGIN_COORD = "StartEasting";
     private final static String Y_ORIGIN_COORD = "StartNorthing";
 
@@ -59,6 +62,8 @@ public class TradsIo {
         int posStartTime = findPositionInArray(START_TIME, header);
         int posHomeX = findPositionInArray(X_HOUSEHOLD_COORD, header);
         int posHomeY = findPositionInArray(Y_HOUSEHOLD_COORD, header);
+        int posMainX = findPositionInArray(X_MAIN_COORD, header);
+        int posMainY = findPositionInArray(Y_MAIN_COORD, header);
         int posOrigX = findPositionInArray(X_ORIGIN_COORD, header);
         int posOrigY = findPositionInArray(Y_ORIGIN_COORD, header);
         int posDestX = findPositionInArray(X_DESTINATION_COORD, header);
@@ -96,6 +101,19 @@ public class TradsIo {
             } catch (NumberFormatException e) {
                 logger.warn("Unreadable HOME coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
                 badCoords++;
+            }
+
+            // Read main coord (if the main vars are there)
+            if(posMainX != -1 && posMainY != -1) {
+                try {
+                    double x = Double.parseDouble(lineElements[posMainX]);
+                    double y = Double.parseDouble(lineElements[posMainY]);
+                    coords.put(MAIN,CoordUtils.createCoord(x,y));
+                    coordsInBoundary.put(MAIN,geometry.contains(gf.createPoint(new Coordinate(x,y))));
+                } catch (NumberFormatException e) {
+                    logger.warn("Unreadable MAIN coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
+                    badCoords++;
+                }
             }
 
             // Read origin coord
@@ -174,6 +192,7 @@ public class TradsIo {
                 append(SEP).append("OriginWithinBoundary").
                 append(SEP).append("DestinationWithinBoundary").
                 append(SEP).append("SameHomeAndDest").
+                append(SEP).append("SameMainAndDest").
                 append(SEP).append("SameOrigAndDest");
 
         // Route attributes
@@ -200,6 +219,7 @@ public class TradsIo {
                 append(SEP).append(trip.isWithinBoundary(ORIGIN)).
                 append(SEP).append(trip.isWithinBoundary(DESTINATION)).
                 append(SEP).append(trip.match(HOME, DESTINATION)).
+                append(SEP).append(trip.match(MAIN, DESTINATION)).
                 append(SEP).append(trip.match(ORIGIN, DESTINATION));
 
         // Route attributes

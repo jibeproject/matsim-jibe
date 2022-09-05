@@ -181,6 +181,7 @@ public class WriteNetworkGpkg {
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.car));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.bike));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.walk));
+            featureBuilder.add(link.getAttributes().getAttribute("dismount"));
             featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.car));
             featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.bike));
             featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.walk));
@@ -249,6 +250,7 @@ public class WriteNetworkGpkg {
         builder.add("car",Boolean.class);
         builder.add("bike",Boolean.class);
         builder.add("walk",Boolean.class);
+        builder.add("dismount",Boolean.class);
         builder.add("disconnected_car",Boolean.class);
         builder.add("disconnected_bike",Boolean.class);
         builder.add("disconnected_walk",Boolean.class);

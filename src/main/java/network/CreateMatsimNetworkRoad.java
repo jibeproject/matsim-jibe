@@ -134,15 +134,18 @@ public class CreateMatsimNetworkRoad {
             // Allowed modes out
             Set<String> allowedModesOut = new HashSet<>();
             switch(roadType) {
+                case "Shared Bus Lane":
+                    allowedModesOut.add("bus");
+                case "Pedestrian Path - Cycling Forbidden":
                 case "Path - Cycling Forbidden":
                 case "Cycleway":
                 case "Segregated Cycleway":
                 case "Shared Path":
                 case "Segregated Shared Path":
-                case "Living Street":
                     allowedModesOut.add(walk);
                     allowedModesOut.add(bike);
                     break;
+                case "Living Street":
                 case "Residential Road - Cycling Allowed":
                 case "Minor Road - Cycling Allowed":
                 case "Main Road - Cycling Allowed":
@@ -161,12 +164,14 @@ public class CreateMatsimNetworkRoad {
                 default:
                     throw new RuntimeException("Road type " + roadType + " not recognised!");
             }
-            l1.setAllowedModes(allowedModesOut);
 
             // Don't allow car if there's a modal filter
             if(!modalFilter.equals("all")) {
                 allowedModesOut.remove(car);
             }
+
+            // Set allowed modes out
+            l1.setAllowedModes(allowedModesOut);
 
             // Allowed modes return
             Set<String> allowedModesRtn = new HashSet<>(allowedModesOut);
@@ -243,12 +248,14 @@ public class CreateMatsimNetworkRoad {
             // Capacity
             int laneCapacity;
             switch(roadType) {
+                case "Pedestrian Path - Cycling Forbidden":
                 case "Path - Cycling Forbidden":
                 case "Shared Path":
                 case "Segregated Shared Path":
                 case "Living Street":
                 case "Cycleway":
                 case "Segregated Cycleway":
+                case "Shared Bus Lane":
                     laneCapacity = 300;
                     break;
                 case "Special Road - Cycling Forbidden":
@@ -304,7 +311,7 @@ public class CreateMatsimNetworkRoad {
             l2.getAttributes().putAttribute("motorway",motorway);
 
             // Do cyclists have to dismount?
-            boolean dismount = roadType.equals("Path - Cycling Forbidden") || cycleosm.equals("dismount");
+            boolean dismount = roadType.contains("Cycling Forbidden") || cycleosm.equals("dismount");
             l1.getAttributes().putAttribute("dismount",dismount);
             l2.getAttributes().putAttribute("dismount",dismount);
 
