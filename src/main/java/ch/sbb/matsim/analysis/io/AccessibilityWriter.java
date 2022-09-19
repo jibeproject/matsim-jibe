@@ -45,7 +45,7 @@ public final class AccessibilityWriter {
 //                writer.append(SEP);
 //                writer.write(Double.toString(accessibilityData.getTime(zoneId)));
                 writer.append(SEP);
-                writer.write(Double.toString(accessibilityData.getDist(zoneId)));
+                writer.write(Double.toString(accessibilityData.getCost(zoneId)));
                 for(int i = 0 ; i < attributeCount ; i++) {
                     writer.append(SEP);
                     writer.write(Double.toString(accessibilityData.getAttr(zoneId,i)));

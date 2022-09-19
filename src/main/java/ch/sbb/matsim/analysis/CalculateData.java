@@ -11,18 +11,14 @@ import java.io.IOException;
 import java.util.*;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import ch.sbb.matsim.analysis.calc.AccessibilityCalculator;
 import ch.sbb.matsim.analysis.calc.GeometryCalculator;
 import ch.sbb.matsim.analysis.calc.IndicatorCalculator;
 import ch.sbb.matsim.analysis.calc.PtCalculator;
-import ch.sbb.matsim.analysis.data.AccessibilityData;
 import ch.sbb.matsim.analysis.data.GeometryData;
 import ch.sbb.matsim.analysis.data.IndicatorData;
 import ch.sbb.matsim.analysis.data.PtData;
-import ch.sbb.matsim.analysis.io.AccessibilityWriter;
 import ch.sbb.matsim.analysis.io.GeometryWriter;
 import ch.sbb.matsim.analysis.io.IndicatorWriter;
 import ch.sbb.matsim.analysis.io.PtWriter;
@@ -44,7 +40,6 @@ import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
-import org.matsim.api.core.v01.network.NetworkFactory;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.core.config.Config;
 import org.matsim.core.network.NetworkUtils;
@@ -82,7 +77,6 @@ public class CalculateData {
     private final int numberOfThreads;
     private Integer batchSize;
     private Map<String, Coord> zoneCoordMap = null;
-    private Map<String, Double> zoneWeightMap = null;
 
     public CalculateData(String outputDirectory, int numberOfThreads, Integer batchSize) {
         this.outputDirectory = outputDirectory;
@@ -122,33 +116,6 @@ public class CalculateData {
         this.zoneCoordMap = buildZoneCoordMap(filename);
         if (batchSize == null) {
             batchSize = zoneCoordMap.size();
-        }
-    }
-
-    public final void loadZoneWeightsFromFile(String filename) throws IOException {
-        log.info("loading zone weights from " + filename);
-        String expectedHeader = "ZONE;WEIGHT";
-        this.zoneWeightMap = new HashMap<>();
-        try (BufferedReader reader = IOUtils.getBufferedReader(filename)) {
-            String header = reader.readLine();
-            if (!expectedHeader.equals(header)) {
-                throw new RuntimeException("Bad header, expected '" + expectedHeader + "', got: '" + header + "'.");
-            }
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = StringUtils.explode(line, ';');
-                String zoneId = parts[0];
-                double weight = Double.parseDouble(parts[1]);
-                this.zoneWeightMap.put(zoneId,weight);
-            }
-        }
-    }
-
-    public final void setZoneWeightsToValue(double value) {
-        log.info("setting all zone weights to " + value);
-        this.zoneWeightMap = new HashMap<>();
-        for(String zone : zoneCoordMap.keySet()) {
-            zoneWeightMap.put(zone,value);
         }
     }
 
@@ -197,45 +164,6 @@ public class CalculateData {
             log.info("Batch " + counter + " writing time: " + (endTime - startTime));
             // break; // break for debugging only
         }
-    }
-
-    public final void calculateAccessibilities(String networkFilename, Config config, String outputPrefix,
-                                               TravelTime tt, TravelDisutility td, TravelAttribute[] aggregatedAttributes,
-                                               Impedance impedance,
-                                               String transportMode, Predicate<Link> xy2linksPredicate) throws IOException {
-
-        String prefix = outputPrefix == null ? "" : outputPrefix;
-        Scenario scenario = ScenarioUtils.createScenario(config);
-        log.info("loading network from " + networkFilename);
-        new MatsimNetworkReader(scenario.getNetwork()).readFile(networkFilename);
-
-        log.info("extracting mode-specific network for " + transportMode);
-        final Network modeSpecificNetwork = NetworkUtils.createNetwork();
-        new TransportModeNetworkFilter(scenario.getNetwork()).filter(modeSpecificNetwork, Collections.singleton(transportMode));
-        //new NetworkWriter(modeSpecificNetwork).write(outputDirectory + "filteredNetwork.xml");
-
-        log.info("filter mode-specific network for assigning links to locations");
-        final Network xy2linksNetwork = NetworkUtils2.extractXy2LinksNetwork(modeSpecificNetwork, xy2linksPredicate);
-
-        log.info("calculating zone-node map");
-        Map<String, Node> zoneNodeMap = buildZoneNodeMap(zoneCoordMap, xy2linksNetwork, modeSpecificNetwork);
-
-        Set<String> origins = zoneCoordMap.keySet().stream().limit(1000).collect(Collectors.toSet());
-        Set<String> destinations = zoneCoordMap.keySet();
-        log.info("destination size = " + destinations.size());
-
-        long startTime = System.currentTimeMillis();
-        AccessibilityData<String> accessibilities = AccessibilityCalculator.calculate(
-                modeSpecificNetwork, origins, destinations, zoneNodeMap, zoneWeightMap,
-                tt, td, aggregatedAttributes, impedance,
-                this.numberOfThreads);
-        long endTime = System.currentTimeMillis();
-        log.info("Calculation time: " + (endTime - startTime));
-
-        startTime = System.currentTimeMillis();
-        AccessibilityWriter.writeAsCsv(accessibilities,outputDirectory + "/" + prefix + ".csv.gz");
-        endTime = System.currentTimeMillis();
-        log.info("Writing time: " + (endTime - startTime));
     }
 
     public final void calculateRouteGeometries(String networkFilename,Config config, String[] originZoneNames,

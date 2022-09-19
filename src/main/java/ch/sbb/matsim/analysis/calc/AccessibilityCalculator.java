@@ -9,6 +9,7 @@ import ch.sbb.matsim.analysis.TravelAttribute;
 import ch.sbb.matsim.analysis.data.AccessibilityData;
 import ch.sbb.matsim.routing.graph.Graph;
 import ch.sbb.matsim.routing.graph.LeastCostPathTree;
+import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
@@ -18,7 +19,6 @@ import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.utils.misc.Counter;
 import org.matsim.vehicles.Vehicle;
-import org.matsim.vehicles.VehicleUtils;
 
 import java.util.Map;
 import java.util.Set;
@@ -44,9 +44,10 @@ public final class AccessibilityCalculator {
     private AccessibilityCalculator() {
     }
 
-    public static <T> AccessibilityData<T> calculate(Network routingNetwork, Set<T> origins, Set<T> destinations,
-                                                     Map<T, Node> zoneNodeMap, Map<T,Double> zoneWeightMap,
-                                                     TravelTime travelTime, TravelDisutility travelDisutility, TravelAttribute[] travelAttributes,
+    public static <T> AccessibilityData<T> calculate(Network routingNetwork, Set<T> origins, Map<T, Coord> destinations,
+                                                     Map<T, Node> originNodes, Map<T, Node> destinationNodes,
+                                                     TravelTime travelTime, TravelDisutility travelDisutility,
+                                                     TravelAttribute[] travelAttributes, Vehicle vehicle,
                                                      Impedance impedance,
                                                      int numberOfThreads) {
         Graph routingGraph = new Graph(routingNetwork);
@@ -61,8 +62,8 @@ public final class AccessibilityCalculator {
         Counter counter = new Counter("NetworkRouting zone ", " / " + origins.size());
         Thread[] threads = new Thread[numberOfThreads];
         for (int i = 0; i < numberOfThreads; i++) {
-            RowWorker<T> worker = new RowWorker<>(originZones, destinations, routingGraph, zoneNodeMap, zoneWeightMap, accessibilityData,
-                    travelTime, travelDisutility, travelAttributes, impedance, counter);
+            RowWorker<T> worker = new RowWorker<>(originZones, destinations, routingGraph, originNodes, destinationNodes, accessibilityData,
+                    travelTime, travelDisutility, travelAttributes, vehicle, impedance, counter);
             threads[i] = new Thread(worker, "NetworkRouting-" + i);
             threads[i].start();
         }
@@ -81,34 +82,35 @@ public final class AccessibilityCalculator {
 
     private static class RowWorker<T> implements Runnable {
         private final ConcurrentLinkedQueue<T> originZones;
-        private final Set<T> destinationZones;
+        private final Map<T, Coord> destinations;
         private final Graph graph;
-        private final Map<T, Node> zoneNodeMap;
-        private final Map<T, Double> zoneWeightMap;
+        private final Map<T, Node> originNodes;
+        private final Map<T, Node> destinationNodes;
         private final AccessibilityData<T> accessibilityData;
         private final TravelTime travelTime;
         private final TravelDisutility travelDisutility;
         private final TravelAttribute[] travelAttributes;
+        private final Vehicle vehicle;
         private final Impedance impedance;
         private final int attributeCount;
         private final Counter counter;
 
-        private final static Vehicle VEHICLE = VehicleUtils.getFactory().createVehicle(Id.create("theVehicle", Vehicle.class), VehicleUtils.getDefaultVehicleType());
         private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
 
-        RowWorker(ConcurrentLinkedQueue<T> originZones, Set<T> destinationZones, Graph graph, Map<T, Node> zoneNodeMap,
-                  Map<T, Double> zoneWeightMap, AccessibilityData<T> accessibilityData,
+        RowWorker(ConcurrentLinkedQueue<T> originZones, Map<T, Coord> destinations, Graph graph,
+                  Map<T, Node> originNodes, Map<T, Node> destinationNodes, AccessibilityData<T> accessibilityData,
                   TravelTime travelTime, TravelDisutility travelDisutility, TravelAttribute[] travelAttributes,
-                  Impedance impedance, Counter counter) {
+                  Vehicle vehicle, Impedance impedance, Counter counter) {
             this.originZones = originZones;
-            this.destinationZones = destinationZones;
+            this.destinations = destinations;
             this.graph = graph;
-            this.zoneNodeMap = zoneNodeMap;
-            this.zoneWeightMap = zoneWeightMap;
+            this.originNodes = originNodes;
+            this.destinationNodes = destinationNodes;
             this.accessibilityData = accessibilityData;
             this.travelTime = travelTime;
             this.travelDisutility = travelDisutility;
             this.travelAttributes = travelAttributes;
+            this.vehicle = vehicle;
             this.impedance = impedance;
             this.attributeCount = travelAttributes != null ? travelAttributes.length : 0;
             this.counter = counter;
@@ -123,39 +125,36 @@ public final class AccessibilityCalculator {
                 }
 
                 this.counter.incCounter();
-                Node fromNode = this.zoneNodeMap.get(fromZoneId);
+                Node fromNode = this.originNodes.get(fromZoneId);
                 if (fromNode != null) {
-                    lcpTree.calculate(fromNode.getId().index(), 0, PERSON, VEHICLE);
+                    lcpTree.calculate(fromNode.getId().index(), 0, PERSON, vehicle);
 
-                    for (T toZoneId : this.destinationZones) {
-                        Node toNode = this.zoneNodeMap.get(toZoneId);
+                    for (Map.Entry<T,Coord> destination : this.destinations.entrySet()) {
+                        Node toNode = this.destinationNodes.get(destination.getKey());
                         if (toNode != null) {
 
                             int nodeIndex = toNode.getId().index();
-                            double dist = lcpTree.getDistance(nodeIndex);
-                            double distImpedance = impedance.getImpedance(dist);
-                            double weight = distImpedance * zoneWeightMap.get(toZoneId);
+                            double cost = lcpTree.getCost(nodeIndex);
+                            double value = impedance.getImpedance(cost) * destination.getValue().getZ();
 
-                            this.accessibilityData.addDist(fromZoneId, weight);
+                            this.accessibilityData.addCost(fromZoneId, value);
 
                             for(int i = 0 ; i < attributeCount ; i++) {
                                 double attr = lcpTree.getAttribute(nodeIndex, i);
-                                this.accessibilityData.addAttr(fromZoneId, i, attr * weight);
+                                this.accessibilityData.addAttr(fromZoneId, i, attr * value);
                             }
 
                         } else {
                             // this might happen if a zone has no geometry, for whatever reason...
-                            System.out.println("Entry " + fromZoneId + "-" + toZoneId + " has no geometry.");
-                            //this.accessibilityData.addTime(fromZoneId, Float.POSITIVE_INFINITY);
-                            this.accessibilityData.addDist(fromZoneId, Float.POSITIVE_INFINITY);
+                            System.out.println("Entry " + fromZoneId + "-" + destination + " has no geometry.");
+                            this.accessibilityData.addCost(fromZoneId, Float.POSITIVE_INFINITY);
                         }
                     }
                 } else {
                     // this might happen if a zone has no geometry, for whatever reason...
-                    for (T toZoneId : this.destinationZones) {
+                    for (T toZoneId : this.destinations.keySet()) {
                         System.out.println("Entry " + fromZoneId + "-" + toZoneId + " has no geometry.");
-                        //this.accessibilityData.addTime(fromZoneId, Float.POSITIVE_INFINITY);
-                        this.accessibilityData.addDist(fromZoneId, Float.POSITIVE_INFINITY);
+                        this.accessibilityData.addCost(fromZoneId, Float.POSITIVE_INFINITY);
                     }
                 }
             }

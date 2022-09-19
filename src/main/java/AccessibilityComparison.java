@@ -1,13 +1,23 @@
-import ch.sbb.matsim.analysis.CalculateData;
 import ch.sbb.matsim.analysis.Impedance;
+import ch.sbb.matsim.analysis.calc.AccessibilityCalculator;
+import ch.sbb.matsim.analysis.data.AccessibilityData;
+import ch.sbb.matsim.analysis.io.AccessibilityWriter;
+import network.NetworkUtils2;
 import org.apache.log4j.Logger;
+import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.network.Network;
+import org.matsim.api.core.v01.network.Node;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.network.NetworkUtils;
+import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
+import org.matsim.core.utils.io.IOUtils;
+import org.matsim.core.utils.misc.StringUtils;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
@@ -16,96 +26,149 @@ import routing.travelTime.BicycleTravelTime;
 import routing.travelTime.WalkTravelTime;
 import routing.travelTime.speed.BicycleLinkSpeedCalculatorDefaultImpl;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.text.NumberFormat;
+import java.text.ParseException;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
 
 // Currently considers cycling accessibility only
 public class AccessibilityComparison {
 
     private final static Logger log = Logger.getLogger(RouteComparison.class);
     private final static double MAX_BIKE_SPEED = 16 / 3.6;
-    private final static double MARGINAL_COST_TIME = 2 / 300.; // seconds
-    private final static double MARGINAL_COST_DISTANCE = 0.; // metres
-    private final static double MARGINAL_COST_GRADIENT = 0.02; // m/100m
-    private final static double MARGINAL_COST_SURFACE = 2e-4;
-    private final static double MARGINAL_COST_ATTRACTIVENESS = 4e-3;
-    private final static double MARGINAL_COST_STRESS = 8e-3;
-    private final static double JUNCTION_EQUIVALENT_LENGTH = 10.; // in meters
     private final static String MODE = TransportMode.bike;
 
-    public static void main(String[] args) throws IOException {
-        if(args.length != 6) {
+    public static void main(String[] args) throws IOException, ParseException {
+        if(args.length != 5) {
             throw new RuntimeException("Program requires 5 arguments: \n" +
                     "(0) Network File Path \n" +
-                    "(1) Zone coordinates File \n" +
-                    "(2) Zone weights file \n" +
+                    "(1) Origin coordinates File \n" +
+                    "(2) Destination coordinates File \n" +
                     "(3) Output File Path \n" +
                     "(4) Number of Threads \n");
         }
 
         String networkPath = args[0];
-        String zoneCoordinatesFile = args[1];
-        String zoneWeightsFile = args[2];
-        String outputDirectory = args[3];
+        String originCoordsFile = args[1];
+        String destinationCoordsFile = args[2];
+        String outputFileName = args[3];
         int numberOfThreads = Integer.parseInt(args[4]);
 
-        // Set up config
+        // Read network
+        log.info("Reading MATSim network...");
+        Network fullNetwork = NetworkUtils.createNetwork();
+        new MatsimNetworkReader(fullNetwork).readFile(networkPath);
+        Network network = NetworkUtils2.extractModeSpecificNetwork(fullNetwork, MODE);
+
+        // Set up scenario and config
+        log.info("Preparing Matsim config and scenario...");
         Config config = ConfigUtils.createConfig();
         BicycleConfigGroup bicycleConfigGroup = new BicycleConfigGroup();
-        bicycleConfigGroup.setBicycleMode("bike");
+        bicycleConfigGroup.setBicycleMode(TransportMode.bike);
         config.addModule(bicycleConfigGroup);
 
-        // Set up calculator
-        CalculateData calc = new CalculateData(outputDirectory,numberOfThreads, null);
-        calc.loadSamplingPointsFromFile(zoneCoordinatesFile);
+        // Read coords
+        Map<String, Coord> originCoords = loadOriginData(originCoordsFile);
+        Map<String, Coord> destinationCoords = loadDestinationData(destinationCoordsFile);
+
+        // Map coords to nodes
+        Map<String, Node> originNodes = buildZoneNodeMap(originCoords, network, network);
+        Map<String, Node> destinationNodes = buildZoneNodeMap(destinationCoords, network, network);
 
         // CREATE VEHICLE & SET UP TRAVEL TIME
         Vehicle veh;
         TravelTime tt;
+        Impedance impedance;
         if(MODE.equals(TransportMode.walk)) {
             veh = null;
             tt = new WalkTravelTime();
+            impedance = c -> Math.exp(-0.0974 * c);
         } else if (MODE.equals(TransportMode.bike)) {
             VehicleType type = VehicleUtils.createVehicleType(Id.create("routing", VehicleType.class));
             type.setMaximumVelocity(MAX_BIKE_SPEED);
             BicycleLinkSpeedCalculatorDefaultImpl linkSpeedCalculator = new BicycleLinkSpeedCalculatorDefaultImpl((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME));
             veh = VehicleUtils.createVehicle(Id.createVehicleId(1), type);
             tt = new BicycleTravelTime(linkSpeedCalculator);
+            impedance = c -> Math.exp(-0.0495 * c);
         } else {
             throw new RuntimeException("Routing not set up for mode " + MODE);
         }
 
-        // Modify marginal cost of gradient/surface if walk
-        double marginalCostOfGradient = MARGINAL_COST_GRADIENT;
-        double marginalCostOfSurfaceComfort = MARGINAL_COST_SURFACE;
-
-        if(MODE.equals(TransportMode.walk)) {
-            marginalCostOfGradient /= 2;
-            marginalCostOfSurfaceComfort = 0;
-        }
-
-        log.info("Marginal cost of time (s): " + MARGINAL_COST_TIME);
-        log.info("Marginal cost of distance (m): " + MARGINAL_COST_DISTANCE);
-        log.info("Marginal cost of gradient (m/100m): " + MARGINAL_COST_GRADIENT);
-        log.info("Marginal cost of surface comfort (m): " + MARGINAL_COST_SURFACE);
-
         // Set up impedance
-        TravelDisutility td = new JibeDisutility(MODE,tt,MARGINAL_COST_TIME,MARGINAL_COST_DISTANCE,
-                marginalCostOfGradient,marginalCostOfSurfaceComfort,MARGINAL_COST_ATTRACTIVENESS,MARGINAL_COST_STRESS,
-                MARGINAL_COST_STRESS*JUNCTION_EQUIVALENT_LENGTH);
+        TravelDisutility td = new JibeDisutility(MODE,tt);
 
-        // Set zone weights (from weights file)
-        calc.loadZoneWeightsFromFile(zoneWeightsFile);
+        long startTime = System.currentTimeMillis();
+        AccessibilityData<String> accessibilities = AccessibilityCalculator.calculate(
+                network, originCoords.keySet(), destinationCoords, originNodes, destinationNodes,
+                tt, td, null, veh, impedance, numberOfThreads);
+        long endTime = System.currentTimeMillis();
+        log.info("Calculation time: " + (endTime - startTime));
 
-        // Set zone weights (set all equal)
-        calc.setZoneWeightsToValue(1.);
-
-        Impedance walkImpedance = c -> Math.exp(-0.001 * c);
-        Impedance bikeImpedance = c -> Math.exp(-0.00007692776 * c);
-
-//        calc.calculateAccessibilities(networkPath, config, "accessibilities",
-//                tt,td,travelAttributes, walkImpedance, TransportMode.walk,l -> true);
+        startTime = System.currentTimeMillis();
+        AccessibilityWriter.writeAsCsv(accessibilities,outputFileName);
+        endTime = System.currentTimeMillis();
+        log.info("Writing time: " + (endTime - startTime));
     }
 
+    private static Map<String, Coord> loadOriginData(String filename) throws IOException {
+        String expectedHeader = "ZONE;X;Y";
+        Map<String, Coord> zoneCoordMap = new LinkedHashMap<>();
+        try (BufferedReader reader = IOUtils.getBufferedReader(filename)) {
+            String header = reader.readLine();
+            if (!expectedHeader.equals(header)) {
+                throw new RuntimeException("Bad header, expected '" + expectedHeader + "', got: '" + header + "'.");
+            }
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = StringUtils.explode(line, ';');
+                String zoneId = parts[0];
+                double x = Double.parseDouble(parts[1]);
+                double y = Double.parseDouble(parts[2]);
+                Coord coord = new Coord(x, y);
+                zoneCoordMap.put(zoneId,coord);
+            }
+        }
+        return zoneCoordMap;
+    }
 
+    private static Map<String, Coord> loadDestinationData(String filename) throws IOException, ParseException {
+        String expectedHeader = "ID;X;Y;WEIGHT";
+        Map<String, Coord> zoneCoordMap = new LinkedHashMap<>();
+        NumberFormat format = NumberFormat.getInstance(Locale.GERMANY);
+        try (BufferedReader reader = IOUtils.getBufferedReader(filename)) {
+            String header = reader.readLine();
+            if (!expectedHeader.equals(header)) {
+                throw new RuntimeException("Bad header, expected '" + expectedHeader + "', got: '" + header + "'.");
+            }
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = StringUtils.explode(line, ',');
+                String zoneId = parts[0];
+                double x = format.parse(parts[1]).doubleValue();
+                double y = format.parse(parts[2]).doubleValue();
+                double wt = format.parse(parts[3]).doubleValue();
+                Coord coord = new Coord(x, y, wt);
+                zoneCoordMap.put(zoneId,coord);
+            }
+        }
+        return zoneCoordMap;
+    }
+
+    private static <T> Map<T, Node> buildZoneNodeMap(Map<T, Coord> zoneCoordMap, Network xy2lNetwork, Network routingNetwork) {
+        Map<T, Node> zoneNodeMap = new LinkedHashMap<>();
+        for (Map.Entry<T, Coord> e : zoneCoordMap.entrySet()) {
+            T zoneId = e.getKey();
+            Coord coord = e.getValue();
+            if(coord.hasZ()) {
+                coord = new Coord(coord.getX(), coord.getY());
+            }
+            Node node = routingNetwork.getNodes().get(NetworkUtils.getNearestLink(xy2lNetwork, coord).getToNode().getId());
+            zoneNodeMap.put(zoneId, node);
+        }
+        return zoneNodeMap;
+    }
 
 }
