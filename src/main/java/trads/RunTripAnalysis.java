@@ -36,9 +36,9 @@ import static data.Place.*;
 // THIS SCRIPT IS FOR CONVERTING X/Y COORDINATES IN THE TRAVEL SURVEY TO PATH DATA (E.G. TRAVEL TIMES, DISTANCES, COSTS) USING THE MATSIM NETWORK
 // NOTE: number of threads for PT is limited to the RAM available as the network needs to be duplicated (need about 9GB per thread)
 
-public class RunTradsAnalysis {
+public class RunTripAnalysis {
 
-    private final static Logger logger = Logger.getLogger(RunTradsAnalysis.class);
+    private final static Logger logger = Logger.getLogger(RunTripAnalysis.class);
     private final static double MAX_BIKE_SPEED = 16 / 3.6;
 
     public static void main(String[] args) throws IOException {

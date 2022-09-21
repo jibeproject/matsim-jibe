@@ -9,7 +9,6 @@ import ch.sbb.matsim.analysis.TravelAttribute;
 import ch.sbb.matsim.analysis.data.AccessibilityData;
 import ch.sbb.matsim.routing.graph.Graph;
 import ch.sbb.matsim.routing.graph.LeastCostPathTree;
-import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
@@ -20,6 +19,7 @@ import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.utils.misc.Counter;
 import org.matsim.vehicles.Vehicle;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 /**
  * Calculates zone-to-zone matrices containing a number of performance indicators related to modes routed on a network.
  *
- * Inspired by https://github.com/moeckel/silo/blob/siloMatsim/silo/src/main/java/edu/umd/ncsg/transportModel/Zone2ZoneTravelTimeListener.java.
+ * Inspired by <a href="https://github.com/moeckel/silo/blob/siloMatsim/silo/src/main/java/edu/umd/ncsg/transportModel/Zone2ZoneTravelTimeListener.java">...</a>.
  *
  * Idea of the algorithm:
  * - given n points per zone
@@ -44,8 +44,8 @@ public final class AccessibilityCalculator {
     private AccessibilityCalculator() {
     }
 
-    public static <T> AccessibilityData<T> calculate(Network routingNetwork, Set<T> origins, Map<T, Coord> destinations,
-                                                     Map<T, Node> originNodes, Map<T, Node> destinationNodes,
+    public static <T> AccessibilityData<T> calculate(Network routingNetwork, Set<T> origins, Map<T, Double> destinations,
+                                                     Map<T, Node> originNodes, Map<T, List<Node>> destinationNodes,
                                                      TravelTime travelTime, TravelDisutility travelDisutility,
                                                      TravelAttribute[] travelAttributes, Vehicle vehicle,
                                                      Impedance impedance,
@@ -82,10 +82,10 @@ public final class AccessibilityCalculator {
 
     private static class RowWorker<T> implements Runnable {
         private final ConcurrentLinkedQueue<T> originZones;
-        private final Map<T, Coord> destinations;
+        private final Map<T, Double> destinations;
         private final Graph graph;
         private final Map<T, Node> originNodes;
-        private final Map<T, Node> destinationNodes;
+        private final Map<T, List<Node>> destinationNodes;
         private final AccessibilityData<T> accessibilityData;
         private final TravelTime travelTime;
         private final TravelDisutility travelDisutility;
@@ -97,8 +97,8 @@ public final class AccessibilityCalculator {
 
         private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
 
-        RowWorker(ConcurrentLinkedQueue<T> originZones, Map<T, Coord> destinations, Graph graph,
-                  Map<T, Node> originNodes, Map<T, Node> destinationNodes, AccessibilityData<T> accessibilityData,
+        RowWorker(ConcurrentLinkedQueue<T> originZones, Map<T, Double> destinations, Graph graph,
+                  Map<T, Node> originNodes, Map<T, List<Node>> destinationNodes, AccessibilityData<T> accessibilityData,
                   TravelTime travelTime, TravelDisutility travelDisutility, TravelAttribute[] travelAttributes,
                   Vehicle vehicle, Impedance impedance, Counter counter) {
             this.originZones = originZones;
@@ -129,33 +129,41 @@ public final class AccessibilityCalculator {
                 if (fromNode != null) {
                     lcpTree.calculate(fromNode.getId().index(), 0, PERSON, vehicle);
 
-                    for (Map.Entry<T,Coord> destination : this.destinations.entrySet()) {
-                        Node toNode = this.destinationNodes.get(destination.getKey());
-                        if (toNode != null) {
+                    double accessibility = 0.;
+                    double[] attributes = new double[attributeCount];
 
-                            int nodeIndex = toNode.getId().index();
-                            double cost = lcpTree.getCost(nodeIndex);
-                            double value = impedance.getImpedance(cost) * destination.getValue().getZ();
+                    for (Map.Entry<T,Double> destination : this.destinations.entrySet()) {
 
-                            this.accessibilityData.addCost(fromZoneId, value);
+                        double wt = destination.getValue();
+                        double cost = Double.MAX_VALUE;
+                        int index = -1;
 
-                            for(int i = 0 ; i < attributeCount ; i++) {
-                                double attr = lcpTree.getAttribute(nodeIndex, i);
-                                this.accessibilityData.addAttr(fromZoneId, i, attr * value);
+                        for(Node node : this.destinationNodes.get(destination.getKey())) {
+                            int nodeIndex = node.getId().index();
+                            double nodeCost = lcpTree.getCost(nodeIndex);
+                            if(nodeCost < cost) {
+                                cost = nodeCost;
+                                index = nodeIndex;
                             }
+                        }
 
-                        } else {
-                            // this might happen if a zone has no geometry, for whatever reason...
-                            System.out.println("Entry " + fromZoneId + "-" + destination + " has no geometry.");
-                            this.accessibilityData.addCost(fromZoneId, Float.POSITIVE_INFINITY);
+                        double value = impedance.getImpedance(cost) * wt;
+                        accessibility += value;
+
+                        for(int i = 0 ; i < attributeCount ; i++) {
+                            double attr = lcpTree.getAttribute(index, i);
+                            attributes[i] += attr * value;
                         }
                     }
+
+                    this.accessibilityData.setAccessibility(fromZoneId, accessibility);
+                    if(attributeCount > 0) {
+                        this.accessibilityData.setAttributes(fromZoneId, attributes);
+                    }
+
                 } else {
                     // this might happen if a zone has no geometry, for whatever reason...
-                    for (T toZoneId : this.destinations.keySet()) {
-                        System.out.println("Entry " + fromZoneId + "-" + toZoneId + " has no geometry.");
-                        this.accessibilityData.addCost(fromZoneId, Float.POSITIVE_INFINITY);
-                    }
+                    throw new RuntimeException("Entry " + fromZoneId + " has no geometry.");
                 }
             }
         }

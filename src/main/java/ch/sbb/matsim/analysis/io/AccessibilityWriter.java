@@ -28,7 +28,7 @@ public final class AccessibilityWriter {
     public static<T> void writeAsCsv(AccessibilityData<T> accessibilityData, String filename) throws IOException {
         try (BufferedWriter writer = IOUtils.getBufferedWriter(filename)) {
             int attributeCount = accessibilityData.attrData.size();
-            writer.write("ZONE" + SEP + "DISTANCE");
+            writer.write("ZONE" + SEP + "ACCESSIBILITY");
             for(int i = 0 ; i < attributeCount ; i++) {
                 writer.write(SEP + "ATTR_" + i);
             }

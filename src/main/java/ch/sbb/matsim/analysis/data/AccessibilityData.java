@@ -23,12 +23,14 @@ public class AccessibilityData<T> {
         }
     }
 
-    public void addCost(T zone, double value) {
-        this.costData[this.zone2index.get(zone)] += value;
+    public void setAccessibility(T zone, double accessibility) {
+        this.costData[this.zone2index.get(zone)] = accessibility;
     }
 
-    public void addAttr(T zone, int attr, double value) {
-        this.attrData.get(attr)[this.zone2index.get(zone)] += value;
+    public void setAttributes(T zone, double[] attributes) {
+        for(int  i = 0 ; i < attributes.length ; i++) {
+            this.attrData.get(i)[this.zone2index.get(zone)] = attributes[i];
+        }
     }
 
     public double getCost(T zone) {

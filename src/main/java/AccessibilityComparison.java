@@ -30,9 +30,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.text.NumberFormat;
 import java.text.ParseException;
-import java.util.LinkedHashMap;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 // Currently considers cycling accessibility only
 public class AccessibilityComparison {
@@ -40,6 +38,9 @@ public class AccessibilityComparison {
     private final static Logger log = Logger.getLogger(RouteComparison.class);
     private final static double MAX_BIKE_SPEED = 16 / 3.6;
     private final static String MODE = TransportMode.bike;
+    private static final Map<String, Coord> originCoords = new LinkedHashMap<>();
+    private static final Map<String, List<Coord>> destinationCoords = new LinkedHashMap<>();
+    private static final Map<String, Double> destinationWeights = new LinkedHashMap<>();
 
     public static void main(String[] args) throws IOException, ParseException {
         if(args.length != 5) {
@@ -71,12 +72,12 @@ public class AccessibilityComparison {
         config.addModule(bicycleConfigGroup);
 
         // Read coords
-        Map<String, Coord> originCoords = loadOriginData(originCoordsFile);
-        Map<String, Coord> destinationCoords = loadDestinationData(destinationCoordsFile);
+        loadOriginData(originCoordsFile);
+        loadDestinationData(destinationCoordsFile);
 
         // Map coords to nodes
-        Map<String, Node> originNodes = buildZoneNodeMap(originCoords, network, network);
-        Map<String, Node> destinationNodes = buildZoneNodeMap(destinationCoords, network, network);
+        Map<String, Node> originNodes = buildOriginNodeMap(network, network);
+        Map<String, List<Node>> destinationNodes = buildDestinationNodeMap(network, network);
 
         // CREATE VEHICLE & SET UP TRAVEL TIME
         Vehicle veh;
@@ -102,7 +103,7 @@ public class AccessibilityComparison {
 
         long startTime = System.currentTimeMillis();
         AccessibilityData<String> accessibilities = AccessibilityCalculator.calculate(
-                network, originCoords.keySet(), destinationCoords, originNodes, destinationNodes,
+                network, originCoords.keySet(), destinationWeights, originNodes, destinationNodes,
                 tt, td, null, veh, impedance, numberOfThreads);
         long endTime = System.currentTimeMillis();
         log.info("Calculation time: " + (endTime - startTime));
@@ -113,9 +114,8 @@ public class AccessibilityComparison {
         log.info("Writing time: " + (endTime - startTime));
     }
 
-    private static Map<String, Coord> loadOriginData(String filename) throws IOException {
+    private static void loadOriginData(String filename) throws IOException {
         String expectedHeader = "ZONE;X;Y";
-        Map<String, Coord> zoneCoordMap = new LinkedHashMap<>();
         try (BufferedReader reader = IOUtils.getBufferedReader(filename)) {
             String header = reader.readLine();
             if (!expectedHeader.equals(header)) {
@@ -128,15 +128,13 @@ public class AccessibilityComparison {
                 double x = Double.parseDouble(parts[1]);
                 double y = Double.parseDouble(parts[2]);
                 Coord coord = new Coord(x, y);
-                zoneCoordMap.put(zoneId,coord);
+                originCoords.put(zoneId,coord);
             }
         }
-        return zoneCoordMap;
     }
 
-    private static Map<String, Coord> loadDestinationData(String filename) throws IOException, ParseException {
+    private static void loadDestinationData(String filename) throws IOException, ParseException {
         String expectedHeader = "ID;X;Y;WEIGHT";
-        Map<String, Coord> zoneCoordMap = new LinkedHashMap<>();
         NumberFormat format = NumberFormat.getInstance(Locale.GERMANY);
         try (BufferedReader reader = IOUtils.getBufferedReader(filename)) {
             String header = reader.readLine();
@@ -145,30 +143,50 @@ public class AccessibilityComparison {
             }
             String line;
             while ((line = reader.readLine()) != null) {
-                String[] parts = StringUtils.explode(line, ',');
-                String zoneId = parts[0];
+                String[] parts = StringUtils.explode(line, ';');
+                String id = parts[0];
                 double x = format.parse(parts[1]).doubleValue();
                 double y = format.parse(parts[2]).doubleValue();
                 double wt = format.parse(parts[3]).doubleValue();
-                Coord coord = new Coord(x, y, wt);
-                zoneCoordMap.put(zoneId,coord);
+
+                if(destinationCoords.containsKey(id)) {
+                    if(destinationWeights.get(id) == wt) {
+                        destinationCoords.get(id).add(new Coord(x,y));
+                    } else {
+                        throw new RuntimeException("Mismatching weights for destination " + id);
+                    }
+                } else {
+                    List<Coord> coords = new ArrayList<>();
+                    coords.add(new Coord(x,y));
+                    destinationCoords.put(id, coords);
+                    destinationWeights.put(id, wt);
+                }
             }
         }
-        return zoneCoordMap;
+        log.info("Loaded " + destinationCoords.size() + " unique destinations and " +
+                destinationCoords.values().stream().mapToInt(List::size).sum() + " access points.");
     }
 
-    private static <T> Map<T, Node> buildZoneNodeMap(Map<T, Coord> zoneCoordMap, Network xy2lNetwork, Network routingNetwork) {
-        Map<T, Node> zoneNodeMap = new LinkedHashMap<>();
-        for (Map.Entry<T, Coord> e : zoneCoordMap.entrySet()) {
-            T zoneId = e.getKey();
+    private static Map<String, Node> buildOriginNodeMap(Network xy2lNetwork, Network routingNetwork) {
+        Map<String, Node> zoneNodeMap = new LinkedHashMap<>();
+        for (Map.Entry<String, Coord> e : originCoords.entrySet()) {
+            String zoneId = e.getKey();
             Coord coord = e.getValue();
-            if(coord.hasZ()) {
-                coord = new Coord(coord.getX(), coord.getY());
-            }
             Node node = routingNetwork.getNodes().get(NetworkUtils.getNearestLink(xy2lNetwork, coord).getToNode().getId());
             zoneNodeMap.put(zoneId, node);
         }
         return zoneNodeMap;
     }
 
+    private static Map<String, List<Node>> buildDestinationNodeMap(Network xy2lNetwork, Network routingNetwork) {
+        Map<String, List<Node>> destinationNodeMap = new LinkedHashMap<>();
+        for (Map.Entry<String, List<Coord>> e : destinationCoords.entrySet()) {
+            List<Node> nodes = new ArrayList<>();
+            for (Coord coord : e.getValue()) {
+                nodes.add(routingNetwork.getNodes().get(NetworkUtils.getNearestLink(xy2lNetwork, coord).getToNode().getId()));
+            }
+            destinationNodeMap.put(e.getKey(), nodes);
+        }
+        return destinationNodeMap;
+    }
 }

@@ -19,9 +19,9 @@ import static data.Place.*;
 
 // SCRIPT TO ADD MAIN DISTANCES FOR ANALYZING RUBBER BANDING IN TOUR-MAKING
 
-public class DestinationChoiceAnalysis {
+public class RunDestinationChoiceAnalysis {
 
-    private final static Logger logger = Logger.getLogger(DestinationChoiceAnalysis.class);
+    private final static Logger logger = Logger.getLogger(RunDestinationChoiceAnalysis.class);
 
     public static void main(String[] args) throws IOException {
 
