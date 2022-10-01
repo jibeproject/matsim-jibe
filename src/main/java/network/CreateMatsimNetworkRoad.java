@@ -301,6 +301,18 @@ public class CreateMatsimNetworkRoad {
             l1.getAttributes().putAttribute("surface",surface);
             l2.getAttributes().putAttribute("surface",surface);
 
+            // Strava speeds
+            putDoubleAttribute(edge, "sped_b_f", l1,"stravaBikeSpeed", Double.NaN);
+            putDoubleAttribute(edge, "sped_b_b", l2,"stravaBikeSpeed", Double.NaN);
+            putDoubleAttribute(edge, "sped_p_f", l1,"stravaWalkSpeed", Double.NaN);
+            putDoubleAttribute(edge, "sped_p_b", l2,"stravaWalkSpeed", Double.NaN);
+
+            // Strava volumes
+            putDoubleAttribute(edge, "aamb_f", l1,"stravaBikeVol", Double.NaN);
+            putDoubleAttribute(edge, "aamb_b", l2,"stravaBikeVol", Double.NaN);
+            putDoubleAttribute(edge, "aamp_f", l1,"stravaWalkVol", Double.NaN);
+            putDoubleAttribute(edge, "aamp_b", l2,"stravaWalkVol", Double.NaN);
+
             // Type
             l1.getAttributes().putAttribute("type",edge.getAttribute("highway"));
             l2.getAttributes().putAttribute("type",edge.getAttribute("highway"));
@@ -406,9 +418,9 @@ public class CreateMatsimNetworkRoad {
     }
 
     private static double estimateNumberOflanes(double width) {
-        if(width <= 6.5) {
+        if (width <= 6.5) {
             return 1.;
-        } else if(width <= 9.3) {
+        } else if (width <= 9.3) {
             return 2.;
         } else {
             return 3.;
@@ -479,6 +491,14 @@ public class CreateMatsimNetworkRoad {
             link.getAttributes().putAttribute("crossSpeedLimitMPH",crossSpeedLimit);
             link.getAttributes().putAttribute("cross85PercSpeed",cross85PercSpeed);
         }
+    }
+
+    private static void putDoubleAttribute(SimpleFeature edge, String name, Link link, String matsimName, double valueIfNull) {
+        Double attr = (Double) edge.getAttribute(name);
+        if(attr == null) {
+            attr = valueIfNull;
+        }
+        link.getAttributes().putAttribute(matsimName,attr);
     }
 
     private static boolean isMatchingRoad(Link link, int osmID, String name) {

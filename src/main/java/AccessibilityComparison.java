@@ -21,6 +21,7 @@ import org.matsim.core.utils.misc.StringUtils;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
+import routing.disutility.DistanceDisutility;
 import routing.disutility.JibeDisutility;
 import routing.travelTime.BicycleTravelTime;
 import routing.travelTime.WalkTravelTime;
@@ -42,27 +43,34 @@ public class AccessibilityComparison {
     private static final Map<String, List<Coord>> destinationCoords = new LinkedHashMap<>();
     private static final Map<String, Double> destinationWeights = new LinkedHashMap<>();
 
+    private static String outputFolder;
+    private static Integer numberOfThreads;
+    private static Network fullNetwork;
+
     public static void main(String[] args) throws IOException, ParseException {
         if(args.length != 5) {
             throw new RuntimeException("Program requires 5 arguments: \n" +
                     "(0) Network File Path \n" +
                     "(1) Origin coordinates File \n" +
                     "(2) Destination coordinates File \n" +
-                    "(3) Output File Path \n" +
+                    "(3) Output Path \n" +
                     "(4) Number of Threads \n");
         }
 
         String networkPath = args[0];
         String originCoordsFile = args[1];
         String destinationCoordsFile = args[2];
-        String outputFileName = args[3];
-        int numberOfThreads = Integer.parseInt(args[4]);
+        outputFolder = args[3];
+        numberOfThreads = Integer.parseInt(args[4]);
 
         // Read network
         log.info("Reading MATSim network...");
-        Network fullNetwork = NetworkUtils.createNetwork();
+        fullNetwork = NetworkUtils.createNetwork();
         new MatsimNetworkReader(fullNetwork).readFile(networkPath);
-        Network network = NetworkUtils2.extractModeSpecificNetwork(fullNetwork, MODE);
+
+        // Read coords
+        loadOriginData(originCoordsFile);
+        loadDestinationData(destinationCoordsFile);
 
         // Set up scenario and config
         log.info("Preparing Matsim config and scenario...");
@@ -71,47 +79,29 @@ public class AccessibilityComparison {
         bicycleConfigGroup.setBicycleMode(TransportMode.bike);
         config.addModule(bicycleConfigGroup);
 
-        // Read coords
-        loadOriginData(originCoordsFile);
-        loadDestinationData(destinationCoordsFile);
+        // Walk travel time
+        TravelTime ttWalk = new WalkTravelTime();
 
-        // Map coords to nodes
-        Map<String, Node> originNodes = buildOriginNodeMap(network, network);
-        Map<String, List<Node>> destinationNodes = buildDestinationNodeMap(network, network);
+        // Bike vehicle and travel time
+        VehicleType type = VehicleUtils.createVehicleType(Id.create("routing", VehicleType.class));
+        type.setMaximumVelocity(MAX_BIKE_SPEED);
+        BicycleLinkSpeedCalculatorDefaultImpl linkSpeedCalculator = new BicycleLinkSpeedCalculatorDefaultImpl((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME));
+        Vehicle bike = VehicleUtils.createVehicle(Id.createVehicleId(1), type);
+        TravelTime ttBike = new BicycleTravelTime(linkSpeedCalculator);
 
-        // CREATE VEHICLE & SET UP TRAVEL TIME
-        Vehicle veh;
-        TravelTime tt;
-        Impedance impedance;
-        if(MODE.equals(TransportMode.walk)) {
-            veh = null;
-            tt = new WalkTravelTime();
-            impedance = c -> Math.exp(-0.0974 * c);
-        } else if (MODE.equals(TransportMode.bike)) {
-            VehicleType type = VehicleUtils.createVehicleType(Id.create("routing", VehicleType.class));
-            type.setMaximumVelocity(MAX_BIKE_SPEED);
-            BicycleLinkSpeedCalculatorDefaultImpl linkSpeedCalculator = new BicycleLinkSpeedCalculatorDefaultImpl((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME));
-            veh = VehicleUtils.createVehicle(Id.createVehicleId(1), type);
-            tt = new BicycleTravelTime(linkSpeedCalculator);
-            impedance = c -> Math.exp(-0.0495 * c);
-        } else {
-            throw new RuntimeException("Routing not set up for mode " + MODE);
-        }
+        // Set up disutility and impedance
+        TravelDisutility tdBikeJibe = new JibeDisutility(TransportMode.bike,ttBike);
+        TravelDisutility tdWalkJibe = new JibeDisutility(TransportMode.walk,ttWalk);
 
-        // Set up impedance
-        TravelDisutility td = new JibeDisutility(MODE,tt);
+        // Analyses
+        runAnalysis(TransportMode.bike, bike, c -> Math.exp(-0.04950999*c), ttBike, tdBikeJibe, "greenBikeJibe.csv");
+        runAnalysis(TransportMode.bike, bike, c -> Math.exp(-0.0003104329*c), ttBike, new DistanceDisutility(), "greenBikeDist.csv");
 
-        long startTime = System.currentTimeMillis();
-        AccessibilityData<String> accessibilities = AccessibilityCalculator.calculate(
-                network, originCoords.keySet(), destinationWeights, originNodes, destinationNodes,
-                tt, td, null, veh, impedance, numberOfThreads);
-        long endTime = System.currentTimeMillis();
-        log.info("Calculation time: " + (endTime - startTime));
+        runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.0974147*c), ttWalk, tdWalkJibe, "greenWalkJibe.csv");
+        runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.001057006*c), ttWalk, new DistanceDisutility(), "greenWalkDist.csv");
 
-        startTime = System.currentTimeMillis();
-        AccessibilityWriter.writeAsCsv(accessibilities,outputFileName);
-        endTime = System.currentTimeMillis();
-        log.info("Writing time: " + (endTime - startTime));
+
+
     }
 
     private static void loadOriginData(String filename) throws IOException {
@@ -131,6 +121,31 @@ public class AccessibilityComparison {
                 originCoords.put(zoneId,coord);
             }
         }
+    }
+
+    private static void runAnalysis(String mode, Vehicle veh, Impedance impedance, TravelTime tt, TravelDisutility td, String outputFileName) throws IOException {
+
+        // Mode specific network
+        Network network = NetworkUtils2.extractModeSpecificNetwork(fullNetwork, mode);
+
+        // Map coords to nodes
+        Map<String, Node> originNodes = buildOriginNodeMap(network, network);
+        Map<String, List<Node>> destinationNodes = buildDestinationNodeMap(network, network);
+
+
+        long startTime = System.currentTimeMillis();
+        AccessibilityData<String> accessibilities = AccessibilityCalculator.calculate(
+                network, originCoords.keySet(), destinationWeights, originNodes, destinationNodes,
+                tt, td, null, veh, impedance, numberOfThreads);
+        long endTime = System.currentTimeMillis();
+        log.info("Calculation time: " + (endTime - startTime));
+
+        startTime = System.currentTimeMillis();
+        AccessibilityWriter.writeAsCsv(accessibilities,outputFolder + "/" + outputFileName);
+        endTime = System.currentTimeMillis();
+        log.info("Writing time: " + (endTime - startTime));
+        log.info("Finished processing " + outputFileName);
+
     }
 
     private static void loadDestinationData(String filename) throws IOException, ParseException {

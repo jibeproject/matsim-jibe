@@ -182,6 +182,10 @@ public class WriteNetworkGpkg {
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.bike));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.walk));
             featureBuilder.add(link.getAttributes().getAttribute("dismount"));
+            featureBuilder.add(link.getAttributes().getAttribute("stravaBikeSpeed"));
+            featureBuilder.add(link.getAttributes().getAttribute("stravaBikeVol"));
+            featureBuilder.add(link.getAttributes().getAttribute("stravaWalkSpeed"));
+            featureBuilder.add(link.getAttributes().getAttribute("stravaWalkVol"));
             featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.car));
             featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.bike));
             featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.walk));
@@ -251,6 +255,10 @@ public class WriteNetworkGpkg {
         builder.add("bike",Boolean.class);
         builder.add("walk",Boolean.class);
         builder.add("dismount",Boolean.class);
+        builder.add("stravaBikeSpeed",Double.class);
+        builder.add("stravaBikeVol",Double.class);
+        builder.add("stravaWalkSpeed",Double.class);
+        builder.add("stravaWalkVol",Double.class);
         builder.add("disconnected_car",Boolean.class);
         builder.add("disconnected_bike",Boolean.class);
         builder.add("disconnected_walk",Boolean.class);
