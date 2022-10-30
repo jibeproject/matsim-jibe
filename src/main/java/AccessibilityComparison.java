@@ -4,6 +4,9 @@ import ch.sbb.matsim.analysis.data.AccessibilityData;
 import ch.sbb.matsim.analysis.io.AccessibilityWriter;
 import network.NetworkUtils2;
 import org.apache.log4j.Logger;
+import org.locationtech.jts.geom.*;
+import org.locationtech.jts.index.SpatialIndex;
+import org.locationtech.jts.index.quadtree.Quadtree;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
@@ -16,11 +19,14 @@ import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
+import org.matsim.core.utils.gis.ShapeFileReader;
 import org.matsim.core.utils.io.IOUtils;
+import org.matsim.core.utils.misc.Counter;
 import org.matsim.core.utils.misc.StringUtils;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
+import org.opengis.feature.simple.SimpleFeature;
 import routing.disutility.DistanceDisutility;
 import routing.disutility.JibeDisutility;
 import routing.travelTime.BicycleTravelTime;
@@ -38,8 +44,8 @@ public class AccessibilityComparison {
 
     private final static Logger log = Logger.getLogger(RouteComparison.class);
     private final static double MAX_BIKE_SPEED = 16 / 3.6;
-    private final static String MODE = TransportMode.bike;
-    private static final Map<String, Coord> originCoords = new LinkedHashMap<>();
+    private final static GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
+    private static final Map<String, List<Coord>> originCoords = new LinkedHashMap<>();
     private static final Map<String, List<Coord>> destinationCoords = new LinkedHashMap<>();
     private static final Map<String, Double> destinationWeights = new LinkedHashMap<>();
 
@@ -51,7 +57,7 @@ public class AccessibilityComparison {
         if(args.length != 5) {
             throw new RuntimeException("Program requires 5 arguments: \n" +
                     "(0) Network File Path \n" +
-                    "(1) Origin coordinates File \n" +
+                    "(1) Origin coordinates File OR Origin Shapefile \n" +
                     "(2) Destination coordinates File \n" +
                     "(3) Output Path \n" +
                     "(4) Number of Threads \n");
@@ -69,7 +75,12 @@ public class AccessibilityComparison {
         new MatsimNetworkReader(fullNetwork).readFile(networkPath);
 
         // Read coords
-        loadOriginData(originCoordsFile);
+        if (originCoordsFile.endsWith(".csv")) {
+            loadSamplingPointsFromCsv(originCoordsFile);
+        } else if (originCoordsFile.endsWith(".shp")) {
+            loadSamplingPointsFromShp(10, originCoordsFile, "geo_code",new Random());
+        }
+
         loadDestinationData(destinationCoordsFile);
 
         // Set up scenario and config
@@ -100,11 +111,9 @@ public class AccessibilityComparison {
         runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.0974147*c), ttWalk, tdWalkJibe, "greenWalkJibe.csv");
         runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.001057006*c), ttWalk, new DistanceDisutility(), "greenWalkDist.csv");
 
-
-
     }
 
-    private static void loadOriginData(String filename) throws IOException {
+    private static void loadSamplingPointsFromCsv(String filename) throws IOException {
         String expectedHeader = "ZONE;X;Y";
         try (BufferedReader reader = IOUtils.getBufferedReader(filename)) {
             String header = reader.readLine();
@@ -117,9 +126,16 @@ public class AccessibilityComparison {
                 String zoneId = parts[0];
                 double x = Double.parseDouble(parts[1]);
                 double y = Double.parseDouble(parts[2]);
-                Coord coord = new Coord(x, y);
-                originCoords.put(zoneId,coord);
+                if(originCoords.containsKey(zoneId)) {
+                    originCoords.get(zoneId).add(new Coord(x,y));
+                } else {
+                    List<Coord> coords = new ArrayList<>();
+                    coords.add(new Coord(x,y));
+                    originCoords.put(zoneId, coords);
+                }
             }
+            log.info("Loaded " + originCoords.size() + " origin zones with " +
+                    originCoords.values().stream().mapToInt(List::size).sum() + " sampling points.");
         }
     }
 
@@ -129,8 +145,8 @@ public class AccessibilityComparison {
         Network network = NetworkUtils2.extractModeSpecificNetwork(fullNetwork, mode);
 
         // Map coords to nodes
-        Map<String, Node> originNodes = buildOriginNodeMap(network, network);
-        Map<String, List<Node>> destinationNodes = buildDestinationNodeMap(network, network);
+        Map<String, List<Node>> originNodes = buildIdNodeMap(originCoords, network, network);
+        Map<String, List<Node>> destinationNodes = buildIdNodeMap(destinationCoords, network, network);
 
 
         long startTime = System.currentTimeMillis();
@@ -182,26 +198,79 @@ public class AccessibilityComparison {
                 destinationCoords.values().stream().mapToInt(List::size).sum() + " access points.");
     }
 
-    private static Map<String, Node> buildOriginNodeMap(Network xy2lNetwork, Network routingNetwork) {
-        Map<String, Node> zoneNodeMap = new LinkedHashMap<>();
-        for (Map.Entry<String, Coord> e : originCoords.entrySet()) {
-            String zoneId = e.getKey();
-            Coord coord = e.getValue();
-            Node node = routingNetwork.getNodes().get(NetworkUtils.getNearestLink(xy2lNetwork, coord).getToNode().getId());
-            zoneNodeMap.put(zoneId, node);
-        }
-        return zoneNodeMap;
-    }
 
-    private static Map<String, List<Node>> buildDestinationNodeMap(Network xy2lNetwork, Network routingNetwork) {
-        Map<String, List<Node>> destinationNodeMap = new LinkedHashMap<>();
-        for (Map.Entry<String, List<Coord>> e : destinationCoords.entrySet()) {
+    private static Map<String, List<Node>> buildIdNodeMap(Map<String, List<Coord>> idCoordMap, Network xy2lNetwork, Network routingNetwork) {
+        Map<String, List<Node>> idNodeMap = new LinkedHashMap<>();
+        for (Map.Entry<String, List<Coord>> e : idCoordMap.entrySet()) {
             List<Node> nodes = new ArrayList<>();
             for (Coord coord : e.getValue()) {
                 nodes.add(routingNetwork.getNodes().get(NetworkUtils.getNearestLink(xy2lNetwork, coord).getToNode().getId()));
             }
-            destinationNodeMap.put(e.getKey(), nodes);
+            idNodeMap.put(e.getKey(), nodes);
         }
-        return destinationNodeMap;
+        return idNodeMap;
+    }
+
+    public static void loadSamplingPointsFromShp(int numberOfPointsPerZone, String zonesShapeFilename, String zonesIdAttributeName, Random r) {
+
+        log.info("reading node coords from network");
+        List<Coord> nodeCoords = new ArrayList<>(fullNetwork.getNodes().size());
+        for (Node node : fullNetwork.getNodes().values()) {
+            nodeCoords.add(node.getCoord());
+        }
+
+        log.info("loading zones from " + zonesShapeFilename);
+        Collection<SimpleFeature> zones = new ShapeFileReader().readFileAndInitialize(zonesShapeFilename);
+        SpatialIndex zonesQt = new Quadtree();
+        for (SimpleFeature zone : zones) {
+            Envelope envelope = ((Geometry) (zone.getDefaultGeometry())).getEnvelopeInternal();
+            zonesQt.insert(envelope, zone);
+        }
+
+        log.info("assign locations to zones...");
+        Map<String, List<Coord>> allCoordsPerZone = new HashMap<>();
+        Counter counter = new Counter("# ");
+        for (Coord coord : nodeCoords) {
+            counter.incCounter();
+            String zoneId = findZone(coord, zonesQt, zonesIdAttributeName);
+            if (zoneId != null) {
+                allCoordsPerZone.computeIfAbsent(zoneId, k -> new ArrayList<>()).add(coord);
+            }
+        }
+        counter.printCounter();
+
+        // define points per zone
+        log.info("choose locations (sampling points) per zone...");
+        for (Map.Entry<String, List<Coord>> e : allCoordsPerZone.entrySet()) {
+            String zoneId = e.getKey();
+            List<Coord> zoneFacilities = e.getValue();
+            List<Coord> coords = new ArrayList<>(numberOfPointsPerZone);
+            for (int i = 0; i < numberOfPointsPerZone; i++) {
+                double weight = r.nextDouble() * zoneFacilities.size();
+                double sum = 0.0;
+                Coord chosenLoc = null;
+                for (Coord loc : zoneFacilities) {
+                    sum += 1.;
+                    if (weight <= sum) {
+                        chosenLoc = loc;
+                        break;
+                    }
+                }
+                coords.add(chosenLoc);
+            }
+            originCoords.put(zoneId, coords);
+        }
+    }
+
+    private static String findZone(Coord coord, SpatialIndex zonesQt, String zonesIdAttributeName) {
+        Point pt = GEOMETRY_FACTORY.createPoint(new Coordinate(coord.getX(), coord.getY()));
+        List elements = zonesQt.query(pt.getEnvelopeInternal());
+        for (Object o : elements) {
+            SimpleFeature z = (SimpleFeature) o;
+            if (((Geometry) z.getDefaultGeometry()).intersects(pt)) {
+                return z.getAttribute(zonesIdAttributeName).toString();
+            }
+        }
+        return null;
     }
 }

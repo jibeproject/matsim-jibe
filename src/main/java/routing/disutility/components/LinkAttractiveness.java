@@ -6,7 +6,7 @@ public class LinkAttractiveness {
 
 
     public static double getVgviFactor (Link link){
-        Double vgvi = (double) link.getAttributes().getAttribute("vgvi");
+        double vgvi = (double) link.getAttributes().getAttribute("vgvi");
         return 1. - vgvi;
     }
 
@@ -42,7 +42,7 @@ public class LinkAttractiveness {
         double negativePois = getNegativePoiFactor(link);
         double crime = getCrimeFactor(link);
 
-        return vgvi / 3 + (pois + shannon) / 6 + (negativePois + crime) / 6;
+        return vgvi / 3 + (pois + shannon + negativePois + crime) / 6;
     }
 
     public static double getNightAttractiveness (Link link){

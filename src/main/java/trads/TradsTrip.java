@@ -11,9 +11,7 @@ public class TradsTrip {
     private final String householdId;
     private final int personId;
     private final int tripId;
-
     private final int startTime;
-
     private final Map<Place,Coord> coords;
     private final Map<Place,Boolean> coordsInsideBoundary;
 

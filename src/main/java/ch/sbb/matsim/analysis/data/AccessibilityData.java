@@ -27,9 +27,9 @@ public class AccessibilityData<T> {
         this.costData[this.zone2index.get(zone)] = accessibility;
     }
 
-    public void setAttributes(T zone, double[] attributes) {
+    public void setAttributes(T zone, double[] attributes, int samplingPoints) {
         for(int  i = 0 ; i < attributes.length ; i++) {
-            this.attrData.get(i)[this.zone2index.get(zone)] = attributes[i];
+            this.attrData.get(i)[this.zone2index.get(zone)] = attributes[i] / samplingPoints;
         }
     }
 

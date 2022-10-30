@@ -79,15 +79,19 @@ public class TradsIo {
             String householdId = lineElements[posHouseholdId];
             int personId = Integer.parseInt(lineElements[posPersonId]);
             int tripId = Integer.parseInt(lineElements[posTripId]);
+
+            // Read start time if available, otherwise assume 8am
             int startTime;
-            try {
-                startTime = Integer.parseInt(lineElements[posStartTime]);
-            } catch (NumberFormatException e) {
-                startTime = (int) Double.parseDouble(lineElements[posStartTime]);
-                logger.warn("Unusual start time " + lineElements[posStartTime] + " for household " + householdId + ", person " + personId + ", trip " + tripId +
-                        ". Set to " + startTime);
-                badTimes++;
-            }
+            if(posStartTime != -1) {
+                try {
+                    startTime = Integer.parseInt(lineElements[posStartTime]);
+                } catch (NumberFormatException e) {
+                    startTime = (int) Double.parseDouble(lineElements[posStartTime]);
+                    logger.warn("Unusual start time " + lineElements[posStartTime] + " for household " + householdId + ", person " + personId + ", trip " + tripId +
+                            ". Set to " + startTime);
+                    badTimes++;
+                }
+            } else startTime = 28800;
 
             Map<Place,Coord> coords = new HashMap<>(3);
             Map<Place,Boolean> coordsInBoundary = new HashMap<>(3);
@@ -117,14 +121,16 @@ public class TradsIo {
             }
 
             // Read origin coord
-            try {
-                double x = Double.parseDouble(lineElements[posOrigX]);
-                double y = Double.parseDouble(lineElements[posOrigY]);
-                coords.put(ORIGIN, CoordUtils.createCoord(x,y));
-                coordsInBoundary.put(ORIGIN, geometry.contains(gf.createPoint(new Coordinate(x,y))));
-            } catch (NumberFormatException e) {
-                logger.warn("Unreadable ORIGIN coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
-                badCoords++;
+            if(posOrigX != -1 && posOrigY != -1) {
+                try {
+                    double x = Double.parseDouble(lineElements[posOrigX]);
+                    double y = Double.parseDouble(lineElements[posOrigY]);
+                    coords.put(ORIGIN, CoordUtils.createCoord(x,y));
+                    coordsInBoundary.put(ORIGIN, geometry.contains(gf.createPoint(new Coordinate(x,y))));
+                } catch (NumberFormatException e) {
+                    logger.warn("Unreadable ORIGIN coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
+                    badCoords++;
+                }
             }
 
             // Read destination coord
