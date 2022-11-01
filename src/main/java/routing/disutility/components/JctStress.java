@@ -1,37 +1,31 @@
 package routing.disutility.components;
 
 import data.Crossing;
+import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import static data.Crossing.*;
 
 
 public class JctStress {
 
-    public static double getJunctionStress(Link link, String mode) {
+    public static double getWalkJunctionStress(Link link) {
         double stress = 0;
 
         if((boolean) link.getAttributes().getAttribute("crossVehicles")) {
-            Double aadt = (Double) link.getAttributes().getAttribute("crossAadt") * 0.865;
             double lanes = (double) link.getAttributes().getAttribute("crossLanes");
             double crossingSpeed = (double) link.getAttributes().getAttribute("crossSpeedLimitMPH");
-            double crossingSpeed85perc = (double) link.getAttributes().getAttribute("cross85PercSpeed") * 0.621371;
-            if(aadt.isNaN()) aadt = 800.;
 
-            Crossing crossingType = Crossing.getType(link,mode);
-
-            if(crossingSpeed85perc >= crossingSpeed*1.1) {
-                crossingSpeed = crossingSpeed85perc;
-            }
+            Crossing crossingType = Crossing.getType(link, TransportMode.walk);
 
             if(crossingType.equals(UNCONTROLLED)) {
                 if(crossingSpeed < 60) {
-                    stress = aadt/(300*crossingSpeed + 16500) + crossingSpeed/90 + lanes/3 - 0.5;
+                    stress = 8./(3*crossingSpeed + 165) + crossingSpeed/90 + lanes/3 - 0.5;
                 } else {
                     stress = 1.;
                 }
             } else if(crossingType.equals(PARALLEL)) {
                 if(crossingSpeed <= 30) {
-                    stress = aadt/24000 + lanes/3 - 2./3;
+                    stress = 1./30 + lanes/3 - 2./3;
                 } else {
                     stress = crossingSpeed/90 + 1./3;
                 }

@@ -50,7 +50,7 @@ public final class GeometryWriter {
     }
 
     public static <T> void writeGpkg(HashMap<String, GeometryData> multiGeometryData, Map<String, Node> zoneNodeMap,
-                                     String inputEdgesGpkg, String outputGpkg) throws FactoryException, IOException {
+                                     String inputNetworkGpkg, String outputGpkg) throws FactoryException, IOException {
 
         final GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory();
 
@@ -79,7 +79,7 @@ public final class GeometryWriter {
         GeometryData leastTimeData = multiGeometryData.get(LEAST_TIME_ROUTE_NAME);
 
         // Read in edges file (put back in loop if necessary...)
-        Map<Integer, SimpleFeature> networkFeatures = GpkgReader.readEdges(new File(inputEdgesGpkg));
+        Map<Integer, SimpleFeature> networkFeatures = GpkgReader.read(new File(inputNetworkGpkg)).get("edges");
 
         // Build routes
         for (Map.Entry<String,GeometryData> entry : multiGeometryData.entrySet()) {
