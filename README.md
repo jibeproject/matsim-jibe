@@ -1,3 +1,5 @@
+# Training Branch for Valencia GLASST/JIBE Training
+
 This is a training branch of the matsim-jibe repository, containing a selection of code for creating a MATSim network from a geopackage, devloping link-based disutility indicators (e.g. attractiveness, stress) and building different types of routes between origin-destination pairs (e.g. fastest, shortest, JIBE daytime, JIBE nighttime).
 
 Further details on the full code set can be found in the README of the master branch.
