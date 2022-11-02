@@ -1,11 +1,9 @@
 package routing.disutility;
 
 
-import org.matsim.api.core.v01.TransportMode;
 import routing.Gradient;
 import routing.disutility.components.LinkAttractiveness;
 import routing.disutility.components.JctStress;
-import routing.disutility.components.LinkComfort;
 import routing.disutility.components.LinkStress;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.population.Person;
@@ -17,13 +15,12 @@ import org.matsim.vehicles.Vehicle;
  * Custom walk and bicycle disutility for JIBE
  * based on BicycleTravelDisutility by Dominik Ziemke
  */
-public class JibeDisutility implements TravelDisutility {
+public class JibeWalkDisutility implements TravelDisutility {
 
-    private final String mode;
+    private final Boolean night;
     private final double marginalCostOfTime_s;
     private final double marginalCostOfDistance_m;
     private final double marginalCostOfGradient_m_100m;
-    private final double marginalCostOfComfort_m;
     private final double marinalCostAttractiveness_m;
     private final double marginalCostStress_m;
     private final double marginalCostJunction;
@@ -31,42 +28,27 @@ public class JibeDisutility implements TravelDisutility {
     private final TravelTime timeCalculator;
 
     // Default parameters
-    public JibeDisutility(String mode, TravelTime timeCalculator) {
-
-        this.mode = mode;
+    public JibeWalkDisutility(boolean night, TravelTime timeCalculator) {
+        this.night = night;
         this.marginalCostOfTime_s = 2./300;
         this.marginalCostOfDistance_m = 0.;
         this.timeCalculator = timeCalculator;
-
-        if(mode.equals(TransportMode.bike)) {
-            this.marginalCostOfGradient_m_100m = 0.02;
-            this.marginalCostOfComfort_m = 2e-4;
-            this.marinalCostAttractiveness_m = 4e-3;
-            this.marginalCostStress_m = 8e-3;
-            this.marginalCostJunction = 8e-2;
-        } else if(mode.equals(TransportMode.walk)) {
-            this.marginalCostOfGradient_m_100m = 0.01;
-            this.marginalCostOfComfort_m = 0.;
-            this.marinalCostAttractiveness_m = 6e-3;
-            this.marginalCostStress_m = 6e-3;
-            this.marginalCostJunction = 6e-2;
-        } else {
-            throw new RuntimeException("Mode " + mode + " not recognised.");
-        }
+        this.marginalCostOfGradient_m_100m = 0.01;
+        this.marinalCostAttractiveness_m = 6e-3;
+        this.marginalCostStress_m = 6e-3;
+        this.marginalCostJunction = 6e-2;
     }
 
     // Custom parameters
-    public JibeDisutility(String mode, TravelTime timeCalculator,
-                          double marginalCostOfTime_s, double marginalCostOfDistance_m,
-                          double marginalCostOfGradient_m_100m, double marginalCostOfComfort_m,
-                          double marginalCostAttractiveness_m, double marginalCostStress_m,
-                          double marginalCostJunction) {
+    public JibeWalkDisutility(Boolean night, TravelTime timeCalculator,
+                              double marginalCostOfTime_s, double marginalCostOfDistance_m,
+                              double marginalCostOfGradient_m_100m, double marginalCostAttractiveness_m,
+                              double marginalCostStress_m, double marginalCostJunction) {
 
-        this.mode = mode;
+        this.night = night;
         this.marginalCostOfTime_s = marginalCostOfTime_s;
         this.marginalCostOfDistance_m = marginalCostOfDistance_m;
         this.marginalCostOfGradient_m_100m = marginalCostOfGradient_m_100m;
-        this.marginalCostOfComfort_m = marginalCostOfComfort_m;
         this.marinalCostAttractiveness_m = marginalCostAttractiveness_m;
         this.marginalCostStress_m = marginalCostStress_m;
         this.marginalCostJunction = marginalCostJunction;
@@ -91,20 +73,23 @@ public class JibeDisutility implements TravelDisutility {
         if(gradient < 0.) gradient = 0.;
         disutility += marginalCostOfGradient_m_100m * gradient * distance;
 
-        // Comfort of surface
-        double comfortFactor = LinkComfort.getComfortFactor(link);
-        disutility += marginalCostOfComfort_m * comfortFactor * distance;
-
         // Attractiveness factors
-        double attractiveness = LinkAttractiveness.getDayAttractiveness(link);
-        disutility += marinalCostAttractiveness_m * attractiveness * distance;
+        if(marinalCostAttractiveness_m > 0) {
+            if(night != null) {
+                double attractiveness = LinkAttractiveness.getAttractiveness(link,night);
+                disutility += marinalCostAttractiveness_m * attractiveness * distance;
+            } else {
+                throw new RuntimeException("Positive attractiveness marginal cost specified but day/night switch is null!");
+            }
+        }
+
 
         // Stress factors
-        double stress = LinkStress.getStress(link,mode);
+        double stress = LinkStress.getWalkStress(link);
         disutility += marginalCostStress_m * stress * distance;
 
         // Junction stress factor
-        double junctionStress = JctStress.getJunctionStress(link,mode);
+        double junctionStress = JctStress.getWalkJunctionStress(link);
         disutility += marginalCostJunction * junctionStress;
 
         return disutility;
@@ -131,23 +116,22 @@ public class JibeDisutility implements TravelDisutility {
         return marginalCostOfGradient_m_100m * gradient * link.getLength();
     }
 
-    public double getSurfaceComponent(Link link) {
-        double comfortFactor = LinkComfort.getComfortFactor(link);
-        return marginalCostOfComfort_m * comfortFactor * link.getLength();
-    }
-
     public double getAttractivenessComponent(Link link) {
-        double attractiveness = LinkAttractiveness.getDayAttractiveness(link);
-        return marinalCostAttractiveness_m * attractiveness * link.getLength();
+        if(night == null) {
+            return 0.;
+        } else {
+            double attractiveness = LinkAttractiveness.getAttractiveness(link, night);
+            return marinalCostAttractiveness_m * attractiveness * link.getLength();
+        }
     }
 
     public double getStressComponent(Link link) {
-        double stress = LinkStress.getStress(link, mode);
+        double stress = LinkStress.getWalkStress(link);
         return marginalCostStress_m * stress * link.getLength();
     }
 
     public double getJunctionComponent(Link link) {
-        double jctStress = JctStress.getJunctionStress(link, mode);
+        double jctStress = JctStress.getWalkJunctionStress(link);
         return marginalCostJunction * jctStress;
     }
 }
