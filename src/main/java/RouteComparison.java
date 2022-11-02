@@ -41,7 +41,7 @@ public class RouteComparison {
             throw new RuntimeException("Program requires at least 5 arguments: \n" +
                     "(0) MATSim network file path (.xml) \n" +
                     "(1) Zone coordinates file (.csv) \n" +
-                    "(2) Edges file path (.gpkg) \n" +
+                    "(2) Network geopackage file path (.gpkg) \n" +
                     "(3) Output file path (.gpkg) \n" +
                     "(4+) OPTIONAL: Names of zones to be used for routing");
         }

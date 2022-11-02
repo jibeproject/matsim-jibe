@@ -30,7 +30,7 @@ public class CreateMatsimNetworkRoad {
         if(args.length != 2) {
             throw new RuntimeException("Program requires 2 arguments: \n" +
                     "(0) Network nodes and edges file (.gpkg) \n" +
-                    "(2) Output MATSim network file (.xml) \n");
+                    "(1) Output MATSim network file (.xml) \n");
         }
 
         final File inputFile = new File(args[0]);
