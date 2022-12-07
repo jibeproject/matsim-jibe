@@ -12,17 +12,23 @@ public class TradsTrip {
     private final int personId;
     private final int tripId;
     private final int startTime;
+    private final String mainMode;
     private final Map<Place,Coord> coords;
     private final Map<Place,Boolean> coordsInsideBoundary;
 
     private final Map<String, Map<String,Object>> routeAttributes = new LinkedHashMap<>();
 
+    private final Map<String, int[]> routePaths = new LinkedHashMap<>();
+
+    private final Map<String, Coord> routeStartNodes = new LinkedHashMap<>();
+
     public TradsTrip(String householdId, int personId, int tripId, int startTime,
-                     Map<Place,Coord> coords, Map<Place,Boolean> coordsInsideBoundary) {
+                     String mainMode, Map<Place,Coord> coords, Map<Place,Boolean> coordsInsideBoundary) {
         this.householdId = householdId;
         this.personId = personId;
         this.tripId = tripId;
         this.startTime = startTime;
+        this.mainMode = mainMode;
         this.coords = coords;
         this.coordsInsideBoundary = coordsInsideBoundary;
     }
@@ -53,6 +59,11 @@ public class TradsTrip {
         routeAttributes.put(route,attributes);
     }
 
+    public void setRoutePath(String route, Coord startCoord, int[] edgeIDs) {
+        routeStartNodes.put(route,startCoord);
+        routePaths.put(route,edgeIDs);
+    }
+
     public String getHouseholdId() {
         return householdId;
     }
@@ -64,6 +75,11 @@ public class TradsTrip {
     public int getTripId() {
         return tripId;
     }
+
+    public String getMainMode() { return mainMode; }
+
+    public Coord getRouteStartNodes(String route) { return routeStartNodes.get(route); }
+    public Map<String,int[]> getRoutePaths() { return routePaths; }
 
     public Object getAttribute(String route, String attr) {
         if(routeAttributes.get(route) != null) {

@@ -27,6 +27,8 @@ import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
+import trads.io.RouteAttributeWriter;
+import trads.io.TradsReader;
 
 import java.io.*;
 import java.util.*;
@@ -92,7 +94,7 @@ public class RunTripAnalysis {
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
-        Set<TradsTrip> trips = TradsIo.readTrips(surveyFilePath, boundary);
+        Set<TradsTrip> trips = TradsReader.readTrips(surveyFilePath, boundary);
 
         // Limit to first N records (for debugging only)
 //        trips = trips.stream().limit(200).collect(Collectors.toSet());
@@ -115,27 +117,27 @@ public class RunTripAnalysis {
         calc.beeline("beeline_home_dest", HOME, DESTINATION);
 
         // car (freespeed only)
-        calc.network("car", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null);
+        calc.network("car", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,false);
 
         // bike (shortest, fastest, and jibe)
-        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, null, new DistanceDisutility(), ttBike, activeAttributes(TransportMode.bike));
-        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, null, new OnlyTimeDependentTravelDisutility(ttBike), ttBike, activeAttributes(TransportMode.bike));
-        calc.network("bike_jibe", ORIGIN, DESTINATION, bike, networkBike, null, new JibeDisutility(TransportMode.bike,ttBike), ttBike, activeAttributes(TransportMode.bike));
+        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, null, new DistanceDisutility(), ttBike, activeAttributes(TransportMode.bike),false);
+        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, null, new OnlyTimeDependentTravelDisutility(ttBike), ttBike, activeAttributes(TransportMode.bike),false);
+        calc.network("bike_jibe", ORIGIN, DESTINATION, bike, networkBike, null, new JibeDisutility(TransportMode.bike,ttBike), ttBike, activeAttributes(TransportMode.bike),false);
 
         // walk (shortest, fastest, and jibe)
-        calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, null, new DistanceDisutility(), ttWalk, activeAttributes(TransportMode.walk));
-        calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, null, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, activeAttributes(TransportMode.walk));
-        calc.network("walk_jibe", ORIGIN, DESTINATION, null, networkWalk, null, new JibeDisutility(TransportMode.walk,ttWalk), ttWalk, activeAttributes(TransportMode.walk) );
+        calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, null, new DistanceDisutility(), ttWalk, activeAttributes(TransportMode.walk),false);
+        calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, null, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, activeAttributes(TransportMode.walk),false);
+        calc.network("walk_jibe", ORIGIN, DESTINATION, null, networkWalk, null, new JibeDisutility(TransportMode.walk,ttWalk), ttWalk, activeAttributes(TransportMode.walk),false);
 
         // distance from home (use walk shortest for this)
-        calc.network("home", HOME, DESTINATION, null, networkWalk, null, new DistanceDisutility(), ttWalk, null);
+        calc.network("home", HOME, DESTINATION, null, networkWalk, null, new DistanceDisutility(), ttWalk, null,false);
 
         // public transport
         calc.pt("pt", ORIGIN, DESTINATION, config, transitScheduleFilePath, transitNetworkFilePath);
 
         // Write results
         logger.info("Writing results to csv file...");
-        TradsIo.writeIndicators(trips, outputFile, calc.getAllAttributeNames());
+        RouteAttributeWriter.write(trips, outputFile, calc.getAllAttributeNames());
     }
 
     private static LinkedHashMap<String,TravelAttribute> activeAttributes(String mode) {
