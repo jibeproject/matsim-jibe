@@ -6,6 +6,7 @@ import routing.travelTime.BicycleTravelTime;
 import ch.sbb.matsim.analysis.calc.IndicatorCalculator;
 import ch.sbb.matsim.analysis.data.IndicatorData;
 import ch.sbb.matsim.analysis.io.IndicatorWriter;
+import data.CycleProtection;
 import routing.disutility.JibeDisutility;
 import routing.disutility.components.LinkStress;
 import ch.sbb.matsim.analysis.CalculateData;
@@ -155,6 +156,10 @@ public class RouteComparison {
         attributes.put("negPOIs",(l,td) -> LinkAttractiveness.getNegativePoiFactor(l) * l.getLength());
         attributes.put("freightPOIs",(l,td) -> LinkStress.getFreightPoiFactor(l) * l.getLength());
         attributes.put("attractiveness", (l,td) -> LinkAttractiveness.getDayAttractiveness(l) * l.getLength());
+        attributes.put("share_offroad", (l,td) -> CycleProtection.getType(l).equals(CycleProtection.OFFROAD) ? l.getLength() : 0.);
+        attributes.put("share_protected", (l,td) -> CycleProtection.getType(l).equals(CycleProtection.PROTECTED) ? l.getLength() : 0.);
+        attributes.put("share_mixed", (l,td) -> CycleProtection.getType(l).equals(CycleProtection.MIXED) ? l.getLength() : 0.);
+        attributes.put("share_lane", (l,td) -> CycleProtection.getType(l).equals(CycleProtection.LANE) ? l.getLength() : 0.);
         attributes.put("stress",(l,td) -> LinkStress.getStress(l,mode) * l.getLength());
         attributes.put("jctStress",(l,td) -> JctStress.getJunctionStress(l,mode));
         attributes.put("c_tot",(l,td) -> td.getLinkTravelDisutility(l,0,null, veh));
