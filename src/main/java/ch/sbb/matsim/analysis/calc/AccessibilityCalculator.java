@@ -45,7 +45,7 @@ public final class AccessibilityCalculator {
     }
 
     public static <T> AccessibilityData<T> calculate(Network routingNetwork, Set<T> origins, Map<T, Double> destinations,
-                                                     Map<T, Node> originNodes, Map<T, List<Node>> destinationNodes,
+                                                     Map<T, List<Node>> originNodes, Map<T, List<Node>> destinationNodes,
                                                      TravelTime travelTime, TravelDisutility travelDisutility,
                                                      TravelAttribute[] travelAttributes, Vehicle vehicle,
                                                      Impedance impedance,
@@ -84,7 +84,7 @@ public final class AccessibilityCalculator {
         private final ConcurrentLinkedQueue<T> originZones;
         private final Map<T, Double> destinations;
         private final Graph graph;
-        private final Map<T, Node> originNodes;
+        private final Map<T, List<Node>> originNodes;
         private final Map<T, List<Node>> destinationNodes;
         private final AccessibilityData<T> accessibilityData;
         private final TravelTime travelTime;
@@ -98,7 +98,7 @@ public final class AccessibilityCalculator {
         private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
 
         RowWorker(ConcurrentLinkedQueue<T> originZones, Map<T, Double> destinations, Graph graph,
-                  Map<T, Node> originNodes, Map<T, List<Node>> destinationNodes, AccessibilityData<T> accessibilityData,
+                  Map<T, List<Node>> originNodes, Map<T, List<Node>> destinationNodes, AccessibilityData<T> accessibilityData,
                   TravelTime travelTime, TravelDisutility travelDisutility, TravelAttribute[] travelAttributes,
                   Vehicle vehicle, Impedance impedance, Counter counter) {
             this.originZones = originZones;
@@ -125,45 +125,48 @@ public final class AccessibilityCalculator {
                 }
 
                 this.counter.incCounter();
-                Node fromNode = this.originNodes.get(fromZoneId);
-                if (fromNode != null) {
-                    lcpTree.calculate(fromNode.getId().index(), 0, PERSON, vehicle);
+                List<Node> fromNodes = this.originNodes.get(fromZoneId);
+                int samplingPoints = fromNodes.size();
+                for(Node fromNode : fromNodes) {
+                    if (fromNode != null) {
+                        lcpTree.calculate(fromNode.getId().index(), 0, PERSON, vehicle);
 
-                    double accessibility = 0.;
-                    double[] attributes = new double[attributeCount];
+                        double accessibility = 0.;
+                        double[] attributes = new double[attributeCount];
 
-                    for (Map.Entry<T,Double> destination : this.destinations.entrySet()) {
+                        for (Map.Entry<T,Double> destination : this.destinations.entrySet()) {
 
-                        double wt = destination.getValue();
-                        double cost = Double.MAX_VALUE;
-                        int index = -1;
+                            double wt = destination.getValue();
+                            double cost = Double.MAX_VALUE;
+                            int index = -1;
 
-                        for(Node node : this.destinationNodes.get(destination.getKey())) {
-                            int nodeIndex = node.getId().index();
-                            double nodeCost = lcpTree.getCost(nodeIndex);
-                            if(nodeCost < cost) {
-                                cost = nodeCost;
-                                index = nodeIndex;
+                            for(Node toNode : this.destinationNodes.get(destination.getKey())) {
+                                int toNodeIndex = toNode.getId().index();
+                                double nodeCost = lcpTree.getCost(toNodeIndex);
+                                if(nodeCost < cost) {
+                                    cost = nodeCost;
+                                    index = toNodeIndex;
+                                }
+                            }
+
+                            double value = impedance.getImpedance(cost) * wt;
+                            accessibility += value;
+
+                            for(int i = 0 ; i < attributeCount ; i++) {
+                                double attr = lcpTree.getAttribute(index, i);
+                                attributes[i] += attr * value;
                             }
                         }
 
-                        double value = impedance.getImpedance(cost) * wt;
-                        accessibility += value;
-
-                        for(int i = 0 ; i < attributeCount ; i++) {
-                            double attr = lcpTree.getAttribute(index, i);
-                            attributes[i] += attr * value;
+                        this.accessibilityData.setAccessibility(fromZoneId, accessibility / samplingPoints);
+                        if(attributeCount > 0) {
+                            this.accessibilityData.setAttributes(fromZoneId, attributes, samplingPoints);
                         }
-                    }
 
-                    this.accessibilityData.setAccessibility(fromZoneId, accessibility);
-                    if(attributeCount > 0) {
-                        this.accessibilityData.setAttributes(fromZoneId, attributes);
+                    } else {
+                        // this might happen if a zone has no geometry, for whatever reason...
+                        throw new RuntimeException("Entry " + fromZoneId + " has no geometry.");
                     }
-
-                } else {
-                    // this might happen if a zone has no geometry, for whatever reason...
-                    throw new RuntimeException("Entry " + fromZoneId + " has no geometry.");
                 }
             }
         }

@@ -33,12 +33,13 @@ public class NetworkIndicatorCalculator implements Runnable {
     private final Network routingNetwork;
     private final Network xy2lNetwork;
     private final LinkedHashMap<String, TravelAttribute> additionalAttributes;
+    private final boolean savePath;
 
     public NetworkIndicatorCalculator(ConcurrentLinkedQueue<TradsTrip> trips, Counter counter, String route,
                                       Place origin, Place destination, Vehicle vehicle,
                                       Network routingNetwork, Network xy2lNetwork,
                                       LeastCostPathCalculator pathCalculator, TravelDisutility travelDisutility,
-                                      LinkedHashMap<String, TravelAttribute> additionalAttributes) {
+                                      LinkedHashMap<String, TravelAttribute> additionalAttributes, boolean savePath) {
         this.trips = trips;
         this.counter = counter;
         this.route = route;
@@ -50,6 +51,7 @@ public class NetworkIndicatorCalculator implements Runnable {
         this.pathCalculator = pathCalculator;
         this.travelDisutility = travelDisutility;
         this.additionalAttributes = additionalAttributes;
+        this.savePath = savePath;
     }
 
     public void run() {
@@ -83,6 +85,12 @@ public class NetworkIndicatorCalculator implements Runnable {
                 results.put("cost",path.travelCost);
                 results.put("time",path.travelTime);
                 results.put("dist",path.links.stream().mapToDouble(Link::getLength).sum());
+
+                // Set path
+                if(savePath) {
+                    int[] edgeIDs = path.links.stream().mapToInt(l -> (int) l.getAttributes().getAttribute("edgeID")).toArray();
+                    trip.setRoutePath(route,nOrig.getCoord(),edgeIDs);
+                }
 
                 // Additional attributes
                 if(additionalAttributes != null) {

@@ -96,7 +96,9 @@ public class CreateMatsimNetworkRoad {
         int origNodeId =  (int) edge.getAttribute("from");
         int destNodeId = (int) edge.getAttribute("to");
 
-        if(origNodeId != destNodeId) {
+        // Don't include edgeID 220558 because it's extremely short and causes routing errors
+        // In future network versions this edge will be eliminated
+        if(origNodeId != destNodeId && edgeID != 220558) {
             String roadType = (String) edge.getAttribute("roadtyp");
             String oneWaySummary = (String) edge.getAttribute("onwysmm");
             String modalFilter = (String) edge.getAttribute("modalfl");

@@ -44,7 +44,7 @@ public class TradsCalculator {
     void network(String route, Place origin, Place destination, Vehicle vehicle,
                  Network network, Network xy2lNetwork,
                  TravelDisutility travelDisutility, TravelTime travelTime,
-                 LinkedHashMap<String,TravelAttribute> additionalAttributes) {
+                 LinkedHashMap<String,TravelAttribute> additionalAttributes, boolean savePath) {
 
         logger.info("Calculating network indicators for route " + route);
 
@@ -64,7 +64,7 @@ public class TradsCalculator {
             LeastCostPathCalculator dijkstra = new FastDijkstraFactory(false).
                     createPathCalculator(network, travelDisutility, travelTime);
             NetworkIndicatorCalculator worker = new NetworkIndicatorCalculator(odPairsQueue, counter, route,
-                    origin, destination, vehicle, network, xy2lNetwork, dijkstra, travelDisutility, additionalAttributes);
+                    origin, destination, vehicle, network, xy2lNetwork, dijkstra, travelDisutility, additionalAttributes, savePath);
             threads[i] = new Thread(worker, "NetworkCalculator-" + route + "-" + i);
             threads[i].start();
         }

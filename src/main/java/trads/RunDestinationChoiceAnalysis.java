@@ -11,6 +11,8 @@ import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.router.util.TravelTime;
 import routing.disutility.DistanceDisutility;
 import routing.travelTime.WalkTravelTime;
+import trads.io.RouteAttributeWriter;
+import trads.io.TradsReader;
 
 import java.io.IOException;
 import java.util.Set;
@@ -55,7 +57,7 @@ public class RunDestinationChoiceAnalysis {
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
-        Set<TradsTrip> trips = TradsIo.readTrips(surveyFilePath, boundary);
+        Set<TradsTrip> trips = TradsReader.readTrips(surveyFilePath, boundary);
 
         // Travel time
         TravelTime ttWalk = new WalkTravelTime();
@@ -71,11 +73,11 @@ public class RunDestinationChoiceAnalysis {
         calc.beeline("main_beeline",MAIN, DESTINATION);
 
         // network distances (based on walk network)
-        calc.network("home", HOME, DESTINATION, null, networkWalk, null, new DistanceDisutility(), ttWalk, null);
-        calc.network("main", MAIN, DESTINATION, null, networkWalk, null, new DistanceDisutility(), ttWalk, null);
+        calc.network("home", HOME, DESTINATION, null, networkWalk, null, new DistanceDisutility(), ttWalk, null,false);
+        calc.network("main", MAIN, DESTINATION, null, networkWalk, null, new DistanceDisutility(), ttWalk, null,false);
 
         // Write results
         logger.info("Writing results to csv file...");
-        TradsIo.writeIndicators(trips, outputFile, calc.getAllAttributeNames());
+        RouteAttributeWriter.write(trips, outputFile, calc.getAllAttributeNames());
     }
 }
