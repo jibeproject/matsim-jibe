@@ -2,13 +2,13 @@
  * Copyright (C) Schweizerische Bundesbahnen SBB, 2018.
  */
 
-package ch.sbb.matsim.analysis.calc;
+package accessibility.old;
 
 import ch.sbb.matsim.analysis.Impedance;
 import ch.sbb.matsim.analysis.TravelAttribute;
 import ch.sbb.matsim.analysis.data.AccessibilityData;
-import ch.sbb.matsim.routing.graph.Graph;
-import ch.sbb.matsim.routing.graph.LeastCostPathTree;
+import routing.graph.Graph;
+import routing.graph.LeastCostPathTree2;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
@@ -39,9 +39,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *
  * @author mrieser / SBB
  */
-public final class AccessibilityCalculator {
+public final class AccessibilityCalculatorOld {
 
-    private AccessibilityCalculator() {
+    private AccessibilityCalculatorOld() {
     }
 
     public static <T> AccessibilityData<T> calculate(Network routingNetwork, Set<T> origins, Map<T, Double> destinations,
@@ -59,7 +59,7 @@ public final class AccessibilityCalculator {
         // do calculation
         ConcurrentLinkedQueue<T> originZones = new ConcurrentLinkedQueue<>(origins);
 
-        Counter counter = new Counter("NetworkRouting zone ", " / " + origins.size());
+        Counter counter = new Counter("Calculating accessibility zone ", " / " + origins.size());
         Thread[] threads = new Thread[numberOfThreads];
         for (int i = 0; i < numberOfThreads; i++) {
             RowWorker<T> worker = new RowWorker<>(originZones, destinations, routingGraph, originNodes, destinationNodes, accessibilityData,
@@ -117,7 +117,7 @@ public final class AccessibilityCalculator {
         }
 
         public void run() {
-            LeastCostPathTree lcpTree = new LeastCostPathTree(this.graph, this.travelTime, this.travelDisutility, this.travelAttributes);
+            LeastCostPathTree2 lcpTree = new LeastCostPathTree2(this.graph, this.travelTime, this.travelDisutility, this.travelAttributes);
             while (true) {
                 T fromZoneId = this.originZones.poll();
                 if (fromZoneId == null) {

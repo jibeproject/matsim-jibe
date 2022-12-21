@@ -132,9 +132,7 @@ public class RoutePathWriter {
         }
 
         // build the type
-        final SimpleFeatureType TYPE = builder.buildFeatureType();
-
-        return TYPE;
+        return builder.buildFeatureType();
     }
 
     private static SimpleFeatureType createNodeFeatureType() throws FactoryException {
@@ -149,9 +147,7 @@ public class RoutePathWriter {
         builder.add("TripID", Integer.class);
 
         // build the type
-        final SimpleFeatureType TYPE = builder.buildFeatureType();
-
-        return TYPE;
+        return builder.buildFeatureType();
     }
 
     public static LineString buildPath(Coord startNode, int[] edgeIDs, GeometryFactory geometryFactory, Map<Integer, SimpleFeature> networkFeatures) {

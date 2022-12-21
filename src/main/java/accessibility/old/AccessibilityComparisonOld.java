@@ -1,7 +1,6 @@
+package accessibility.old;
+
 import ch.sbb.matsim.analysis.Impedance;
-import ch.sbb.matsim.analysis.calc.AccessibilityCalculator;
-import ch.sbb.matsim.analysis.data.AccessibilityData;
-import ch.sbb.matsim.analysis.io.AccessibilityWriter;
 import network.NetworkUtils2;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.*;
@@ -40,9 +39,9 @@ import java.text.ParseException;
 import java.util.*;
 
 // Currently considers cycling accessibility only
-public class AccessibilityComparison {
+public class AccessibilityComparisonOld {
 
-    private final static Logger log = Logger.getLogger(RouteComparison.class);
+    private final static Logger log = Logger.getLogger(AccessibilityComparisonOld.class);
     private final static double MAX_BIKE_SPEED = 16 / 3.6;
     private final static GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
     private static final Map<String, List<Coord>> originCoords = new LinkedHashMap<>();
@@ -57,7 +56,7 @@ public class AccessibilityComparison {
         if(args.length != 5) {
             throw new RuntimeException("Program requires 5 arguments: \n" +
                     "(0) Network File Path \n" +
-                    "(1) Origin coordinates File OR Origin Shapefile \n" +
+                    "(1) Origin coordinates csv file OR Origin zones shapefile OR Origin boundary shapefile \n" +
                     "(2) Destination coordinates File \n" +
                     "(3) Output Path \n" +
                     "(4) Number of Threads \n");
@@ -78,7 +77,7 @@ public class AccessibilityComparison {
         if (originCoordsFile.endsWith(".csv")) {
             loadSamplingPointsFromCsv(originCoordsFile);
         } else if (originCoordsFile.endsWith(".shp")) {
-            loadSamplingPointsFromShp(10, originCoordsFile, "geo_code",new Random());
+            loadSamplingPointsFromShp(6, originCoordsFile, "geo_code",new Random());
         }
 
         loadDestinationData(destinationCoordsFile);
@@ -105,11 +104,13 @@ public class AccessibilityComparison {
         TravelDisutility tdWalkJibe = new JibeDisutility(TransportMode.walk,ttWalk);
 
         // Analyses
-        runAnalysis(TransportMode.bike, bike, c -> Math.exp(-0.04950999*c), ttBike, tdBikeJibe, "greenBikeJibe.csv");
-        runAnalysis(TransportMode.bike, bike, c -> Math.exp(-0.0003104329*c), ttBike, new DistanceDisutility(), "greenBikeDist.csv");
+        runAnalysis(TransportMode.bike, bike, c -> Math.exp(-0.04950999*c), ttBike, tdBikeJibe, "bikeJibe.csv");
+        runAnalysis(TransportMode.bike, bike, c -> Math.exp(-0.0003104329*c), ttBike, new DistanceDisutility(), "bikeDist.csv");
 
-        runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.0974147*c), ttWalk, tdWalkJibe, "greenWalkJibe.csv");
-        runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.001057006*c), ttWalk, new DistanceDisutility(), "greenWalkDist.csv");
+        runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.0974147*c), ttWalk, tdWalkJibe, "walkJibe.csv");
+        runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.001057006*c), ttWalk, new DistanceDisutility(), "walkDist.csv");
+
+        // Analysis 800m
 
     }
 
@@ -143,6 +144,7 @@ public class AccessibilityComparison {
 
         // Mode specific network
         Network network = NetworkUtils2.extractModeSpecificNetwork(fullNetwork, mode);
+/*
 
         // Map coords to nodes
         Map<String, List<Node>> originNodes = buildIdNodeMap(originCoords, network, network);
@@ -161,6 +163,7 @@ public class AccessibilityComparison {
         endTime = System.currentTimeMillis();
         log.info("Writing time: " + (endTime - startTime));
         log.info("Finished processing " + outputFileName);
+*/
 
     }
 

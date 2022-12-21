@@ -109,10 +109,9 @@ public class RunTradsRouter {
         TradsCalculator calc = new TradsCalculator(numberOfThreads, bikeTrips);
 
         // bike (shortest, fastest, and jibe)
-        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, null, new DistanceDisutility(), ttBike, activeAttributes(TransportMode.bike),true);
-        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, null, new OnlyTimeDependentTravelDisutility(ttBike), ttBike, activeAttributes(TransportMode.bike),true);
-        calc.network("bike_jibe", ORIGIN, DESTINATION, bike, networkBike, null, new JibeDisutility(TransportMode.bike,ttBike), ttBike, activeAttributes(TransportMode.bike),true);
-
+        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new DistanceDisutility(), ttBike, activeAttributes(TransportMode.bike),true);
+        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new OnlyTimeDependentTravelDisutility(ttBike), ttBike, activeAttributes(TransportMode.bike),true);
+        calc.network("bike_jibe", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility(TransportMode.bike,ttBike), ttBike, activeAttributes(TransportMode.bike),true);
 
         // Write results
         logger.info("Writing results to gpkg file...");
