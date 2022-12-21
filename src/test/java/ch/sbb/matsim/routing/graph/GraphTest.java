@@ -1,6 +1,7 @@
 package ch.sbb.matsim.routing.graph;
 
-import ch.sbb.matsim.routing.graph.Graph.LinkIterator;
+import routing.graph.Graph;
+import routing.graph.Graph.LinkIterator;
 import org.junit.Assert;
 import org.junit.Test;
 import org.matsim.api.core.v01.Coord;

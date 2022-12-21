@@ -68,15 +68,8 @@ public class NetworkIndicatorCalculator implements Runnable {
             if(trip.routable(origin, destination)) {
                 Coord cOrig = trip.getCoord(origin);
                 Coord cDest = trip.getCoord(destination);
-                Node nOrig;
-                Node nDest;
-                if(xy2lNetwork == null) {
-                    nOrig = NetworkUtils.getNearestNode(routingNetwork,cOrig);
-                    nDest = NetworkUtils.getNearestNode(routingNetwork,cDest);
-                } else {
-                    nOrig = routingNetwork.getNodes().get(NetworkUtils.getNearestLink(xy2lNetwork, cOrig).getToNode().getId());
-                    nDest = routingNetwork.getNodes().get(NetworkUtils.getNearestLink(xy2lNetwork, cDest).getToNode().getId());
-                }
+                Node nOrig = routingNetwork.getNodes().get(NetworkUtils.getNearestLinkExactly(xy2lNetwork, cOrig).getToNode().getId());
+                Node nDest = routingNetwork.getNodes().get(NetworkUtils.getNearestLinkExactly(xy2lNetwork, cDest).getToNode().getId());
 
                 // Calculate least cost path
                 LeastCostPathCalculator.Path path = pathCalculator.calcLeastCostPath(nOrig, nDest, 28800, null, vehicle);

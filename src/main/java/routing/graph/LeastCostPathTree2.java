@@ -1,4 +1,4 @@
-package ch.sbb.matsim.routing.graph;
+package routing.graph;
 
 import ch.sbb.matsim.analysis.TravelAttribute;
 import org.matsim.api.core.v01.network.Link;
@@ -25,7 +25,7 @@ import java.util.NoSuchElementException;
  * memory is pre-allocated in the constructor. This makes the implementation
  * NOT thread-safe.
  */
-public class LeastCostPathTree {
+public class LeastCostPathTree2 {
 
     private final Graph graph;
     private final TravelTime tt;
@@ -41,7 +41,7 @@ public class LeastCostPathTree {
     private final Graph.LinkIterator inLI;
     private final NodeMinHeap pq;
 
-    public LeastCostPathTree(Graph graph, TravelTime tt, TravelDisutility td, TravelAttribute[] ta) {
+    public LeastCostPathTree2(Graph graph, TravelTime tt, TravelDisutility td, TravelAttribute[] ta) {
         this.graph = graph;
         this.tt = tt;
         this.td = td;

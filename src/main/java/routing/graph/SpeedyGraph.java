@@ -1,35 +1,31 @@
-package ch.sbb.matsim.routing.graph;
+package routing.graph;
 
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
+import org.matsim.api.core.v01.population.Person;
+import org.matsim.core.router.util.TravelDisutility;
+import org.matsim.vehicles.Vehicle;
 
 import java.util.Arrays;
 
 /**
- * Implements a highly optimized data structure for representing a MATSim network.
- * Optimized to use as little memory as possible, and thus to fit as much memory as
- * possible into CPU caches for high performance.
- *
- * Inspired by GraphHopper's Graph data structure as described in
- * https://github.com/graphhopper/graphhopper/blob/master/docs/core/technical.md.
- * GraphHopper uses bi-directional links, while MATSim uses uni-directional links.
- * Thus, instead of having nodeA and nodeB, we always have from- and to-node. This
- * implies that one `node-row` requires two link-ids: one for the first in-link,
- * and one for the first out-link.
- *
- * We use simple int-arrays (int[]) to store the data. This should provide fast
- * and thread-safe read-only access, but limits the number of nodes and links in
- * the network to (Integer.MAX_VALUE/2 = 1.073.741.823) nodes and
- * (Integer.MAX_VALUE/6 = 357.913.941) links. I hope that for the foreseeable future,
- * these limits are high enough.
- *
+ * Implements a highly optimized data structure for representing a MATSim network. Optimized to use as little memory as possible, and thus to fit as much memory as possible into CPU caches for high
+ * performance.
+ * <p>
+ * Inspired by GraphHopper's Graph data structure as described in https://github.com/graphhopper/graphhopper/blob/master/docs/core/technical.md. GraphHopper uses bi-directional links, while MATSim
+ * uses uni-directional links. Thus, instead of having nodeA and nodeB, we always have from- and to-node. This implies that one `node-row` requires two link-ids: one for the first in-link, and one for
+ * the first out-link.
+ * <p>
+ * We use simple int-arrays (int[]) to store the data. This should provide fast and thread-safe read-only access, but limits the number of nodes and links in the network to (Integer.MAX_VALUE/2 =
+ * 1.073.741.823) nodes and (Integer.MAX_VALUE/6 = 357.913.941) links. I hope that for the foreseeable future, these limits are high enough.
+ * <p>
  * This class is thread-safe, allowing a single graph to be used by multiple threads.
  *
  * @author mrieser
  */
-public class Graph {
+public class SpeedyGraph {
 
     /*
      * memory consumption:
@@ -55,23 +51,40 @@ public class Graph {
     private final static int NODE_SIZE = 2;
     private final static int LINK_SIZE = 6;
 
+    private final static double TIME_VALUE = 0.;
+
+    private final TravelDisutility td;
+    private final Person person;
+    private final Vehicle vehicle;
+
     final int nodeCount;
     final int linkCount;
     private final int[] nodeData;
     private final int[] linkData;
+    private final double[] linkDisutility;
     private final Link[] links;
+    private final Node[] nodes;
 
-    public Graph(Network network) {
+    public SpeedyGraph(Network network, TravelDisutility td, Person person, Vehicle veh) {
         this.nodeCount = Id.getNumberOfIds(Node.class);
         this.linkCount = Id.getNumberOfIds(Link.class);
 
         this.nodeData = new int[nodeCount * NODE_SIZE];
         this.linkData = new int[linkCount * LINK_SIZE];
         this.links = new Link[linkCount];
+        this.nodes = new Node[nodeCount];
+
+        this.linkDisutility = new double[linkCount];
+        this.td = td;
+        this.person = person;
+        this.vehicle = veh;
 
         Arrays.fill(this.nodeData, -1);
         Arrays.fill(this.linkData, -1);
 
+        for (Node node : network.getNodes().values()) {
+            this.nodes[node.getId().index()] = node;
+        }
         for (Link link : network.getLinks().values()) {
             addLink(link);
         }
@@ -87,6 +100,8 @@ public class Graph {
         this.linkData[base + 3] = toNodeIdx;
         this.linkData[base + 4] = (int) Math.round(link.getLength() * 100.0);
         this.linkData[base + 5] = (int) Math.round(link.getLength() / link.getFreespeed() * 100.0);
+
+        this.linkDisutility[linkIdx] = td.getLinkTravelDisutility(link,TIME_VALUE,person,vehicle);
 
         setOutLink(fromNodeIdx, linkIdx);
         setInLink(toNodeIdx, linkIdx);
@@ -136,23 +151,36 @@ public class Graph {
         return this.links[index];
     }
 
+    double getLinkDisutility(int index) {return this.linkDisutility[index];}
+
+    Node getNode(int index) {
+        return this.nodes[index];
+    }
+
     public interface LinkIterator {
+
         void reset(int nodeIdx);
+
         boolean next();
+
         int getLinkIndex();
+
         int getToNodeIndex();
+
         int getFromNodeIndex();
+
         double getLength();
+
         double getFreespeedTravelTime();
     }
 
     private static abstract class AbstractLinkIterator implements LinkIterator {
 
-        final Graph graph;
+        final SpeedyGraph graph;
         int nodeIdx = -1;
         int linkIdx = -1;
 
-        AbstractLinkIterator(Graph graph) {
+        AbstractLinkIterator(SpeedyGraph graph) {
             this.graph = graph;
         }
 
@@ -193,7 +221,7 @@ public class Graph {
 
     private static class OutLinkIterator extends AbstractLinkIterator {
 
-        OutLinkIterator(Graph graph) {
+        OutLinkIterator(SpeedyGraph graph) {
             super(graph);
         }
 
@@ -217,7 +245,7 @@ public class Graph {
 
     private static class InLinkIterator extends AbstractLinkIterator {
 
-        InLinkIterator(Graph graph) {
+        InLinkIterator(SpeedyGraph graph) {
             super(graph);
         }
 

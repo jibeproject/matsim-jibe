@@ -6,8 +6,8 @@ package ch.sbb.matsim.analysis.calc;
 
 import ch.sbb.matsim.analysis.TravelAttribute;
 import ch.sbb.matsim.analysis.data.GeometryData;
-import ch.sbb.matsim.routing.graph.Graph;
-import ch.sbb.matsim.routing.graph.LeastCostPathTree;
+import routing.graph.Graph;
+import routing.graph.LeastCostPathTree2;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
@@ -118,7 +118,7 @@ public final class GeometryCalculator {
 
         public void run() {
 
-            LeastCostPathTree lcpTree = new LeastCostPathTree(this.graph, this.travelTime, this.travelDisutility, this.travelAttributes);
+            LeastCostPathTree2 lcpTree = new LeastCostPathTree2(this.graph, this.travelTime, this.travelDisutility, this.travelAttributes);
 
             while (true) {
                 T fromZoneId = this.originZones.poll();
