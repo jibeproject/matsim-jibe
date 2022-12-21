@@ -23,6 +23,7 @@ import org.matsim.core.utils.misc.StringUtils;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
+import routing.disutility.DistanceDisutility;
 import routing.disutility.JibeDisutility;
 import routing.travelTime.BicycleTravelTime;
 import routing.travelTime.WalkTravelTime;
@@ -108,28 +109,26 @@ public class RunAccessibilityAnalysis {
         TravelDisutility tdWalkJibe = new JibeDisutility(TransportMode.walk,ttWalk);
 
         // Analysis Food COST
-//        runAnalysis(TransportMode.bike, bike, c -> Math.exp(-0.04950999*c), ttBike, tdBikeJibe, "bikeJibe.csv");
-//        runAnalysis(TransportMode.bike, bike, c -> Math.exp(-0.0003104329*c), ttBike, new DistanceDisutility(), "bikeDist.csv");
+//        runAnalysis(TransportMode.bike, bike, c -> Math.exp(-0.04950999*c), tdBikeJibe);
+//        runAnalysis(TransportMode.bike, bike, c -> Math.exp(-0.0003104329*c), new DistanceDisutility());
 //
-//        runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.0974147*c), ttWalk, tdWalkJibe, "walkJibe.csv");
-//        runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.001086178*c), ttWalk, new DistanceDisutility(), "walkDist.csv");
+//        runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.0974147*c), tdWalkJibe);
+//        runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.001086178*c), new DistanceDisutility());
 
         // Bike
         Map<Node,Double> accessibilities = runAnalysis(TransportMode.bike, bike, c -> Math.exp(-0.0800476*c), tdBikeJibe);
         AccessibilityWriter.writeNodesAsCsv(accessibilities,outputFolder + "/bikeFoodJibe0800476.csv");
         AccessibilityWriter.writeNodesAsGpkg(accessibilities, outputFolder + "/bikeFoodJibe0800476.gpkg");
 
-//        runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.1147573*c), tdWalkJibe, "walkFoodJibe1147573.csv");
+//        runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.1147573*c), tdWalkJibe);
 //
 //        // Analysis Food DIST
-//        runAnalysis(TransportMode.bike,bike,c -> Math.exp(-0.0005630586*c), new DistanceDisutility(),"bikeFoodDist0005630586.csv");
-//        runAnalysis(TransportMode.walk,null,c -> Math.exp(-0.001203989*c), new DistanceDisutility(),"walkFoodDist001203989.csv");
-
+//        runAnalysis(TransportMode.bike,bike,c -> Math.exp(-0.0005630586*c), new DistanceDisutility());
+//        runAnalysis(TransportMode.walk,null,c -> Math.exp(-0.001203989*c), new DistanceDisutility());
+//
 //        // Analysis walk Greenspace
-//        runAnalysis(TransportMode.walk,null,c -> c < 800. ? 1 : 0,ttWalk, new DistanceDisutility(),"walkDistTest.csv");
-//        runAnalysis(TransportMode.walk,null,c -> Math.exp(-0.001086178*c),ttWalk, new DistanceDisutility(),"walkDistExp.csv");
-
-        // Write to .csv
+//        runAnalysis(TransportMode.walk,null,c -> c < 800. ? 1 : 0, new DistanceDisutility());
+//        runAnalysis(TransportMode.walk,null,c -> Math.exp(-0.001086178*c), new DistanceDisutility());
     }
 
 
