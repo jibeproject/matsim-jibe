@@ -4,7 +4,7 @@
 
 package accessibility.old;
 
-import ch.sbb.matsim.analysis.Impedance;
+import accessibility.impedance.DecayFunction;
 import ch.sbb.matsim.analysis.TravelAttribute;
 import ch.sbb.matsim.analysis.data.AccessibilityData;
 import routing.graph.Graph;
@@ -48,7 +48,7 @@ public final class AccessibilityCalculatorOld {
                                                      Map<T, List<Node>> originNodes, Map<T, List<Node>> destinationNodes,
                                                      TravelTime travelTime, TravelDisutility travelDisutility,
                                                      TravelAttribute[] travelAttributes, Vehicle vehicle,
-                                                     Impedance impedance,
+                                                     DecayFunction decayFunction,
                                                      int numberOfThreads) {
         Graph routingGraph = new Graph(routingNetwork);
 
@@ -63,7 +63,7 @@ public final class AccessibilityCalculatorOld {
         Thread[] threads = new Thread[numberOfThreads];
         for (int i = 0; i < numberOfThreads; i++) {
             RowWorker<T> worker = new RowWorker<>(originZones, destinations, routingGraph, originNodes, destinationNodes, accessibilityData,
-                    travelTime, travelDisutility, travelAttributes, vehicle, impedance, counter);
+                    travelTime, travelDisutility, travelAttributes, vehicle, decayFunction, counter);
             threads[i] = new Thread(worker, "NetworkRouting-" + i);
             threads[i].start();
         }
@@ -91,7 +91,7 @@ public final class AccessibilityCalculatorOld {
         private final TravelDisutility travelDisutility;
         private final TravelAttribute[] travelAttributes;
         private final Vehicle vehicle;
-        private final Impedance impedance;
+        private final DecayFunction decayFunction;
         private final int attributeCount;
         private final Counter counter;
 
@@ -100,7 +100,7 @@ public final class AccessibilityCalculatorOld {
         RowWorker(ConcurrentLinkedQueue<T> originZones, Map<T, Double> destinations, Graph graph,
                   Map<T, List<Node>> originNodes, Map<T, List<Node>> destinationNodes, AccessibilityData<T> accessibilityData,
                   TravelTime travelTime, TravelDisutility travelDisutility, TravelAttribute[] travelAttributes,
-                  Vehicle vehicle, Impedance impedance, Counter counter) {
+                  Vehicle vehicle, DecayFunction decayFunction, Counter counter) {
             this.originZones = originZones;
             this.destinations = destinations;
             this.graph = graph;
@@ -111,7 +111,7 @@ public final class AccessibilityCalculatorOld {
             this.travelDisutility = travelDisutility;
             this.travelAttributes = travelAttributes;
             this.vehicle = vehicle;
-            this.impedance = impedance;
+            this.decayFunction = decayFunction;
             this.attributeCount = travelAttributes != null ? travelAttributes.length : 0;
             this.counter = counter;
         }
@@ -149,7 +149,7 @@ public final class AccessibilityCalculatorOld {
                                 }
                             }
 
-                            double value = impedance.getImpedance(cost) * wt;
+                            double value = decayFunction.getDecay(cost) * wt;
                             accessibility += value;
 
                             for(int i = 0 ; i < attributeCount ; i++) {

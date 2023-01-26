@@ -1,6 +1,6 @@
 package accessibility.old;
 
-import ch.sbb.matsim.analysis.Impedance;
+import accessibility.impedance.DecayFunction;
 import network.NetworkUtils2;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.*;
@@ -140,7 +140,7 @@ public class AccessibilityComparisonOld {
         }
     }
 
-    private static void runAnalysis(String mode, Vehicle veh, Impedance impedance, TravelTime tt, TravelDisutility td, String outputFileName) throws IOException {
+    private static void runAnalysis(String mode, Vehicle veh, DecayFunction decayFunction, TravelTime tt, TravelDisutility td, String outputFileName) throws IOException {
 
         // Mode specific network
         Network network = NetworkUtils2.extractModeSpecificNetwork(fullNetwork, mode);
