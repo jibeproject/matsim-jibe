@@ -1,3 +1,5 @@
+package routing;
+
 import routing.travelTime.WalkTravelTime;
 import routing.disutility.components.LinkAttractiveness;
 import routing.disutility.components.JctStress;

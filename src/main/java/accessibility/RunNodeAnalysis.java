@@ -1,33 +1,20 @@
 package accessibility;
 
-import ch.sbb.matsim.analysis.Impedance;
-import network.GpkgReader;
+import accessibility.impedance.DecayFunction;
+import accessibility.impedance.DecayFunctions;
+import gis.GpkgReader;
 import network.NetworkUtils2;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.*;
 import org.matsim.api.core.v01.Coord;
-import org.matsim.api.core.v01.Id;
-import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.IdMap;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
-import org.matsim.contrib.bicycle.BicycleConfigGroup;
-import org.matsim.core.config.Config;
-import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.io.MatsimNetworkReader;
-import org.matsim.core.router.util.TravelDisutility;
-import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.utils.io.IOUtils;
 import org.matsim.core.utils.misc.Counter;
 import org.matsim.core.utils.misc.StringUtils;
-import org.matsim.vehicles.Vehicle;
-import org.matsim.vehicles.VehicleType;
-import org.matsim.vehicles.VehicleUtils;
-import routing.disutility.DistanceDisutility;
-import routing.disutility.JibeDisutility;
-import routing.travelTime.BicycleTravelTime;
-import routing.travelTime.WalkTravelTime;
-import routing.travelTime.speed.BicycleLinkSpeedCalculatorDefaultImpl;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -35,16 +22,14 @@ import java.text.ParseException;
 import java.util.*;
 
 // Currently considers walking and cycling accessibility only
-public class RunAccessibilityAnalysis {
+public class RunNodeAnalysis {
 
-    private final static Logger log = Logger.getLogger(RunAccessibilityAnalysis.class);
-    private final static double MAX_BIKE_SPEED = 16 / 3.6;
+    private final static Logger log = Logger.getLogger(RunNodeAnalysis.class);
 
     private final static GeometryFactory gf = new GeometryFactory();
     private static final Map<String, List<Coord>> destinationCoords = new LinkedHashMap<>();
     private static final Map<String, Double> destinationWeights = new LinkedHashMap<>();
 
-    private static String outputFolder;
     private static Integer numberOfThreads;
     private static Network fullNetwork;
 
@@ -66,7 +51,7 @@ public class RunAccessibilityAnalysis {
         String originBoundaryFile = args[1];
         String destinationBoundaryFile = args[2];
         String destinationCoordsFile = args[3];
-        outputFolder = args[4];
+        String outputFolder = args[4];
         numberOfThreads = Integer.parseInt(args[5]);
 
         // Read network
@@ -87,55 +72,17 @@ public class RunAccessibilityAnalysis {
         // Load destination data
         loadDestinationData(destinationCoordsFile);
 
-        // Set up scenario and config
-        log.info("Preparing Matsim config and scenario...");
-        Config config = ConfigUtils.createConfig();
-        BicycleConfigGroup bicycleConfigGroup = new BicycleConfigGroup();
-        bicycleConfigGroup.setBicycleMode(TransportMode.bike);
-        config.addModule(bicycleConfigGroup);
-
-        // Walk travel time
-        TravelTime ttWalk = new WalkTravelTime();
-
-        // Bike vehicle and travel time
-        VehicleType type = VehicleUtils.createVehicleType(Id.create("routing", VehicleType.class));
-        type.setMaximumVelocity(MAX_BIKE_SPEED);
-        BicycleLinkSpeedCalculatorDefaultImpl linkSpeedCalculator = new BicycleLinkSpeedCalculatorDefaultImpl((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME));
-        Vehicle bike = VehicleUtils.createVehicle(Id.createVehicleId(1), type);
-        TravelTime ttBike = new BicycleTravelTime(linkSpeedCalculator);
-
-        // Set up disutility and impedance
-        TravelDisutility tdBikeJibe = new JibeDisutility(TransportMode.bike,ttBike);
-        TravelDisutility tdWalkJibe = new JibeDisutility(TransportMode.walk,ttWalk);
-
-        // Analysis Food COST
-//        runAnalysis(TransportMode.bike, bike, c -> Math.exp(-0.04950999*c), tdBikeJibe);
-//        runAnalysis(TransportMode.bike, bike, c -> Math.exp(-0.0003104329*c), new DistanceDisutility());
-//
-//        runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.0974147*c), tdWalkJibe);
-//        runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.001086178*c), new DistanceDisutility());
-
-        // Bike
-        Map<Node,Double> accessibilities = runAnalysis(TransportMode.bike, bike, c -> Math.exp(-0.0800476*c), tdBikeJibe);
-        AccessibilityWriter.writeNodesAsCsv(accessibilities,outputFolder + "/bikeFoodJibe0800476.csv");
-        AccessibilityWriter.writeNodesAsGpkg(accessibilities, outputFolder + "/bikeFoodJibe0800476.gpkg");
-
-//        runAnalysis(TransportMode.walk, null, c -> Math.exp(-0.1147573*c), tdWalkJibe);
-//
-//        // Analysis Food DIST
-//        runAnalysis(TransportMode.bike,bike,c -> Math.exp(-0.0005630586*c), new DistanceDisutility());
-//        runAnalysis(TransportMode.walk,null,c -> Math.exp(-0.001203989*c), new DistanceDisutility());
-//
-//        // Analysis walk Greenspace
-//        runAnalysis(TransportMode.walk,null,c -> c < 800. ? 1 : 0, new DistanceDisutility());
-//        runAnalysis(TransportMode.walk,null,c -> Math.exp(-0.001086178*c), new DistanceDisutility());
+        // MODIFY THE FOLLOWING TO WORK WITH DIFFERENT ACCESSIBILITY TYPES
+        IdMap<Node,Double> accessibilities = runAnalysis(AccessibilityData.WalkDistAccessibility(), DecayFunctions.WALK_DIST);
+        AccessibilityWriter.writeNodesAsCsv(accessibilities, outputFolder + "/walkFoodDist001203989.csv");
+        AccessibilityWriter.writeNodesAsGpkg(accessibilities,fullNetwork, outputFolder + "/walkFoodDist001203989.gpkg");
     }
 
 
-    private static Map<Node,Double> runAnalysis(String mode, Vehicle veh, Impedance impedance, TravelDisutility td) {
+    private static IdMap<Node,Double> runAnalysis(AccessibilityData data, DecayFunction decayFunction) {
 
         // Mode specific network
-        Network network = NetworkUtils2.extractModeSpecificNetwork(fullNetwork, mode);
+        Network network = NetworkUtils2.extractModeSpecificNetwork(fullNetwork, data.mode);
 
         // Origin nodes
         log.info("Processing origin nodes...");
@@ -158,9 +105,9 @@ public class RunAccessibilityAnalysis {
         // Accessibility calculation
         log.info("Running accessibility calculation...");
         long startTime = System.currentTimeMillis();
-        Map<Node,Double> accessibilities = AccessibilityCalculator.calculate(
+        IdMap<Node,Double> accessibilities = NodeCalculator.calculate(
                 network, originNodes, destinationWeights, destinationNodes,
-                td, veh, impedance, numberOfThreads);
+                data.disutility, data.vehicle, decayFunction, numberOfThreads);
         long endTime = System.currentTimeMillis();
         log.info("Calculation time: " + (endTime - startTime));
 

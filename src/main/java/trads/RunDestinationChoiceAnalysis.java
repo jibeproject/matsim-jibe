@@ -1,6 +1,6 @@
 package trads;
 
-import network.GpkgReader;
+import gis.GpkgReader;
 import network.NetworkUtils2;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
