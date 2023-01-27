@@ -1,8 +1,11 @@
 package routing.graph;
 
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.network.Node;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 // FASTER VERSION USING PRECALCULATED DISUTILITIES
 
@@ -82,52 +85,6 @@ public class LeastCostPathTreeLite {
         }
     }
 
-    public void calculateBackwards(int arrivalNode) {
-        this.calculate(arrivalNode, (node, cost, distance) -> false);
-    }
-
-    public void calculateBackwards(int arrivalNode, StopCriterion stopCriterion) {
-        Arrays.fill(this.data, Double.POSITIVE_INFINITY);
-        Arrays.fill(this.comingFrom, -1);
-
-        setData(arrivalNode, 0, 0);
-
-        this.pq.clear();
-        this.pq.insert(arrivalNode);
-
-        while (!this.pq.isEmpty()) {
-            final int nodeIdx = this.pq.poll();
-            double currCost = getCost(nodeIdx);
-            double currDistance = getDistance(nodeIdx);
-
-            if (stopCriterion.stop(nodeIdx, currCost, currDistance)) {
-                break;
-            }
-
-            this.inLI.reset(nodeIdx);
-            while (this.inLI.next()) {
-                int linkIdx = this.inLI.getLinkIndex();
-                Link link = this.graph.getLink(linkIdx);
-                int fromNode = this.inLI.getFromNodeIndex();
-
-                double newCost = currCost + this.graph.getLinkDisutility(linkIdx);
-
-                double oldCost = getCost(fromNode);
-                if (Double.isFinite(oldCost)) {
-                    if (newCost < oldCost) {
-                        this.pq.decreaseKey(fromNode, newCost);
-                        setData(fromNode, newCost, currDistance + link.getLength());
-                        this.comingFrom[fromNode] = nodeIdx;
-                    }
-                } else {
-                    setData(fromNode, newCost, currDistance + link.getLength());
-                    this.pq.insert(fromNode);
-                    this.comingFrom[fromNode] = nodeIdx;
-                }
-            }
-        }
-    }
-
     public double getCost(int nodeIndex) {
         return this.data[nodeIndex * 2];
     }
@@ -144,10 +101,6 @@ public class LeastCostPathTreeLite {
         int index = nodeIndex * 2;
         this.data[index] = cost;
         this.data[index + 1] = distance;
-    }
-
-    public int getComingFrom(int nodeIndex) {
-        return this.comingFrom[nodeIndex];
     }
 
     public interface StopCriterion {

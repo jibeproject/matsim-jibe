@@ -1,5 +1,6 @@
 package network;
 
+import gis.GpkgReader;
 import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
 import routing.travelTime.BicycleTravelTime;
 import routing.Gradient;

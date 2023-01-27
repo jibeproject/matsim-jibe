@@ -1,7 +1,7 @@
 package trads;
 
 import ch.sbb.matsim.analysis.TravelAttribute;
-import network.GpkgReader;
+import gis.GpkgReader;
 import network.NetworkUtils2;
 import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
 import routing.disutility.DistanceDisutility;

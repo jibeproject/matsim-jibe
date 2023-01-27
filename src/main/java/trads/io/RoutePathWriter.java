@@ -1,6 +1,6 @@
 package trads.io;
 
-import network.GpkgReader;
+import gis.GpkgReader;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.log4j.Logger;
 import org.geotools.feature.DefaultFeatureCollection;

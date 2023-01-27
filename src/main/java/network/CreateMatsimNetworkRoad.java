@@ -1,5 +1,6 @@
 package network;
 
+import gis.GpkgReader;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Point;
 import org.matsim.api.core.v01.Coord;

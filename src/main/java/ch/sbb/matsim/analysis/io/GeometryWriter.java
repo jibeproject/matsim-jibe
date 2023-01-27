@@ -6,7 +6,7 @@ package ch.sbb.matsim.analysis.io;
 
 import ch.sbb.matsim.analysis.data.GeometryData;
 import com.google.common.math.LongMath;
-import network.GpkgReader;
+import gis.GpkgReader;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.log4j.Logger;
 import org.geotools.feature.DefaultFeatureCollection;

@@ -4,8 +4,10 @@
 
 package accessibility;
 
-import ch.sbb.matsim.analysis.Impedance;
+import accessibility.impedance.DecayFunction;
+import accessibility.impedance.HansenWithDistanceCutoff;
 import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.IdMap;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Person;
@@ -37,32 +39,32 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *
  * @author mrieser / SBB
  */
-public final class AccessibilityCalculator {
+public final class NodeCalculator {
 
-    private AccessibilityCalculator() {
+    private NodeCalculator() {
     }
 
     private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
 
-    public static <T> Map<Node,Double> calculate(Network routingNetwork, Set<Node> origins, Map<T, Double> destinations,
-                                                     Map<T, List<Node>> destinationNodes,
-                                                     TravelDisutility travelDisutility,
-                                                     Vehicle vehicle, Impedance impedance,
-                                                     int numberOfThreads) {
+    public static <T> IdMap<Node,Double> calculate(Network routingNetwork, Set<Node> origins, Map<T, Double> destinations,
+                                                   Map<T, List<Node>> destinationNodes,
+                                                   TravelDisutility travelDisutility,
+                                                   Vehicle vehicle, DecayFunction decayFunction,
+                                                   int numberOfThreads) {
 
         SpeedyGraph routingGraph = new SpeedyGraph(routingNetwork,travelDisutility,PERSON,vehicle);
 
         // prepare calculation
-        ConcurrentHashMap<Node,Double> accessibilityData = new ConcurrentHashMap<>(origins.size());
+        ConcurrentHashMap<Id<Node>,Double> accessibilityData = new ConcurrentHashMap<>(origins.size());
 
         // do calculation
         ConcurrentLinkedQueue<Node> originNodes = new ConcurrentLinkedQueue<>(origins);
 
-        Counter counter = new Counter("Calculating accessibility zone ", " / " + origins.size());
+        Counter counter = new Counter("Calculating accessibility node ", " / " + origins.size());
         Thread[] threads = new Thread[numberOfThreads];
         for (int i = 0; i < numberOfThreads; i++) {
-            RowWorker<T> worker = new RowWorker<>(originNodes, destinations, routingGraph,
-                    destinationNodes, accessibilityData, impedance, counter);
+            NodeWorker<T> worker = new NodeWorker<>(originNodes, destinations, routingGraph,
+                    destinationNodes, accessibilityData, decayFunction, counter);
             threads[i] = new Thread(worker, "Accessibility-" + i);
             threads[i].start();
         }
@@ -76,27 +78,30 @@ public final class AccessibilityCalculator {
             }
         }
 
-        return accessibilityData;
+        IdMap<Node,Double> results = new IdMap<>(Node.class);
+        results.putAll(accessibilityData);
+
+        return results;
     }
 
-    private static class RowWorker<T> implements Runnable {
+    private static class NodeWorker<T> implements Runnable {
         private final ConcurrentLinkedQueue<Node> originNodes;
         private final Map<T, Double> destinations;
         private final SpeedyGraph graph;
         private final Map<T, List<Node>> destinationNodes;
-        private final ConcurrentHashMap<Node,Double> accessibilityData;
-        private final Impedance impedance;
+        private final ConcurrentHashMap<Id<Node>,Double> accessibilityData;
+        private final DecayFunction decayFunction;
         private final Counter counter;
 
-        RowWorker(ConcurrentLinkedQueue<Node> originNodes, Map<T, Double> destinations, SpeedyGraph graph,
-                  Map<T, List<Node>> destinationNodes, ConcurrentHashMap<Node,Double> accessibilityData,
-                  Impedance impedance, Counter counter) {
+        NodeWorker(ConcurrentLinkedQueue<Node> originNodes, Map<T, Double> destinations, SpeedyGraph graph,
+                   Map<T, List<Node>> destinationNodes, ConcurrentHashMap<Id<Node>,Double> accessibilityData,
+                   DecayFunction decayFunction, Counter counter) {
             this.originNodes = originNodes;
             this.destinations = destinations;
             this.graph = graph;
             this.destinationNodes = destinationNodes;
             this.accessibilityData = accessibilityData;
-            this.impedance = impedance;
+            this.decayFunction = decayFunction;
             this.counter = counter;
         }
 
@@ -120,14 +125,20 @@ public final class AccessibilityCalculator {
 
                     for (Node toNode : this.destinationNodes.get(destination.getKey())) {
                         int toNodeIndex = toNode.getId().index();
+                        if(decayFunction instanceof HansenWithDistanceCutoff) {
+                            double nodeDist = lcpTree.getDistance(toNodeIndex);
+                            if (!((HansenWithDistanceCutoff) decayFunction).withinCutoff(nodeDist)) {
+                                continue;
+                            }
+                        }
                         double nodeCost = lcpTree.getCost(toNodeIndex);
                         if (nodeCost < cost) {
                             cost = nodeCost;
                         }
                     }
-                    accessibility += impedance.getImpedance(cost) * wt;
+                    accessibility += decayFunction.getDecay(cost) * wt;
                 }
-                this.accessibilityData.put(fromNode,accessibility);
+                this.accessibilityData.put(fromNode.getId(),accessibility);
             }
         }
     }
