@@ -1,6 +1,11 @@
 package trads;
 
-import ch.sbb.matsim.analysis.TravelAttribute;
+import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
+import resources.Properties;
+import resources.Resources;
+import routing.ActiveAttributes;
+import routing.Bicycle;
+import routing.TravelAttribute;
 import gis.GpkgReader;
 import network.NetworkUtils2;
 import org.apache.log4j.Logger;
@@ -13,7 +18,6 @@ import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.io.MatsimNetworkReader;
-import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
@@ -25,6 +29,7 @@ import routing.disutility.components.JctStress;
 import routing.disutility.components.LinkAttractiveness;
 import routing.disutility.components.LinkStress;
 import routing.travelTime.BicycleTravelTime;
+import routing.travelTime.WalkTravelTime;
 import routing.travelTime.speed.BicycleLinkSpeedCalculatorDefaultImpl;
 import trads.io.RoutePathWriter;
 import trads.io.TradsReader;
@@ -40,47 +45,31 @@ import static data.Place.DESTINATION;
 public class RunTradsRouter {
 
     private final static Logger logger = Logger.getLogger(RunTradsRouter.class);
-    private final static double MAX_BIKE_SPEED = 16 / 3.6;
 
     public static void main(String[] args) throws IOException, FactoryException {
-        if(args.length != 6) {
-            throw new RuntimeException("Program requires 7 arguments: \n" +
-                    "(0) Survey File Path \n" +
-                    "(1) Boundary Geopackage Path \n" +
-                    "(2) Network File Path \n" +
-                    "(3) Input Network Edges File \n" +
-                    "(4) Output File Path \n" +
-                    "(5) Number of Threads \n");
+        if(args.length != 3) {
+            throw new RuntimeException("Program requires 3 arguments: \n" +
+                    "(0) Properties file \n" +
+                    "(1) Output File Path \n" +
+                    "(2) Mode");
         }
 
-        String surveyFilePath = args[0];
-        String boundaryFilePath = args[1];
-        String networkFilePath = args[2];
-        String inputEdgesGpkg = args[3];
-        String outputGpkg = args[4];
-        int numberOfThreads = Integer.parseInt(args[5]);
+        Resources.initializeResources(args[0]);
+        String outputGpkg = args[1];
+        String mode = args[2];
 
+        String boundaryFilePath = Resources.instance.getString(Properties.NETWORK_BOUNDARY);
+        String networkFilePath = Resources.instance.getString(Properties.MATSIM_ROAD_NETWORK);
+        String inputEdgesGpkg = Resources.instance.getString(Properties.NETWORK_LINKS);
 
         // Read network
         logger.info("Reading MATSim network...");
         Network network = NetworkUtils.createNetwork();
         new MatsimNetworkReader(network).readFile(networkFilePath);
 
-        // Set up scenario and config
-        logger.info("Preparing Matsim config and scenario...");
-        Config config = ConfigUtils.createConfig();
-        BicycleConfigGroup bicycleConfigGroup = new BicycleConfigGroup();
-        bicycleConfigGroup.setBicycleMode("bike");
-        config.addModule(bicycleConfigGroup);
-
-        // CREATE BICYCLE VEHICLE
-        VehicleType type = VehicleUtils.createVehicleType(Id.create("bicycle", VehicleType.class));
-        type.setMaximumVelocity(MAX_BIKE_SPEED);
-        Vehicle bike = VehicleUtils.createVehicle(Id.createVehicleId(1), type);
-
         // Create mode-specific networks
-        logger.info("Creating bike-specific network...");
-        Network networkBike = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.bike);
+        logger.info("Creating " + mode + "-specific network...");
+        Network modeSpecificNetwork = NetworkUtils2.extractModeSpecificNetwork(network, mode);
 
         // Read Boundary Shapefile
         logger.info("Reading boundary shapefile...");
@@ -88,48 +77,35 @@ public class RunTradsRouter {
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
-        Set<TradsTrip> trips = TradsReader.readTrips(surveyFilePath, boundary);
+        Set<TradsTrip> trips = TradsReader.readTrips(boundary);
 
-        // Filter to only routable bike trips
-        Set<TradsTrip> bikeTrips = trips.stream()
-                .filter(t -> t.routable(ORIGIN,DESTINATION) && t.getMainMode().equals("Bicycle"))
+        // Filter to only routable bike/walk trips
+        Set<TradsTrip> tripsByMode = trips.stream()
+                .filter(t -> t.routable(ORIGIN,DESTINATION) && t.getMainMode().equals(mode))
                 .collect(Collectors.toSet());
+        logger.info("Identified " + tripsByMode.size() + " " + mode + " trips.");
 
-        // Limit to first N records (for debugging only)
-//        trips = trips.stream().limit(200).collect(Collectors.toSet());
+        // Travel time and vehicle
+        TravelTime tt;
+        Vehicle veh;
 
-        // Travel time
-        BicycleLinkSpeedCalculatorDefaultImpl linkSpeedCalculator = new BicycleLinkSpeedCalculatorDefaultImpl((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME));
-        TravelTime ttBike = new BicycleTravelTime(linkSpeedCalculator);
+        if(mode.equals(TransportMode.bike)) {
+            Bicycle bicycle = new Bicycle(null);
+            tt = bicycle.getTravelTime();
+            veh = bicycle.getVehicle();
+        } else if (mode.equals(TransportMode.walk)) {
+            tt = new WalkTravelTime();
+            veh = null;
+        } else throw new RuntimeException("Modes other than walk and bike are not supported!");
 
-        // Calculate network indicators
-        logger.info("Calculating routes using " + numberOfThreads + " threads.");
-
-        // CALCULATOR
-        TradsCalculator calc = new TradsCalculator(numberOfThreads, bikeTrips);
-
-        // bike (shortest, fastest, and jibe)
-        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new DistanceDisutility(), ttBike, activeAttributes(TransportMode.bike),true);
-        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new OnlyTimeDependentTravelDisutility(ttBike), ttBike, activeAttributes(TransportMode.bike),true);
-        calc.network("bike_jibe", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility(TransportMode.bike,ttBike), ttBike, activeAttributes(TransportMode.bike),true);
+        // Calculate shortest, fastest, and jibe route
+        TradsCalculator calc = new TradsCalculator(tripsByMode);
+        calc.network(mode + "_short", ORIGIN, DESTINATION,  veh, modeSpecificNetwork, modeSpecificNetwork, new DistanceDisutility(), tt, ActiveAttributes.get(mode),true);
+        calc.network(mode + "_fast", ORIGIN, DESTINATION,  veh, modeSpecificNetwork, modeSpecificNetwork, new OnlyTimeDependentTravelDisutility(tt), tt, ActiveAttributes.get(mode),true);
+        calc.network(mode + "_jibe", ORIGIN, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new JibeDisutility(mode,tt), tt, ActiveAttributes.get(mode),true);
 
         // Write results
         logger.info("Writing results to gpkg file...");
-        RoutePathWriter.write(bikeTrips, inputEdgesGpkg, outputGpkg, calc.getAllAttributeNames());
-    }
-
-    private static LinkedHashMap<String, TravelAttribute> activeAttributes(String mode) {
-        LinkedHashMap<String,TravelAttribute> attributes = new LinkedHashMap<>();
-        attributes.put("vgvi",(l,td) -> LinkAttractiveness.getVgviFactor(l) * l.getLength());
-        attributes.put("lighting",(l,td) -> LinkAttractiveness.getLightingFactor(l) * l.getLength());
-        attributes.put("shannon", (l,td) -> LinkAttractiveness.getShannonFactor(l) * l.getLength());
-        attributes.put("crime", (l,td) -> LinkAttractiveness.getCrimeFactor(l) * l.getLength());
-        attributes.put("POIs",(l,td) -> LinkAttractiveness.getPoiFactor(l) * l.getLength());
-        attributes.put("negPOIs",(l,td) -> LinkAttractiveness.getNegativePoiFactor(l) * l.getLength());
-        attributes.put("freightPOIs",(l,td) -> LinkStress.getFreightPoiFactor(l) * l.getLength());
-        attributes.put("attractiveness", (l,td) -> LinkAttractiveness.getDayAttractiveness(l) * l.getLength());
-        attributes.put("stressLink",(l,td) -> LinkStress.getStress(l,mode) * l.getLength());
-        attributes.put("stressJct",(l,td) -> JctStress.getJunctionStress(l,mode));
-        return attributes;
+        RoutePathWriter.write(tripsByMode, inputEdgesGpkg, outputGpkg, calc.getAllAttributeNames());
     }
 }

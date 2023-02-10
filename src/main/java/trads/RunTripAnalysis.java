@@ -1,6 +1,10 @@
 package trads;
 
-import ch.sbb.matsim.analysis.TravelAttribute;
+import resources.Properties;
+import resources.Resources;
+import routing.ActiveAttributes;
+import routing.Bicycle;
+import routing.TravelAttribute;
 import gis.GpkgReader;
 import network.NetworkUtils2;
 import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
@@ -35,51 +39,31 @@ import java.util.*;
 
 import static data.Place.*;
 
-// THIS SCRIPT IS FOR CONVERTING X/Y COORDINATES IN THE TRAVEL SURVEY TO PATH DATA (E.G. TRAVEL TIMES, DISTANCES, COSTS) USING THE MATSIM NETWORK
-// NOTE: number of threads for PT is limited to the RAM available as the network needs to be duplicated (need about 9GB per thread)
-
 public class RunTripAnalysis {
 
     private final static Logger logger = Logger.getLogger(RunTripAnalysis.class);
-    private final static double MAX_BIKE_SPEED = 16 / 3.6;
 
     public static void main(String[] args) throws IOException {
 
-        if(args.length != 7) {
-            throw new RuntimeException("Program requires 7 arguments: \n" +
-                    "(0) Survey File Path \n" +
-                    "(1) Boundary Geopackage Path \n" +
-                    "(2) Network File Path \n" +
-                    "(3) Transit Schedule Path \n" +
-                    "(4) Transit Network Path \n" +
-                    "(5) Output File Path \n" +
-                    "(6) Number of Threads \n");
+        if(args.length != 2) {
+            throw new RuntimeException("Program requires 2 arguments: \n" +
+                    "(0) Properties file \n" +
+                    "(1) Output file");
         }
 
-        String surveyFilePath = args[0];
-        String boundaryFilePath = args[1];
-        String networkFilePath = args[2];
-        String transitScheduleFilePath = args[3];
-        String transitNetworkFilePath = args[4];
-        String outputFile = args[5];
-        int numberOfThreads = Integer.parseInt(args[6]);
+        Resources.initializeResources(args[0]);
+        String outputFile = args[1];
+
+        String transitScheduleFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_SCHEDULE);
+        String transitNetworkFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_NETWORK);
 
         // Read network
-        logger.info("Reading MATSim network...");
-        Network network = NetworkUtils.createNetwork();
-        new MatsimNetworkReader(network).readFile(networkFilePath);
+        Network network = NetworkUtils2.readFullNetwork();
 
         // Set up scenario and config
-        logger.info("Preparing Matsim config and scenario...");
         Config config = ConfigUtils.createConfig();
-        BicycleConfigGroup bicycleConfigGroup = new BicycleConfigGroup();
-        bicycleConfigGroup.setBicycleMode("bike");
-        config.addModule(bicycleConfigGroup);
-
-        // CREATE BICYCLE VEHICLE
-        VehicleType type = VehicleUtils.createVehicleType(Id.create("bicycle", VehicleType.class));
-        type.setMaximumVelocity(MAX_BIKE_SPEED);
-        Vehicle bike = VehicleUtils.createVehicle(Id.createVehicleId(1), type);
+        Bicycle bicycle = new Bicycle(config);
+        Vehicle bike = bicycle.getVehicle();
 
         // Create mode-specific networks
         logger.info("Creating mode-specific networks...");
@@ -90,27 +74,23 @@ public class RunTripAnalysis {
 
         // Read Boundary Shapefile
         logger.info("Reading boundary shapefile...");
-        Geometry boundary = GpkgReader.readBoundary(boundaryFilePath);
+        Geometry boundary = GpkgReader.readNetworkBoundary();
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
-        Set<TradsTrip> trips = TradsReader.readTrips(surveyFilePath, boundary);
-
-        // Limit to first N records (for debugging only)
-//        trips = trips.stream().limit(200).collect(Collectors.toSet());
+        Set<TradsTrip> trips = TradsReader.readTrips(boundary);
 
         // Travel time
         FreespeedTravelTimeAndDisutility freeSpeed = new FreespeedTravelTimeAndDisutility(config.planCalcScore());
-        BicycleLinkSpeedCalculatorDefaultImpl linkSpeedCalculator = new BicycleLinkSpeedCalculatorDefaultImpl((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME));
-        TravelTime ttBike = new BicycleTravelTime(linkSpeedCalculator);
+        TravelTime ttBike = bicycle.getTravelTime();
         TravelTime ttWalk = new WalkTravelTime();
 
-        // Calculate network indicators
-        logger.info("Calculating network indicators using " + numberOfThreads + " threads.");
-
-
         // CALCULATOR
-        TradsCalculator calc = new TradsCalculator(10, trips);
+        TradsCalculator calc = new TradsCalculator(trips);
+
+        // Extra attributes
+        LinkedHashMap<String,TravelAttribute> bikeAttributes = ActiveAttributes.getJibe(TransportMode.bike,bike);
+        LinkedHashMap<String,TravelAttribute> walkAttributes = ActiveAttributes.getJibe(TransportMode.walk,null);
 
         // beeline
         calc.beeline("beeline_orig_dest", ORIGIN, DESTINATION);
@@ -120,14 +100,14 @@ public class RunTripAnalysis {
         calc.network("car", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,false);
 
         // bike (shortest, fastest, and jibe)
-        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, null, new DistanceDisutility(), ttBike, activeAttributes(TransportMode.bike),false);
-        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, null, new OnlyTimeDependentTravelDisutility(ttBike), ttBike, activeAttributes(TransportMode.bike),false);
-        calc.network("bike_jibe", ORIGIN, DESTINATION, bike, networkBike, null, new JibeDisutility(TransportMode.bike,ttBike), ttBike, activeAttributes(TransportMode.bike),false);
+        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, null, new DistanceDisutility(), ttBike, bikeAttributes,false);
+        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, null, new OnlyTimeDependentTravelDisutility(ttBike), ttBike, bikeAttributes,false);
+        calc.network("bike_jibe", ORIGIN, DESTINATION, bike, networkBike, null, new JibeDisutility(TransportMode.bike,ttBike), ttBike, bikeAttributes,false);
 
         // walk (shortest, fastest, and jibe)
-        calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, null, new DistanceDisutility(), ttWalk, activeAttributes(TransportMode.walk),false);
-        calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, null, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, activeAttributes(TransportMode.walk),false);
-        calc.network("walk_jibe", ORIGIN, DESTINATION, null, networkWalk, null, new JibeDisutility(TransportMode.walk,ttWalk), ttWalk, activeAttributes(TransportMode.walk),false);
+        calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, null, new DistanceDisutility(), ttWalk, walkAttributes,false);
+        calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, null, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, walkAttributes,false);
+        calc.network("walk_jibe", ORIGIN, DESTINATION, null, networkWalk, null, new JibeDisutility(TransportMode.walk,ttWalk), ttWalk, walkAttributes,false);
 
         // distance from home (use walk shortest for this)
         calc.network("home", HOME, DESTINATION, null, networkWalk, null, new DistanceDisutility(), ttWalk, null,false);
@@ -140,18 +120,4 @@ public class RunTripAnalysis {
         RouteAttributeWriter.write(trips, outputFile, calc.getAllAttributeNames());
     }
 
-    private static LinkedHashMap<String,TravelAttribute> activeAttributes(String mode) {
-        LinkedHashMap<String,TravelAttribute> attributes = new LinkedHashMap<>();
-        attributes.put("vgvi",(l,td) -> LinkAttractiveness.getVgviFactor(l) * l.getLength());
-        attributes.put("lighting",(l,td) -> LinkAttractiveness.getLightingFactor(l) * l.getLength());
-        attributes.put("shannon", (l,td) -> LinkAttractiveness.getShannonFactor(l) * l.getLength());
-        attributes.put("crime", (l,td) -> LinkAttractiveness.getCrimeFactor(l) * l.getLength());
-        attributes.put("POIs",(l,td) -> LinkAttractiveness.getPoiFactor(l) * l.getLength());
-        attributes.put("negPOIs",(l,td) -> LinkAttractiveness.getNegativePoiFactor(l) * l.getLength());
-        attributes.put("freightPOIs",(l,td) -> LinkStress.getFreightPoiFactor(l) * l.getLength());
-        attributes.put("attractiveness", (l,td) -> LinkAttractiveness.getDayAttractiveness(l) * l.getLength());
-        attributes.put("stressLink",(l,td) -> LinkStress.getStress(l,mode) * l.getLength());
-        attributes.put("stressJct",(l,td) -> JctStress.getJunctionStress(l,mode));
-        return attributes;
-    }
 }

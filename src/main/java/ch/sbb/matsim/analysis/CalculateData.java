@@ -56,6 +56,7 @@ import org.matsim.pt.transitSchedule.api.TransitRoute;
 import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.referencing.FactoryException;
+import routing.TravelAttribute;
 
 /**
  * Main class to calculate skim matrices.

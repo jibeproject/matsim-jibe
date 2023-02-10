@@ -5,7 +5,6 @@
 package accessibility;
 
 import accessibility.impedance.DecayFunction;
-import accessibility.impedance.HansenWithDistanceCutoff;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.IdMap;
 import org.matsim.api.core.v01.network.Network;
@@ -13,9 +12,12 @@ import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.router.util.TravelDisutility;
+import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.utils.misc.Counter;
 import org.matsim.vehicles.Vehicle;
-import routing.graph.LeastCostPathTreeLite;
+import resources.Properties;
+import resources.Resources;
+import routing.graph.LeastCostPathTree3;
 import routing.graph.SpeedyGraph;
 
 import java.util.List;
@@ -46,13 +48,13 @@ public final class NodeCalculator {
 
     private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
 
-    public static <T> IdMap<Node,Double> calculate(Network routingNetwork, Set<Node> origins, Map<T, Double> destinations,
-                                                   Map<T, List<Node>> destinationNodes,
-                                                   TravelDisutility travelDisutility,
-                                                   Vehicle vehicle, DecayFunction decayFunction,
-                                                   int numberOfThreads) {
+    public static <T> IdMap<Node,Double> calculate(Network routingNetwork, Set<Node> origins,
+                                                   Map<T, List<Node>> destinationNodes, Map<T, Double> destinationWeights,
+                                                   TravelTime travelTime, TravelDisutility travelDisutility,
+                                                   Vehicle vehicle, DecayFunction decayFunction) {
 
-        SpeedyGraph routingGraph = new SpeedyGraph(routingNetwork,travelDisutility,PERSON,vehicle);
+        int numberOfThreads = Resources.instance.getInt(Properties.NUMBER_OF_THREADS);
+        SpeedyGraph routingGraph = new SpeedyGraph(routingNetwork,travelTime,travelDisutility,PERSON,vehicle);
 
         // prepare calculation
         ConcurrentHashMap<Id<Node>,Double> accessibilityData = new ConcurrentHashMap<>(origins.size());
@@ -63,7 +65,7 @@ public final class NodeCalculator {
         Counter counter = new Counter("Calculating accessibility node ", " / " + origins.size());
         Thread[] threads = new Thread[numberOfThreads];
         for (int i = 0; i < numberOfThreads; i++) {
-            NodeWorker<T> worker = new NodeWorker<>(originNodes, destinations, routingGraph,
+            NodeWorker<T> worker = new NodeWorker<>(originNodes, destinationWeights, routingGraph,
                     destinationNodes, accessibilityData, decayFunction, counter);
             threads[i] = new Thread(worker, "Accessibility-" + i);
             threads[i].start();
@@ -93,11 +95,11 @@ public final class NodeCalculator {
         private final DecayFunction decayFunction;
         private final Counter counter;
 
-        NodeWorker(ConcurrentLinkedQueue<Node> originNodes, Map<T, Double> destinations, SpeedyGraph graph,
+        NodeWorker(ConcurrentLinkedQueue<Node> originNodes, Map<T, Double> destinationWeights, SpeedyGraph graph,
                    Map<T, List<Node>> destinationNodes, ConcurrentHashMap<Id<Node>,Double> accessibilityData,
                    DecayFunction decayFunction, Counter counter) {
             this.originNodes = originNodes;
-            this.destinations = destinations;
+            this.destinations = destinationWeights;
             this.graph = graph;
             this.destinationNodes = destinationNodes;
             this.accessibilityData = accessibilityData;
@@ -106,7 +108,9 @@ public final class NodeCalculator {
         }
 
         public void run() {
-            LeastCostPathTreeLite lcpTree = new LeastCostPathTreeLite(this.graph);
+            LeastCostPathTree3 lcpTree = new LeastCostPathTree3(this.graph);
+            LeastCostPathTree3.StopCriterion stopCriterion = decayFunction.getTreeStopCriterion();
+
             while (true) {
                 Node fromNode = this.originNodes.poll();
                 if (fromNode == null) {
@@ -114,29 +118,30 @@ public final class NodeCalculator {
                 }
 
                 this.counter.incCounter();
-                lcpTree.calculate(fromNode.getId().index());
+                lcpTree.calculate(fromNode.getId().index(),0,stopCriterion);
 
                 double accessibility = 0.;
 
                 for (Map.Entry<T, Double> destination : this.destinations.entrySet()) {
 
-                    double wt = destination.getValue();
                     double cost = Double.MAX_VALUE;
 
                     for (Node toNode : this.destinationNodes.get(destination.getKey())) {
                         int toNodeIndex = toNode.getId().index();
-                        if(decayFunction instanceof HansenWithDistanceCutoff) {
-                            double nodeDist = lcpTree.getDistance(toNodeIndex);
-                            if (!((HansenWithDistanceCutoff) decayFunction).withinCutoff(nodeDist)) {
-                                continue;
-                            }
+                        double nodeDist = lcpTree.getDistance(toNodeIndex);
+                        double nodeTime = lcpTree.getTime(toNodeIndex).seconds();
+                        if(!decayFunction.withinCutoff(nodeDist,nodeTime)) {
+                            continue;
                         }
                         double nodeCost = lcpTree.getCost(toNodeIndex);
                         if (nodeCost < cost) {
                             cost = nodeCost;
                         }
                     }
-                    accessibility += decayFunction.getDecay(cost) * wt;
+                    if(cost != Double.MAX_VALUE) {
+                        double wt = destination.getValue();
+                        accessibility += decayFunction.getDecay(cost) * wt;
+                    }
                 }
                 this.accessibilityData.put(fromNode.getId(),accessibility);
             }

@@ -1,24 +1,20 @@
 package gis;
 
 import org.geotools.data.DataUtilities;
-import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureReader;
-import org.geotools.data.simple.SimpleFeatureSource;
 import org.geotools.feature.DefaultFeatureCollection;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.geopkg.GeoPackage;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.geom.Polygon;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
+import resources.Properties;
+import resources.Resources;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 // Tools for reading edges and nodes files produced by the JIBE WP2 team
 
@@ -64,6 +60,14 @@ public class GpkgReader {
 
         return edges;
 
+    }
+
+    public static Geometry readRegionBoundary() throws IOException {
+        return readBoundary(Resources.instance.getString(Properties.REGION_BOUNDARY));
+    }
+
+    public static Geometry readNetworkBoundary() throws IOException {
+        return readBoundary(Resources.instance.getString(Properties.NETWORK_BOUNDARY));
     }
 
     public static Geometry readBoundary(String filePath) throws IOException {

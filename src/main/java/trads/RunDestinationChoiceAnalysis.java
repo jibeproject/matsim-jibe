@@ -9,6 +9,8 @@ import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.router.util.TravelTime;
+import resources.Properties;
+import resources.Resources;
 import routing.disutility.DistanceDisutility;
 import routing.travelTime.WalkTravelTime;
 import trads.io.RouteAttributeWriter;
@@ -29,23 +31,15 @@ public class RunDestinationChoiceAnalysis {
 
         if(args.length != 5) {
             throw new RuntimeException("Program requires 5 arguments: \n" +
-                    "(0) Survey File Path \n" +
-                    "(1) Boundary Geopackage Path \n" +
-                    "(2) Network File Path \n" +
-                    "(3) Output File Path \n" +
-                    "(4) Number of Threads \n");
+                    "(0) Properties file \n" +
+                    "(1) Output file path");
         }
 
-        String surveyFilePath = args[0];
-        String boundaryFilePath = args[1];
-        String networkFilePath = args[2];
-        String outputFile = args[3];
-        int numberOfThreads = Integer.parseInt(args[4]);
+        Resources.initializeResources(args[0]);
+        String outputFile = args[1];
 
         // Read network
-        logger.info("Reading MATSim network...");
-        Network network = NetworkUtils.createNetwork();
-        new MatsimNetworkReader(network).readFile(networkFilePath);
+        Network network = NetworkUtils2.readFullNetwork();
 
         // Create mode-specific networks
         logger.info("Creating walk network...");
@@ -53,20 +47,17 @@ public class RunDestinationChoiceAnalysis {
 
         // Read Boundary Shapefile
         logger.info("Reading boundary shapefile...");
-        Geometry boundary = GpkgReader.readBoundary(boundaryFilePath);
+        Geometry boundary = GpkgReader.readNetworkBoundary();
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
-        Set<TradsTrip> trips = TradsReader.readTrips(surveyFilePath, boundary);
+        Set<TradsTrip> trips = TradsReader.readTrips(boundary);
 
         // Travel time
         TravelTime ttWalk = new WalkTravelTime();
 
-        // Calculate network indicators
-        logger.info("Calculating network indicators using " + numberOfThreads + " threads.");
-
         // CALCULATOR
-        TradsCalculator calc = new TradsCalculator(10, trips);
+        TradsCalculator calc = new TradsCalculator(trips);
 
         // beeline
         calc.beeline("home_beeline",HOME, DESTINATION);

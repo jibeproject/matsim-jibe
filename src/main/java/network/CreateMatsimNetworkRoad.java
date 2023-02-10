@@ -15,6 +15,8 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.io.NetworkWriter;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.opengis.feature.simple.SimpleFeature;
+import resources.Properties;
+import resources.Resources;
 
 import java.io.File;
 import java.util.*;
@@ -31,16 +33,15 @@ public class CreateMatsimNetworkRoad {
 
     public static void main(String[] args) {
 
-        if(args.length != 3) {
-            throw new RuntimeException("Program requires 3 arguments: \n" +
-                    "(0) Nodes file (.gpkg) \n" +
-                    "(1) Edges file (.gpkg) \n" +
-                    "(2) Output network file (.xml) \n");
+        if(args.length != 1) {
+            throw new RuntimeException("Program requires 1 argument: Properties file");
         }
 
-        final File nodesFile = new File(args[0]);
-        final File edgesFile = new File(args[1]);
-        final String networkFile = args[2];
+        Resources.initializeResources(args[0]);
+
+        final File nodesFile = Resources.instance.getFile(Properties.NETWORK_NODES);
+        final File edgesFile = Resources.instance.getFile(Properties.NETWORK_LINKS);
+        final String networkFile = Resources.instance.getString(Properties.MATSIM_ROAD_NETWORK);
 
         // Read nodes and edges
         Map<Integer,SimpleFeature> nodes = GpkgReader.readNodes(nodesFile);
@@ -431,7 +432,7 @@ public class CreateMatsimNetworkRoad {
     }
 
     private static void addCrossingAttributes(Network net) {
-        Map<Node,List<Link>> linksTo = net.getNodes().values().stream().collect(Collectors.toMap(n -> n, n -> new ArrayList<>()));
+        Map<Node, List<Link>> linksTo = net.getNodes().values().stream().collect(Collectors.toMap(n -> n, n -> new ArrayList<>()));
         Map<Node,List<Link>> linksFrom = net.getNodes().values().stream().collect(Collectors.toMap(n -> n, n -> new ArrayList<>()));
         Map<Node,Boolean> isJunction = net.getNodes().values().stream().collect(Collectors.toMap(n -> n, n -> false));
 

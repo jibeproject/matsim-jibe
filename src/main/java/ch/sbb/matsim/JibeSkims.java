@@ -3,7 +3,7 @@ package ch.sbb.matsim;
 import routing.travelTime.speed.BicycleLinkSpeedCalculatorDefaultImpl;
 import routing.travelTime.BicycleTravelTime;
 import ch.sbb.matsim.analysis.CalculateData;
-import ch.sbb.matsim.analysis.TravelAttribute;
+import routing.TravelAttribute;
 import routing.disutility.DistanceDisutility;
 import org.apache.log4j.Logger;
 import org.matsim.core.config.Config;

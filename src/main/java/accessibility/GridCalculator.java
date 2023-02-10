@@ -17,8 +17,10 @@ import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.PopulationUtils;
+import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.utils.geometry.CoordUtils;
 import org.matsim.core.utils.misc.Counter;
+import org.matsim.vehicles.Vehicle;
 import org.opengis.feature.simple.SimpleFeature;
 
 import java.io.IOException;
@@ -32,7 +34,7 @@ public class GridCalculator {
     private final static double SIDE_LENGTH_METERS = RunGridAnalysis.SIDE_LENGTH_METERS; // todo: capture this automatically
 
     public static void calculate(IdMap<Node,Double> nodeAccessibilities, SimpleFeatureCollection collection,
-                                 Network network, DecayFunction decayFunction, AccessibilityData accessibilityData, int numberOfThreads) throws IOException {
+                                 Network network, DecayFunction decayFunction, TravelDisutility disutility, Vehicle vehicle, int numberOfThreads) throws IOException {
 
 
         // Check decay function type // todo: implement for other types of decay functions
@@ -54,7 +56,7 @@ public class GridCalculator {
         ConcurrentHashMap<SimpleFeature, IdSet<Node>> nodesPerZone = new ConcurrentHashMap<>(GisUtils.assignNodesToZones(cells,nodeAccessibilities.keySet(),network));
 
         // Precalculate marginal disutilities
-        ConcurrentHashMap<Link,Double> marginalDisutilities = new ConcurrentHashMap<>(NetworkUtils2.precalculateLinkMarginalDisutilities(network, accessibilityData.disutility, 0.,PERSON, accessibilityData.vehicle));
+        ConcurrentHashMap<Link,Double> marginalDisutilities = new ConcurrentHashMap<>(NetworkUtils2.precalculateLinkMarginalDisutilities(network, disutility, 0.,PERSON, vehicle));
 
         // Convert node results to a concurrent hash map
         ConcurrentHashMap<Id<Node>,Double> nodeResults = new ConcurrentHashMap<>(nodeAccessibilities);

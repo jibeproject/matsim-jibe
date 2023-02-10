@@ -17,7 +17,7 @@ public class CreateMatsimNetworkPt {
     public static void main(String[] args) {
 
         if(args.length != 8) {
-            throw new RuntimeException("Program requires 11 arguments: \n" +
+            throw new RuntimeException("Program requires 8 arguments: \n" +
                     "(0) GTFS directory for bus/tram \n" +
                     "(1) GTFS directory for rail \n" +
                     "(2) Unmapped schedule file \n" +

@@ -1,6 +1,9 @@
 package trads;
 
-import ch.sbb.matsim.analysis.TravelAttribute;
+import com.fasterxml.jackson.databind.annotation.JsonAppend;
+import resources.Properties;
+import resources.Resources;
+import routing.TravelAttribute;
 import data.Place;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.network.Network;
@@ -33,8 +36,8 @@ public class TradsCalculator {
     private final Set<TradsTrip> trips;
     private final Map<String, List<String>> allAttributeNames;
 
-    public TradsCalculator(int numberOfThreads, Set<TradsTrip> trips) {
-        this.numberOfThreads = numberOfThreads;
+    public TradsCalculator(Set<TradsTrip> trips) {
+        this.numberOfThreads = Resources.instance.getInt(Properties.NUMBER_OF_THREADS);
         this.trips = trips;
         this.allAttributeNames = new LinkedHashMap<>();
     }
@@ -49,7 +52,7 @@ public class TradsCalculator {
         logger.info("Calculating network indicators for route " + route);
 
         // Specify attribute names
-        List<String> attributeNames = new ArrayList<>(List.of("cost","time","dist"));
+        List<String> attributeNames = new ArrayList<>(List.of("mc_attractiveness","mc_stressLink","mc_stressJct","cost","time","dist"));
         if(additionalAttributes != null) {
             attributeNames.addAll(additionalAttributes.keySet());
         }

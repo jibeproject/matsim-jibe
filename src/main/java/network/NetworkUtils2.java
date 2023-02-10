@@ -12,9 +12,12 @@ import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
+import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.utils.misc.Counter;
 import org.matsim.vehicles.Vehicle;
+import resources.Properties;
+import resources.Resources;
 import routing.disutility.JibeDisutility;
 
 import java.util.*;
@@ -23,6 +26,15 @@ import java.util.function.Predicate;
 public class NetworkUtils2 {
 
     private final static Logger log = Logger.getLogger(NetworkUtils2.class);
+
+    public static Network readFullNetwork() {
+        // Read network
+        log.info("Reading MATSim network...");
+        String networkPath = Resources.instance.getString(Properties.MATSIM_ROAD_NETWORK);
+        Network fullNetwork = NetworkUtils.createNetwork();
+        new MatsimNetworkReader(fullNetwork).readFile(networkPath);
+        return fullNetwork;
+    }
 
     // Extracts mode-specific network  (e.g. walk network, car network, cycle network)
     public static Network extractModeSpecificNetwork(Network network, String transportMode) {

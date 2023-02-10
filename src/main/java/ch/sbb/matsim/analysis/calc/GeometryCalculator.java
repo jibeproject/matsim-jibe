@@ -4,10 +4,10 @@
 
 package ch.sbb.matsim.analysis.calc;
 
-import ch.sbb.matsim.analysis.TravelAttribute;
+import routing.TravelAttribute;
 import ch.sbb.matsim.analysis.data.GeometryData;
-import routing.graph.Graph;
-import routing.graph.LeastCostPathTree2;
+import ch.sbb.matsim.graph.Graph;
+import ch.sbb.matsim.graph.LeastCostPathTree2;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;

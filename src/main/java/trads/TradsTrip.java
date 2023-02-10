@@ -13,6 +13,8 @@ public class TradsTrip {
     private final int tripId;
     private final int startTime;
     private final String mainMode;
+    private final TradsPurpose startPurpose;
+    private final TradsPurpose endPurpose;
     private final Map<Place,Coord> coords;
     private final Map<Place,Boolean> coordsInsideBoundary;
 
@@ -23,12 +25,14 @@ public class TradsTrip {
     private final Map<String, Coord> routeStartNodes = new LinkedHashMap<>();
 
     public TradsTrip(String householdId, int personId, int tripId, int startTime,
-                     String mainMode, Map<Place,Coord> coords, Map<Place,Boolean> coordsInsideBoundary) {
+                     String mainMode, TradsPurpose startPurpose, TradsPurpose endPurpose, Map<Place,Coord> coords, Map<Place,Boolean> coordsInsideBoundary) {
         this.householdId = householdId;
         this.personId = personId;
         this.tripId = tripId;
         this.startTime = startTime;
         this.mainMode = mainMode;
+        this.startPurpose = startPurpose;
+        this.endPurpose = endPurpose;
         this.coords = coords;
         this.coordsInsideBoundary = coordsInsideBoundary;
     }
@@ -77,6 +81,9 @@ public class TradsTrip {
     }
 
     public String getMainMode() { return mainMode; }
+
+    public TradsPurpose getStartPurpose() { return startPurpose; }
+    public TradsPurpose getEndPurpose() { return endPurpose; }
 
     public Coord getRouteStartNodes(String route) { return routeStartNodes.get(route); }
     public Map<String,int[]> getRoutePaths() { return routePaths; }

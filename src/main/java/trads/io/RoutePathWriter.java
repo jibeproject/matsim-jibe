@@ -18,6 +18,8 @@ import org.matsim.api.core.v01.Coord;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.referencing.FactoryException;
+import resources.Properties;
+import resources.Resources;
 import trads.TradsTrip;
 
 import java.io.File;
@@ -56,9 +58,13 @@ public class RoutePathWriter {
 
         // Read in edges file
         Map<Integer, SimpleFeature> networkFeatures = GpkgReader.readEdges(new File(inputEdgesGpkg));
-        int counter = 0;
+        int tripCounter = 0;
+        int pathCounter = 0;
 
         for(TradsTrip trip : trips) {
+
+            // Increment counter
+            tripCounter++;
 
             // Get origin/destination
             Coord origCoord = trip.getCoord(ORIGIN);
@@ -83,6 +89,7 @@ public class RoutePathWriter {
             // Path
             Map<String,int[]> routePaths = trip.getRoutePaths();
             for(Map.Entry<String,int[]> e : routePaths.entrySet()) {
+                pathCounter++;
                 String route = e.getKey();
                 if(e.getValue().length > 0) {
                     LineString path = buildPath(trip.getRouteStartNodes(route),e.getValue(),geometryFactory,networkFeatures);
@@ -95,9 +102,8 @@ public class RoutePathWriter {
                     routeCollection.add(feature);
                 }
             }
-            counter++;
         }
-        logger.info("Wrote " + counter + " trips.");
+        logger.info("Wrote " + tripCounter + " trips with " + pathCounter + " paths.");
 
         // Write Geopackage
         File outputFile = new File(outputGpkg);
@@ -122,7 +128,7 @@ public class RoutePathWriter {
 
         SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
         builder.setName("Routes");
-        builder.setCRS(CRS.decode("EPSG:27700")); // <- Coordinate reference system
+        builder.setCRS(CRS.decode(Resources.instance.getString(Properties.COORDINATE_SYSTEM))); // <- Coordinate reference system
 
         // add attributes in order
         builder.add("Path", LineString.class);
@@ -139,7 +145,7 @@ public class RoutePathWriter {
 
         SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
         builder.setName("Nodes");
-        builder.setCRS(CRS.decode("EPSG:27700")); // <- Coordinate reference system
+        builder.setCRS(CRS.decode(Resources.instance.getString(Properties.COORDINATE_SYSTEM)));
 
         // add attributes in order
         builder.add("Path", Point.class);

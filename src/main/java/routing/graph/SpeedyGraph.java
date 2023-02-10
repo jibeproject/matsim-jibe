@@ -6,6 +6,7 @@ import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.core.router.util.TravelDisutility;
+import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 
 import java.util.Arrays;
@@ -54,6 +55,7 @@ public class SpeedyGraph {
     private final static double TIME_VALUE = 0.;
 
     private final TravelDisutility td;
+    private final TravelTime tt;
     private final Person person;
     private final Vehicle vehicle;
 
@@ -62,10 +64,11 @@ public class SpeedyGraph {
     private final int[] nodeData;
     private final int[] linkData;
     private final double[] linkDisutility;
+    private final double[] linkTime;
     private final Link[] links;
     private final Node[] nodes;
 
-    public SpeedyGraph(Network network, TravelDisutility td, Person person, Vehicle veh) {
+    public SpeedyGraph(Network network, TravelTime tt, TravelDisutility td, Person person, Vehicle veh) {
         this.nodeCount = Id.getNumberOfIds(Node.class);
         this.linkCount = Id.getNumberOfIds(Link.class);
 
@@ -75,7 +78,9 @@ public class SpeedyGraph {
         this.nodes = new Node[nodeCount];
 
         this.linkDisutility = new double[linkCount];
+        this.linkTime = new double[linkCount];
         this.td = td;
+        this.tt = tt;
         this.person = person;
         this.vehicle = veh;
 
@@ -102,6 +107,7 @@ public class SpeedyGraph {
         this.linkData[base + 5] = (int) Math.round(link.getLength() / link.getFreespeed() * 100.0);
 
         this.linkDisutility[linkIdx] = td.getLinkTravelDisutility(link,TIME_VALUE,person,vehicle);
+        this.linkTime[linkIdx] = tt.getLinkTravelTime(link,TIME_VALUE,person,vehicle);
 
         setOutLink(fromNodeIdx, linkIdx);
         setInLink(toNodeIdx, linkIdx);
@@ -152,6 +158,7 @@ public class SpeedyGraph {
     }
 
     double getLinkDisutility(int index) {return this.linkDisutility[index];}
+    double getLinkTime(int index) {return this.linkTime[index];}
 
     Node getNode(int index) {
         return this.nodes[index];

@@ -2,6 +2,9 @@ package network;
 
 import gis.GpkgReader;
 import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
+import resources.Properties;
+import resources.Resources;
+import routing.Bicycle;
 import routing.travelTime.BicycleTravelTime;
 import routing.Gradient;
 import routing.travelTime.WalkTravelTime;
@@ -53,25 +56,25 @@ import java.util.Map;
 public class WriteNetworkGpkg {
 
     private final static Logger log = Logger.getLogger(WriteNetworkGpkg.class);
-    private final static double MAX_BIKE_SPEED = 16 / 3.6;
 
     public static void main(String[] args) throws FactoryException, IOException {
 
-        if(args.length < 3 || args.length > 4) {
+        if(args.length < 2 || args.length > 3) {
             throw new RuntimeException("Program requires 3 or 4 arguments:\n" +
-                    "(0) MATSim network file (.xml)\n" +
-                    "(1) Input edges (.gpkg)\n" +
-                    "(2) Output edges (.gpkg)\n" +
-                    "(3) OPTIONAL: mode (for printing a mode-specific network)");
+                    "(0) Properties file (.properties)" +
+                    "(1) Output edges (.gpkg)\n" +
+                    "(2) OPTIONAL: mode (for printing a mode-specific network)");
         }
 
-        String matsimNetworkPath = args[0];
-        File edgesFile = new File(args[1]);
-        File outputEdgesFile = new File(args[2]);
+        Resources.initializeResources(args[0]);
+
+        String matsimNetworkPath = Resources.instance.getString(Properties.MATSIM_ROAD_NETWORK);
+        File edgesFile = Resources.instance.getFile(Properties.NETWORK_LINKS);
+        File outputEdgesFile = new File(args[1]);
 
         String modeFilter = null;
-        if(args.length == 4) {
-            modeFilter = args[3];
+        if(args.length == 3) {
+            modeFilter = args[2];
         }
 
         // Read edges
@@ -89,22 +92,11 @@ public class WriteNetworkGpkg {
             network = modeSpecificNetwork;
         }
 
-        // Setup config
-        Config config = ConfigUtils.createConfig();
-        BicycleConfigGroup bicycleConfigGroup = new BicycleConfigGroup();
-        bicycleConfigGroup.setBicycleMode("bike");
-        config.addModule(bicycleConfigGroup);
-        PlanCalcScoreConfigGroup planCalcScoreConfigGroup = new PlanCalcScoreConfigGroup();
-        log.info("Marginal utility of Money = " + planCalcScoreConfigGroup.getMarginalUtilityOfMoney());
-
-        // Create bicycle vehicle
-        VehicleType type = VehicleUtils.createVehicleType(Id.create("bike", VehicleType.class));
-        type.setMaximumVelocity(MAX_BIKE_SPEED);
-        Vehicle bike = VehicleUtils.createVehicle(Id.createVehicleId(1), type);
+        Bicycle bicycle = new Bicycle(null);
+        Vehicle bike = bicycle.getVehicle();
 
         // Set up bicycle data
-        BicycleLinkSpeedCalculatorDefaultImpl bikeSpeed = new BicycleLinkSpeedCalculatorDefaultImpl((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME));
-        TravelTime ttCycle = new BicycleTravelTime(bikeSpeed);
+        TravelTime ttBike = bicycle.getTravelTime();
         TravelTime ttWalk = new WalkTravelTime();
 
         // Prepare geopackage data
@@ -152,7 +144,7 @@ public class WriteNetworkGpkg {
 
             // Length, travelTime, travelDisutility
             double length = link.getLength();
-            double cycleTime = ttCycle.getLinkTravelTime(link,0,null,bike);
+            double cycleTime = ttBike.getLinkTravelTime(link,0,null,bike);
             double walkTime = ttWalk.getLinkTravelTime(link,0,null,null);
 
             // AADT
@@ -237,7 +229,7 @@ public class WriteNetworkGpkg {
 
         SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
         builder.setName("links");
-        builder.setCRS(CRS.decode("EPSG:27700")); // <- Coordinate reference system
+        builder.setCRS(CRS.decode(Resources.instance.getString(Properties.COORDINATE_SYSTEM))); // <- Coordinate reference system
 
         // add attributes in order
         builder.add("path", LineString.class);

@@ -1,13 +1,17 @@
 package trads.io;
 
-import com.google.common.math.LongMath;
 import data.Place;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.TransportMode;
 import org.matsim.core.utils.geometry.CoordUtils;
+import org.matsim.core.utils.misc.Counter;
+import resources.Properties;
+import resources.Resources;
+import trads.TradsPurpose;
 import trads.TradsTrip;
 
 import java.io.BufferedReader;
@@ -18,21 +22,22 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static data.Place.*;
+import static trads.TradsPurpose.*;
 import static trads.io.AttributeNames.*;
 
 public class TradsReader {
 
     private final static Logger logger = Logger.getLogger(TradsReader.class);
 
-    public static Set<TradsTrip> readTrips(String filePath, Geometry geometry) throws IOException {
+    public static Set<TradsTrip> readTrips(Geometry geometry) throws IOException {
         Set<TradsTrip> trips = new HashSet<>();
         String recString;
-        int counter = 0;
+        Counter counter = new Counter("Processed " + " TRADS records.");
         int badCoords = 0;
         int badTimes = 0;
 
         // Open Reader
+        String filePath = Resources.instance.getString(Properties.TRADS_TRIPS);
         BufferedReader in = new BufferedReader(new FileReader(filePath));
 
         GeometryFactory gf = new GeometryFactory();
@@ -45,20 +50,17 @@ public class TradsReader {
         int posTripId = findPositionInArray(TRIP_ID, header);
         int posStartTime = findPositionInArray(START_TIME, header);
         int posMainMode = findPositionInArray(MAIN_MODE, header);
+        int posStartPurpose = findPositionInArray(START_PURPOSE, header);
+        int posEndPurpose = findPositionInArray(END_PURPOSE, header);
         int posHomeX = findPositionInArray(X_HOUSEHOLD_COORD, header);
         int posHomeY = findPositionInArray(Y_HOUSEHOLD_COORD, header);
-        int posMainX = findPositionInArray(X_MAIN_COORD, header);
-        int posMainY = findPositionInArray(Y_MAIN_COORD, header);
         int posOrigX = findPositionInArray(X_ORIGIN_COORD, header);
         int posOrigY = findPositionInArray(Y_ORIGIN_COORD, header);
         int posDestX = findPositionInArray(X_DESTINATION_COORD, header);
         int posDestY = findPositionInArray(Y_DESTINATION_COORD, header);
 
         while ((recString = in.readLine()) != null) {
-            counter++;
-            if (LongMath.isPowerOfTwo(counter)) {
-                logger.info(counter + " records processed.");
-            }
+            counter.incCounter();
             String[] lineElements = recString.split(SEP);
 
             String householdId = lineElements[posHouseholdId];
@@ -79,33 +81,24 @@ public class TradsReader {
             } else startTime = 28800;
 
             // Read main mode
-            String mainMode = lineElements[posMainMode];
+            String mainMode = getTransportMode(lineElements[posMainMode]);
+
+            // Read start and end purpose
+            TradsPurpose startPurpose = getPurpose(lineElements[posStartPurpose]);
+            TradsPurpose endPurpose = getPurpose(lineElements[posEndPurpose]);
 
             Map<Place, Coord> coords = new HashMap<>(3);
-            Map<Place,Boolean> coordsInBoundary = new HashMap<>(3);
+            Map<Place, Boolean> coordsInBoundary = new HashMap<>(3);
 
             // Read household coord
             try {
                 double x = Double.parseDouble(lineElements[posHomeX]);
                 double y = Double.parseDouble(lineElements[posHomeY]);
-                coords.put(HOME, CoordUtils.createCoord(x,y));
-                coordsInBoundary.put(HOME,geometry.contains(gf.createPoint(new Coordinate(x,y))));
+                coords.put(Place.HOME, CoordUtils.createCoord(x,y));
+                coordsInBoundary.put(Place.HOME,geometry.contains(gf.createPoint(new Coordinate(x,y))));
             } catch (NumberFormatException e) {
                 logger.warn("Unreadable HOME coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
                 badCoords++;
-            }
-
-            // Read main coord (if the main vars are there)
-            if(posMainX != -1 && posMainY != -1) {
-                try {
-                    double x = Double.parseDouble(lineElements[posMainX]);
-                    double y = Double.parseDouble(lineElements[posMainY]);
-                    coords.put(MAIN,CoordUtils.createCoord(x,y));
-                    coordsInBoundary.put(MAIN,geometry.contains(gf.createPoint(new Coordinate(x,y))));
-                } catch (NumberFormatException e) {
-                    logger.warn("Unreadable MAIN coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
-                    badCoords++;
-                }
             }
 
             // Read origin coord
@@ -113,8 +106,8 @@ public class TradsReader {
                 try {
                     double x = Double.parseDouble(lineElements[posOrigX]);
                     double y = Double.parseDouble(lineElements[posOrigY]);
-                    coords.put(ORIGIN, CoordUtils.createCoord(x,y));
-                    coordsInBoundary.put(ORIGIN, geometry.contains(gf.createPoint(new Coordinate(x,y))));
+                    coords.put(Place.ORIGIN, CoordUtils.createCoord(x,y));
+                    coordsInBoundary.put(Place.ORIGIN, geometry.contains(gf.createPoint(new Coordinate(x,y))));
                 } catch (NumberFormatException e) {
                     logger.warn("Unreadable ORIGIN coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
                     badCoords++;
@@ -125,18 +118,18 @@ public class TradsReader {
             try {
                 double x = Double.parseDouble(lineElements[posDestX]);
                 double y = Double.parseDouble(lineElements[posDestY]);
-                coords.put(DESTINATION, CoordUtils.createCoord(x,y));
-                coordsInBoundary.put(DESTINATION,geometry.contains(gf.createPoint(new Coordinate(x,y))));
+                coords.put(Place.DESTINATION, CoordUtils.createCoord(x,y));
+                coordsInBoundary.put(Place.DESTINATION,geometry.contains(gf.createPoint(new Coordinate(x,y))));
             } catch (NumberFormatException e) {
                 logger.warn("Unreadable DESTINATION coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
                 badCoords++;
             }
 
-            trips.add(new TradsTrip(householdId, personId, tripId, startTime, mainMode, coords, coordsInBoundary));
+            trips.add(new TradsTrip(householdId, personId, tripId, startTime, mainMode, startPurpose, endPurpose, coords, coordsInBoundary));
         }
         in.close();
 
-        logger.info(counter + " trips processed.");
+        logger.info(counter.getCounter() + " trips processed.");
         logger.info(badTimes + " trips with double-value start times.");
         logger.info(badCoords + " unreadable coordinates.");
 
@@ -152,8 +145,50 @@ public class TradsReader {
         }
         if (ind == -1) {
             logger.error ("Could not find element " + string +
-                    " in array (see method <findPositionInArray> in class <SiloUtil>");
+                    " in array");
         }
         return ind;
+    }
+
+    private static String getTransportMode(String tradsMode) {
+        switch(tradsMode) {
+            case "Walk": return TransportMode.walk;
+            case "Bicycle": return TransportMode.bike;
+            case "Motorcycle, scooter, moped": return TransportMode.motorcycle;
+            case "Car or van driver": return TransportMode.car;
+            case "Train":
+            case "2+ Train":
+                return TransportMode.train;
+            case "Taxi, minicab": return TransportMode.taxi;
+            default: return tradsMode;
+        }
+    }
+
+    private static TradsPurpose getPurpose(String purpose) {
+        switch(purpose) {
+            case "Home": return HOME;
+            case "Usual place of work": return WORK;
+            case "Education as pupil, student": return EDUCATION;
+            case "Visit friends or relatives": return VISIT_FRIENDS_OR_FAMILY;
+            case "Shopping Food": return SHOPPING_FOOD;
+            case "Shopping Non food": return SHOPPING_NON_FOOD;
+            case "Escorting to place of work, pick-up, drop-off": return ESCORT_WORK;
+            case "Escorting to place of education, pick-up, drop-off": return ESCORT_EDUCATION;
+            case "Childcare  taking or collecting child to or from babysitter, nursery etc": return ESCORT_CHILDCARE;
+            case "Accompanying or giving lift to other person, not school, or work": return ESCORT_OTHER;
+            case "Use Services, Personal Business, bank, hairdresser, library etc": return PERSONAL_BUSINESS;
+            case "Health or medical visit": return MEDICAL;
+            case "Social - Entertainment, recreation, Participate in sport, pub, restaurant": return SOCIAL;
+            case "Work - Business, other": return BUSINESS_TRIP;
+            case "Moving people or goods in connection with employment": return BUSINESS_TRANSPORT;
+            case "Worship or religious observance": return WORSHIP;
+            case "Round trip walk, cycle, drive for enjoyment": return RECREATIONAL_ROUND_TRIP;
+            case "Unpaid, voluntary work": return VOLUNTEERING;
+            case "Tourism, sightseeing": return TOURISM;
+            case "Staying at hotel or other temporary accommodation": return TEMPORARY_ACCOMMODATION;
+            case "Other": return OTHER;
+            case "NR": return NO_RESPONSE;
+            default: throw new RuntimeException("Purpose " + purpose + " not accounted for! Please update list of purposes");
+        }
     }
 }
