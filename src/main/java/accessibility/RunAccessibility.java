@@ -71,29 +71,11 @@ public class RunAccessibility {
 
         AccessibilityResources.initializeResources(accessibilityProperties);
 
-        // Destination data
-        String destinationCoordsFile = AccessibilityResources.instance.getString(AccessibilityProperties.DESTINATIONS);
-        DestinationData destinations = new DestinationData(destinationCoordsFile,networkBoundary);
-
         // Mode
         String mode = AccessibilityResources.instance.getMode();
 
         // Create mode-specific network
         Network network = NetworkUtils2.extractModeSpecificNetwork(fullNetwork,mode);
-
-        // Origin nodes
-        log.info("Processing origin nodes...");
-        Set<Node> originNodes = new HashSet<>();
-        Counter counter = new Counter("Processing origin node ", " / " + network.getNodes().size());
-        for(Node node : network.getNodes().values()) {
-            counter.incCounter();
-            Coord c = node.getCoord();
-            if(regionBoundary.contains(gf.createPoint(new Coordinate(c.getX(),c.getY())))) {
-                originNodes.add(node);
-            }
-        }
-        log.info(mode + " network has " + network.getNodes().size() + " nodes.");
-        log.info("Identified " + originNodes.size() + " nodes within boundary to be used for analysis.");
 
         // Travel time, vehicle, disutility
         TravelTime tt = AccessibilityResources.instance.getTravelTime();
@@ -121,6 +103,28 @@ public class RunAccessibility {
         } else {
             throw new RuntimeException("Do not recognise decay function type \"" + decayType + "\"");
         }
+
+        // Destination data
+        String destinationCoordsFile = AccessibilityResources.instance.getString(AccessibilityProperties.DESTINATIONS);
+        if(destinationCoordsFile == null) {
+            log.warn("No destination information given. Skipping accessibility calculation.");
+            return;
+        }
+        DestinationData destinations = new DestinationData(destinationCoordsFile,networkBoundary);
+
+        // Origin nodes
+        log.info("Processing origin nodes...");
+        Set<Node> originNodes = new HashSet<>();
+        Counter counter = new Counter("Processing origin node ", " / " + network.getNodes().size());
+        for(Node node : network.getNodes().values()) {
+            counter.incCounter();
+            Coord c = node.getCoord();
+            if(regionBoundary.contains(gf.createPoint(new Coordinate(c.getX(),c.getY())))) {
+                originNodes.add(node);
+            }
+        }
+        log.info(mode + " network has " + network.getNodes().size() + " nodes.");
+        log.info("Identified " + originNodes.size() + " nodes within boundary to be used for analysis.");
 
         // Accessibility calculation
         log.info("Running accessibility calculation...");

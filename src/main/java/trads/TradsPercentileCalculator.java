@@ -28,45 +28,6 @@ public class TradsPercentileCalculator {
 
     private final static Logger logger = Logger.getLogger(TradsPercentileCalculator.class);
 
-    public static void main(String[] args) throws IOException {
-        if(args.length == 0 || args.length > 2) {
-            throw new RuntimeException("Program requires 1-2 arguments:\n" +
-                    "(0) Properties file\n" +
-                    "(1) OPTIONAL: output csv file");
-        }
-
-        Resources.initializeResources(args[0]);
-        String outputCsv = args[1];
-        double decayPercentile = Resources.instance.getDouble(Properties.DECAY_PERCENTILE);
-
-        // Read network
-        Network network = NetworkUtils2.readFullNetwork();
-
-        // Create mode-specific networks
-        logger.info("Creating bike-specific network...");
-        Network networkWalk = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.walk);
-
-        // Read Boundary Shapefile
-        logger.info("Reading boundary shapefile...");
-        Geometry boundary = GpkgReader.readNetworkBoundary();
-
-        // Valid purpose pairs (based on TRADS data)
-        TradsPurpose.PairList odPairs = new TradsPurpose.PairList();
-        odPairs.addPair(TradsPurpose.HOME, TradsPurpose.SHOPPING_FOOD);
-        odPairs.addPair(TradsPurpose.SHOPPING_FOOD, TradsPurpose.HOME);
-
-//        Bicycle bicycle = new Bicycle(null);
-//        TravelTime ttBike = bicycle.getTravelTime();
-
-        double result = estimateBeta(TransportMode.walk, null, new WalkTravelTime(),
-                new DistanceDisutility(),odPairs,networkWalk,networkWalk,boundary,outputCsv);
-        double beta = getHansenBetaParameter(result, decayPercentile);
-
-        logger.info("result = " + result);
-        logger.info("hansen decay parameter = " + beta);
-    }
-
-
     public static double estimateBeta(String mode, Vehicle vehicle, TravelTime travelTime, TravelDisutility travelDisutility,
                                       TradsPurpose.PairList purposePairs, Network network, Network xy2lNetwork,
                                       Geometry boundary, String outputCsvPath) throws IOException {
