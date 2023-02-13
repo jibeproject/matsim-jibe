@@ -3,6 +3,10 @@ package network;
 // Additional utils beyond NetworkUtils
 
 import org.apache.log4j.Logger;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.IdSet;
 import org.matsim.api.core.v01.network.Link;
@@ -21,6 +25,8 @@ import resources.Resources;
 import routing.disutility.JibeDisutility;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Predicate;
 
 public class NetworkUtils2 {
@@ -51,6 +57,61 @@ public class NetworkUtils2 {
         }
         for (Id<Node> nodeId : nodesToRemove) network.removeNode(nodeId);
     }
+
+    public static Set<Node> getNodesInBoundary(Network network, Geometry boundary) {
+        ConcurrentLinkedQueue<Node> allNodes = new ConcurrentLinkedQueue<>(network.getNodes().values());
+        Set<Node> nodesInBoundary = ConcurrentHashMap.newKeySet();
+        Counter counter = new Counter("Calculating boundary status node ", " / " + network.getNodes().size());
+        int numberOfThreads = Resources.instance.getInt(Properties.NUMBER_OF_THREADS);
+        Thread[] threads = new Thread[numberOfThreads];
+        for (int i = 0 ; i < numberOfThreads ; i++) {
+            NodeWorker worker = new NodeWorker(allNodes,nodesInBoundary,boundary,counter);
+            threads[i] = new Thread(worker,"NodeProcessor-" + i);
+            threads[i].start();
+        }
+
+        for (Thread thread : threads) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        log.info("Identified " + nodesInBoundary.size() + " nodes within boundary.");
+        return nodesInBoundary;
+    }
+
+    private static class NodeWorker implements Runnable {
+
+        private static final GeometryFactory gf = new GeometryFactory();
+        private final ConcurrentLinkedQueue<Node> allNodes;
+        private final Set<Node> nodesInBoundary;
+        private final Geometry boundary;
+        private final Counter counter;
+
+        NodeWorker(ConcurrentLinkedQueue<Node> allNodes, Set<Node> nodesInBoundary, Geometry boundary, Counter counter) {
+            this.allNodes = allNodes;
+            this.nodesInBoundary = nodesInBoundary;
+            this.boundary = boundary;
+            this.counter = counter;
+        }
+        public void run() {
+            while(true) {
+                Node node = this.allNodes.poll();
+                if(node == null) {
+                    return;
+                }
+                this.counter.incCounter();
+                Coord c = node.getCoord();
+                if(boundary.contains(gf.createPoint(new Coordinate(c.getX(),c.getY())))) {
+                    nodesInBoundary.add(node);
+                }
+            }
+        }
+    }
+
+
 
     public static void identifyDisconnectedLinks(Network network, String transportMode) {
         Network modeSpecificNetwork = extractModeSpecificNetwork(network, transportMode);

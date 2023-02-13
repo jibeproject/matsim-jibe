@@ -5,46 +5,33 @@ import resources.Properties;
 import resources.Resources;
 import routing.ActiveAttributes;
 import routing.Bicycle;
-import routing.TravelAttribute;
 import gis.GpkgReader;
 import network.NetworkUtils2;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
-import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
-import org.matsim.contrib.bicycle.BicycleConfigGroup;
-import org.matsim.core.config.Config;
-import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
-import org.matsim.vehicles.VehicleType;
-import org.matsim.vehicles.VehicleUtils;
 import org.opengis.referencing.FactoryException;
 import routing.disutility.DistanceDisutility;
 import routing.disutility.JibeDisutility;
-import routing.disutility.components.JctStress;
-import routing.disutility.components.LinkAttractiveness;
-import routing.disutility.components.LinkStress;
-import routing.travelTime.BicycleTravelTime;
 import routing.travelTime.WalkTravelTime;
-import routing.travelTime.speed.BicycleLinkSpeedCalculatorDefaultImpl;
 import trads.io.RoutePathWriter;
 import trads.io.TradsReader;
 
 import java.io.IOException;
-import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static data.Place.*;
 import static data.Place.DESTINATION;
 
-public class RunTradsRouter {
+public class RunTripRouter {
 
-    private final static Logger logger = Logger.getLogger(RunTradsRouter.class);
+    private final static Logger logger = Logger.getLogger(RunTripRouter.class);
 
     public static void main(String[] args) throws IOException, FactoryException {
         if(args.length != 3) {

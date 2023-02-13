@@ -28,27 +28,28 @@ import java.util.stream.Collectors;
 import static data.Place.DESTINATION;
 import static data.Place.ORIGIN;
 
-public class RunTradsMcRouter {
+public class RunTripMcRouter {
 
-    private final static Logger logger = Logger.getLogger(RunTradsMcRouter.class);
+    private final static Logger logger = Logger.getLogger(RunTripMcRouter.class);
 
     // Parameters for MC Simulation
-    private final static int NUMBER_OF_SAMPLES = 10;
-    private final static double MAX_MC_ATTRACTIVENESS = 3e-3; // based on avg travel time and rounded up todo: calculate for walking
-    private final static double MAX_MC_STRESS = 3e-3; // based on average travel time and rounded up todo: calculate for walking
+    private final static double MAX_MC_ATTRACTIVENESS = 5e-3; // based on avg travel time and rounded up
+    private final static double MAX_MC_STRESS = 5e-3; // based on average travel time and rounded up
     private final static double MAX_JCT_M_EQUIVALENT = 20;
 
     public static void main(String[] args) throws IOException, FactoryException {
-        if (args.length != 3) {
-            throw new RuntimeException("Program requires 2 arguments: \n" +
+        if (args.length != 4) {
+            throw new RuntimeException("Program requires 4 arguments: \n" +
                     "(0) Properties file \n" +
-                    "(1) Output File Path\n" +
-                    "(2) Mode");
+                    "(1) Output file path\n" +
+                    "(2) Mode\n" +
+                    "(3) Number of samples");
         }
 
         Resources.initializeResources(args[0]);
         String outputGpkg = args[1];
         String mode = args[2];
+        int numberOfSamples = Integer.parseInt(args[3]);
 
         String inputEdgesGpkg = Resources.instance.getString(Properties.NETWORK_LINKS);
 
@@ -100,8 +101,8 @@ public class RunTradsMcRouter {
 
         Random r = new Random();
 
-        Counter counter = new Counter("Sampling route ", "/" + NUMBER_OF_SAMPLES);
-        for (int i = 0; i < NUMBER_OF_SAMPLES; i++) {
+        Counter counter = new Counter("Sampling route ", "/" + numberOfSamples);
+        for (int i = 0; i < numberOfSamples; i++) {
             counter.incCounter();
 
             double mcAttr = r.nextDouble() * MAX_MC_ATTRACTIVENESS;

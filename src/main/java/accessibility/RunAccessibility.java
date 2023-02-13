@@ -7,16 +7,12 @@ import accessibility.resources.AccessibilityProperties;
 import accessibility.resources.AccessibilityResources;
 import gis.GpkgReader;
 import network.NetworkUtils2;
-import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.IdMap;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
-import org.matsim.core.utils.misc.Counter;
 import org.matsim.vehicles.Vehicle;
 import resources.Resources;
 
@@ -25,14 +21,11 @@ import trads.TradsPercentileCalculator;
 import trads.TradsPurpose;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.Set;
 
 public class RunAccessibility {
 
     public static final Logger log = Logger.getLogger(RunAccessibility.class);
-    private static final GeometryFactory gf = new GeometryFactory();
-
     private static Network fullNetwork;
     private static Geometry regionBoundary;
     private static Geometry networkBoundary;
@@ -121,18 +114,8 @@ public class RunAccessibility {
         DestinationData destinations = new DestinationData(destinationFileName,networkBoundary);
 
         // Origin nodes
-        log.info("Processing origin nodes...");
-        Set<Node> originNodes = new HashSet<>();
-        Counter counter = new Counter("Processing origin node ", " / " + network.getNodes().size());
-        for(Node node : network.getNodes().values()) {
-            counter.incCounter();
-            Coord c = node.getCoord();
-            if(regionBoundary.contains(gf.createPoint(new Coordinate(c.getX(),c.getY())))) {
-                originNodes.add(node);
-            }
-        }
-        log.info(mode + " network has " + network.getNodes().size() + " nodes.");
-        log.info("Identified " + originNodes.size() + " nodes within boundary to be used for analysis.");
+        log.info("Identifying origin nodes within boundary...");
+        Set<Node> originNodes = NetworkUtils2.getNodesInBoundary(network,regionBoundary);
 
         // Accessibility calculation
         log.info("Running accessibility calculation...");

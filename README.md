@@ -46,7 +46,7 @@ Note that the output from this code is only meant for visualisation, it is not t
 ## Trads package (src/main/java/trads)
 This package contains everything related to routing trips from the Greater Manchester TRADS travel survey and collecting attributes to expand the trips dataset.
 
-### RunTripAnalysis.java
+### RunTripAnalysis.java
 
 Uses the MATSim routing engine to estimates key route parameters for each origin-destination pair in the travel survey. 
 Important for mode choice model estimation. Outputs a .csv file with one line for each survey record.
@@ -56,18 +56,20 @@ Important for mode choice model estimation. Outputs a .csv file with one line fo
 Uses the MATSim routing engine to calculate routes for each origin-desination pair for the specified mode (walk and bike only). 
 Outputs the short, fast and jibe version of each route as a .gpkg file.
 
-### RunTripMcRouter.java
+### RunTripMcRouter.java
 
 Similar to RunTripRouter.java, but uses monte-carlo simulation to sample many different marginal costs for the JIBE disutility function. 
 Outputs routes as a .gpkg file.
 
-## Accessibility package (src/main/java/accessibility)
+## Accessibility package (src/main/java/accessibility)
 
-This package contains tools and methods for calculating accessibility. Unlike zone-based accessibilities, the methods here calculate fully disaggregate accessibilities from every network node to every possible destination. We currently support isochrone-based accessibility (with time and/or distance as a cutoff) and hansen-based accessibility (with an optional time and/or distance cutoff).
+This package contains tools and methods for calculating accessibility. 
+Unlike zone-based accessibilities, the methods here calculate fully disaggregate accessibilities from every network node to every possible destination. 
+We currently support isochrone-based accessibility (with time and/or distance as a cutoff) and hansen accessibility (with an optional time and/or distance cutoff).
 
-Accessibility is calculated using the class RunAccessibility.java. As with all other runnable classes, the main properties file must be passed in as the first argument. Next, the configuration for each accessibility calculation can be calculated using an accessibility properties file. You can pass in as many accessibility config files as you would like, making it possible to run accessibility back-to-back without restarting the code.
+Accessibility is calculated using the class **_RunAccessibility.java_**. As with all other runnable classes, the main properties file must be passed in as the first argument. Next, the configuration for each accessibility calculation can be calculated using an accessibility properties file. You can pass in as many accessibility config files as you would like, making it possible to run accessibility back-to-back without restarting the code.
 
-### Accessibility properties file
+### Accessibility properties file
 
 An example accessibility properties file is given in accessibility/resources/example.properties.
 
@@ -83,14 +85,17 @@ In this file, we specify:
 
 ### Destinations file
 
-The destinations file is a .csv file specifying the destinations to be routed to and their weights.
+The destinations file is a .csv file specifying the destinations to be routed to and their weights. 
+It should have the following attributes:
  
- - ID: a unique ID for each destination. The ID cannot include commas.
- - X: the x-coordinate
- - Y: the y-coordinate
- - WEIGHT: the weight of each destination. If not provided, we assume all destinations have equal weight of 1.
+ - **ID:** a unique ID for each destination. The ID cannot include commas.
+ - **X:** the x-coordinate
+ - **Y:** the y-coordinate
+ - **WEIGHT:** the weight of each destination. If not provided, we assume all destinations have equal weight of 1.
  
-This code also supports destinations with multiple access points (e.g. large green spaces). If a destination has multiple access points, include each access point as a seperate line in the destinations file, but keep the destination ID the same. The code will calculate costs to all possible access points but the final accessibility calculation will only consider the access point with the lowest cost from the origin.
+This code also supports destinations with multiple access points (e.g. large green spaces). 
+If a destination has multiple access points, include each access point as a separate line in the destinations file, but keep the destination ID the same.
+The code will calculate costs to all possible access points but the final accessibility calculation will only consider the access point with the lowest cost from the origin.
 
 ## Other methods
 

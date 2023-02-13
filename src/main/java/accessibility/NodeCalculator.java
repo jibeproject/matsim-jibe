@@ -26,21 +26,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-/**
- * Calculates zone-to-zone matrices containing a number of performance indicators related to modes routed on a network.
- *
- * Inspired by <a href="https://github.com/moeckel/silo/blob/siloMatsim/silo/src/main/java/edu/umd/ncsg/transportModel/Zone2ZoneTravelTimeListener.java">...</a>.
- *
- * Idea of the algorithm:
- * - given n points per zone
- * - find the nearest link and thereof the to-node for each point
- * - this results in n nodes per zone (where some nodes can appear multiple times, this is wanted as it acts as a weight/probability)
- * - for each zone-to-zone combination, calculate the travel times for each node to node combination.
- * - this results in n x n travel times per zone-to-zone combination.
- * - average the n x n travel times and store this value as the zone-to-zone travel time.
- *
- * @author mrieser / SBB
- */
+
+// Based on the skim matrix calculations from the MATSim SBB Extensions
 public final class NodeCalculator {
 
     private NodeCalculator() {
@@ -129,7 +116,7 @@ public final class NodeCalculator {
                     for (Node toNode : this.destinationNodes.get(destination.getKey())) {
                         int toNodeIndex = toNode.getId().index();
                         double nodeDist = lcpTree.getDistance(toNodeIndex);
-                        double nodeTime = lcpTree.getTime(toNodeIndex).seconds();
+                        double nodeTime = lcpTree.getTime(toNodeIndex).orElse(Double.POSITIVE_INFINITY);
                         if(!decayFunction.withinCutoff(nodeDist,nodeTime)) {
                             continue;
                         }
