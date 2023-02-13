@@ -86,10 +86,10 @@ public class RunAccessibility {
         String decayType = AccessibilityResources.instance.getString(AccessibilityProperties.DECAY_FUNCTION);
         double cutoffTime = AccessibilityResources.instance.getDouble(AccessibilityProperties.CUTOFF_TIME);
         double cutoffDist = AccessibilityResources.instance.getDouble(AccessibilityProperties.CUTOFF_DISTANCE);
+        double beta = AccessibilityResources.instance.getDouble(AccessibilityProperties.BETA);
 
         DecayFunction df;
         if (decayType.equalsIgnoreCase("hansen")) {
-            double beta = AccessibilityResources.instance.getDouble(AccessibilityProperties.BETA);
             if(Double.isNaN(beta)) {
                 log.info("Hansen accessibility desired but no beta value given. Estimating beta from TRADS survey");
                 TradsPurpose.PairList includedPurposePairs = AccessibilityResources.instance.getPurposePairs();
@@ -103,6 +103,10 @@ public class RunAccessibility {
         } else {
             throw new RuntimeException("Do not recognise decay function type \"" + decayType + "\"");
         }
+        log.info("Initialised " + decayType + " decay function with the following parameters:" +
+                 "\nBeta: " +  (decayType.equalsIgnoreCase("hansen") ? beta : "N/A") +
+                 "\nTime cutoff (seconds): " + cutoffTime +
+                 "\nDistance cutoff (meters): " + cutoffDist);
 
         // Destination data
         String destinationFileName = AccessibilityResources.instance.getString(AccessibilityProperties.DESTINATIONS);
