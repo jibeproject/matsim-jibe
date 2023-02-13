@@ -45,6 +45,9 @@ public class DestinationData {
         int posX = findPositionInArray(X_VAR,header);
         int posY = findPositionInArray(Y_VAR,header);
         int posWt = findPositionInArray(WEIGHT_VAR,header);
+        if(posWt == -1) {
+            log.warn("No weight attribute found in " + filename + ". Setting all destination weights to 1.");
+        }
 
         while((recString = in.readLine()) != null) {
             counter.incCounter();
@@ -55,7 +58,7 @@ public class DestinationData {
             double y = Double.parseDouble(lineElements[posY]);
 
             if(destinationBoundary.contains(gf.createPoint(new Coordinate(x,y)))) {
-                double wt = Double.parseDouble(lineElements[posWt]);
+                double wt = posWt == -1 ? 1. : Double.parseDouble(lineElements[posWt]);
                 if(coords.containsKey(id)) {
                     if(weights.get(id) == wt) {
                         coords.get(id).add(new Coord(x,y));
@@ -104,10 +107,6 @@ public class DestinationData {
             if (array[a].equalsIgnoreCase(string)) {
                 ind = a;
             }
-        }
-        if (ind == -1) {
-            log.error ("Could not find element " + string +
-                    " in array (see method <findPositionInArray> in class <SiloUtil>");
         }
         return ind;
     }

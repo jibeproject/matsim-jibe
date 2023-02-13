@@ -105,12 +105,16 @@ public class RunAccessibility {
         }
 
         // Destination data
-        String destinationCoordsFile = AccessibilityResources.instance.getString(AccessibilityProperties.DESTINATIONS);
-        if(destinationCoordsFile == null) {
+        String destinationFileName = AccessibilityResources.instance.getString(AccessibilityProperties.DESTINATIONS);
+        String outputFileName = AccessibilityResources.instance.getString(AccessibilityProperties.OUTPUT);
+        if(destinationFileName == null) {
             log.warn("No destination information given. Skipping accessibility calculation.");
             return;
+        } else if (outputFileName == null) {
+            log.warn("No output filename given. Skipping accessibility calculation.");
+            return;
         }
-        DestinationData destinations = new DestinationData(destinationCoordsFile,networkBoundary);
+        DestinationData destinations = new DestinationData(destinationFileName,networkBoundary);
 
         // Origin nodes
         log.info("Processing origin nodes...");
@@ -135,7 +139,6 @@ public class RunAccessibility {
         log.info("Calculation time: " + (endTime - startTime));
 
         // Write results as gpkg
-        String outputFileName = AccessibilityResources.instance.getString(AccessibilityProperties.OUTPUT);
         AccessibilityWriter.writeNodesAsGpkg(accessibilities,fullNetwork,outputFileName);
     }
 }

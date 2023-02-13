@@ -1,18 +1,13 @@
 package trads;
 
-import gis.GpkgReader;
-import network.NetworkUtils2;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
-import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 import resources.Properties;
 import resources.Resources;
-import routing.disutility.DistanceDisutility;
-import routing.travelTime.WalkTravelTime;
 import trads.io.RouteAttributeWriter;
 import trads.io.TradsReader;
 
@@ -27,6 +22,7 @@ import static data.Place.ORIGIN;
 public class TradsPercentileCalculator {
 
     private final static Logger logger = Logger.getLogger(TradsPercentileCalculator.class);
+    private static Set<TradsTrip> trips;
 
     public static double estimateBeta(String mode, Vehicle vehicle, TravelTime travelTime, TravelDisutility travelDisutility,
                                       TradsPurpose.PairList purposePairs, Network network, Network xy2lNetwork,
@@ -36,7 +32,9 @@ public class TradsPercentileCalculator {
         logger.info("Calculating " + percentile + " percentile cost based on TRADS trips");
 
         // Read trips
-        Set<TradsTrip> trips = TradsReader.readTrips(boundary);
+        if(trips == null) {
+            trips = TradsReader.readTrips(boundary);
+        }
 
         // Filter to trips meeting criteria
         Stream<TradsTrip> tripsStream = trips.stream().filter(t -> t.routable(ORIGIN,DESTINATION) && t.getMainMode().equals(mode));
