@@ -1,6 +1,6 @@
-package routing.graph;
+package ch.sbb.matsim.graph;
 
-import ch.sbb.matsim.analysis.TravelAttribute;
+import routing.TravelAttribute;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.core.router.util.TravelDisutility;

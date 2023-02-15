@@ -4,14 +4,14 @@
 
 package ch.sbb.matsim.analysis.calc;
 
-import ch.sbb.matsim.analysis.TravelAttribute;
+import routing.TravelAttribute;
 import ch.sbb.matsim.analysis.data.IndicatorData;
-import routing.graph.Graph;
+import ch.sbb.matsim.graph.Graph;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import routing.graph.LeastCostPathTree2;
+import ch.sbb.matsim.graph.LeastCostPathTree2;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;

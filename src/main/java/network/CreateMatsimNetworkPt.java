@@ -6,6 +6,8 @@ import org.matsim.pt2matsim.gtfs.GtfsConverter;
 import org.matsim.pt2matsim.gtfs.GtfsFeedImpl;
 import org.matsim.pt2matsim.run.PublicTransitMapper;
 import org.matsim.pt2matsim.tools.ScheduleTools;
+import resources.Properties;
+import resources.Resources;
 
 // Required input in GTFS format:
 // For bus & tram network use https://data.bus-data.dft.gov.uk/downloads/
@@ -17,45 +19,45 @@ public class CreateMatsimNetworkPt {
     public static void main(String[] args) {
 
         if(args.length != 8) {
-            throw new RuntimeException("Program requires 11 arguments: \n" +
-                    "(0) GTFS directory for bus/tram \n" +
-                    "(1) GTFS directory for rail \n" +
-                    "(2) Unmapped schedule file \n" +
-                    "(3) Input network file \n" +
-                    "(4) Output (mapped) schedule file \n" +
-                    "(5) Output network file \n" +
-                    "(6) Config file \n" +
-                    "(7) Number of Threads");
+            throw new RuntimeException("Program requires 5 arguments: \n" +
+                    "(0) Properties file \n" +
+                    "(1) GTFS directory for bus/tram \n" +
+                    "(2) GTFS directory for rail \n" +
+                    "(3) Unmapped schedule file \n" +
+                    "(4) Config file");
         }
 
-        final String gtfsBusTram = args[0];
-        final String gtfsRail = args[1];
-        final String scheduleFile = args[2];
-        final String inputNetwork = args[3];
-        final String outputScheduleMapped = args[4];
-        final String outputNetwork = args[5];
-        final String configFile = args[6];
-        final int numberOfThreads = Integer.parseInt(args[7]);
+        Resources.initializeResources(args[0]);
+
+        final String inputNetwork = Resources.instance.getString(Properties.MATSIM_ROAD_NETWORK);
+        final String scheduleMapped = Resources.instance.getString(Properties.MATSIM_TRANSIT_SCHEDULE);
+        final String outputNetwork = Resources.instance.getString(Properties.MATSIM_TRANSIT_NETWORK);
+        final int numberOfThreads = Resources.instance.getInt(Properties.NUMBER_OF_THREADS);
+
+        final String gtfsBusTram = args[1];
+        final String gtfsRail = args[2];
+        final String scheduleUnmapped = args[3];
+        final String configFile = args[4];
 
         // Setup GTFS converters
         GtfsConverter converter1 = new GtfsConverter(new GtfsFeedImpl(gtfsBusTram));
         GtfsConverter converter2 = new GtfsConverter(new GtfsFeedImpl(gtfsRail));
 
-        converter1.convert("dayWithMostTrips","EPSG:27700");
-        converter2.convert("dayWithMostTrips","EPSG:27700");
+        converter1.convert("dayWithMostTrips",Resources.instance.getString(Properties.COORDINATE_SYSTEM));
+        converter2.convert("dayWithMostTrips",Resources.instance.getString(Properties.COORDINATE_SYSTEM));
 
         // Create combined bus/tram/rail schedule
         TransitSchedule schedule = converter1.getSchedule();
         ScheduleTools.mergeSchedules(schedule,converter2.getSchedule());
 
         // Write combined schedule
-        ScheduleTools.writeTransitSchedule(schedule,scheduleFile);
+        ScheduleTools.writeTransitSchedule(schedule,scheduleUnmapped);
 
         // Create PT Mapper Config
         PublicTransitMappingConfigGroup config = new PublicTransitMappingConfigGroup();
-        config.setInputScheduleFile(scheduleFile);
+        config.setInputScheduleFile(scheduleUnmapped);
         config.setInputNetworkFile(inputNetwork);
-        config.setOutputScheduleFile(outputScheduleMapped);
+        config.setOutputScheduleFile(scheduleMapped);
         config.setOutputNetworkFile(outputNetwork);
         config.setNumOfThreads(numberOfThreads);
 //        config.getModesToKeepOnCleanUp().add("walk");

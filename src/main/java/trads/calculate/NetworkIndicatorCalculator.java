@@ -1,7 +1,7 @@
 package trads.calculate;
 
 import org.matsim.core.utils.misc.Counter;
-import ch.sbb.matsim.analysis.TravelAttribute;
+import routing.TravelAttribute;
 import data.Place;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.network.Link;
@@ -11,6 +11,7 @@ import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.vehicles.Vehicle;
+import routing.disutility.JibeDisutility;
 import trads.TradsTrip;
 
 import java.util.LinkedHashMap;
@@ -74,6 +75,13 @@ public class NetworkIndicatorCalculator implements Runnable {
                 // Calculate least cost path
                 LeastCostPathCalculator.Path path = pathCalculator.calcLeastCostPath(nOrig, nDest, 28800, null, vehicle);
 
+                // If JibeDisutility, get marginal costs
+                if(travelDisutility instanceof JibeDisutility) {
+                    results.put("mc_attractiveness", ((JibeDisutility) travelDisutility).getMarginalCostAttractiveness_m());
+                    results.put("mc_stressLink", ((JibeDisutility) travelDisutility).getMarginalCostStress_m());
+                    results.put("mc_stressJct", ((JibeDisutility) travelDisutility).getMarginalCostJunction());
+                }
+
                 // Set cost, time, and distance
                 results.put("cost",path.travelCost);
                 results.put("time",path.travelTime);
@@ -89,7 +97,12 @@ public class NetworkIndicatorCalculator implements Runnable {
                 if(additionalAttributes != null) {
                     for (Map.Entry<String,TravelAttribute> e : additionalAttributes.entrySet()) {
                         String name = e.getKey();
-                        double result = path.links.stream().mapToDouble(l -> e.getValue().getTravelAttribute(l,travelDisutility)).sum();
+                        Double result;
+                        try {
+                            result = path.links.stream().mapToDouble(l -> e.getValue().getTravelAttribute(l,travelDisutility)).sum();
+                        } catch (ClassCastException exception) {
+                            result = null;
+                        }
                         results.put(name,result);
                     }
                 }

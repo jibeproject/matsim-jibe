@@ -13,6 +13,8 @@ import org.matsim.api.core.v01.network.Node;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.io.MatsimNetworkReader;
 import org.opengis.referencing.FactoryException;
+import routing.disutility.JibeDisutility;
+import routing.travelTime.WalkTravelTime;
 
 import java.io.IOException;
 
@@ -57,7 +59,7 @@ public class RunGridAnalysis {
 
         // Calculate grid accessibilities
         GridCalculator.calculate(nodeAccessibilities,grid,network, DecayFunctions.WALK_DIST,
-                AccessibilityData.WalkDistAccessibility(),numberOfThreads);
+                new JibeDisutility(TransportMode.walk, new WalkTravelTime()),null,numberOfThreads);
 
         // Write grid to gpkg
         GisUtils.writeFeaturesToGpkg(grid,outputFilePath);

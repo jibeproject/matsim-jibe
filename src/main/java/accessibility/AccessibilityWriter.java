@@ -5,7 +5,6 @@
 package accessibility;
 
 import org.apache.log4j.Logger;
-import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureReader;
 import org.geotools.feature.DefaultFeatureCollection;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
@@ -25,6 +24,8 @@ import org.matsim.api.core.v01.network.Node;
 import org.matsim.core.utils.io.IOUtils;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.referencing.FactoryException;
+import resources.Properties;
+import resources.Resources;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -40,8 +41,6 @@ import java.util.Map;
 public final class AccessibilityWriter {
 
     private final static Logger log = Logger.getLogger(AccessibilityWriter.class);
-    private final static String COORDINATE_SYSTEM = "EPSG:27700";
-
     private final static GeometryFactory GEOMETRY_FACTORY = JTSFactoryFinder.getGeometryFactory();
     private final static char SEP = ',';
     private final static char NL = '\n';
@@ -107,7 +106,7 @@ public final class AccessibilityWriter {
 
         // Specify coordinate system
         try {
-            builder.setCRS(CRS.decode(COORDINATE_SYSTEM));
+            builder.setCRS(CRS.decode(Resources.instance.getString(Properties.COORDINATE_SYSTEM)));
         } catch (FactoryException e) {
             throw new RuntimeException(e);
         }

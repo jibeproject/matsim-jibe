@@ -1,15 +1,15 @@
 package accessibility.impedance;
 
-public class Isochrone {
+public class Isochrone extends DecayFunction {
 
-    double cutoff;
-
-    public Isochrone(double cutoff) {
-        this.cutoff = cutoff;
+    public Isochrone(double time, double distance) {
+        super(time,distance);
+        if(Double.isNaN(time) && Double.isNaN(distance)) {
+            throw new RuntimeException("Specified isochrone decay function but no cutoff values given!");
+        }
     }
 
     public double getDecay(double cost) {
-        return cost <= cutoff ? 1. : 0.;
+        return 1.;
     }
-
 }
