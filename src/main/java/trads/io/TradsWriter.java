@@ -2,27 +2,27 @@ package trads.io;
 
 import com.google.common.math.LongMath;
 import org.apache.log4j.Logger;
-import trads.TradsTrip;
+import trip.Trip;
 
 import java.io.*;
 import java.util.*;
 
-import static data.Place.*;
-import static trads.io.AttributeNames.*;
+import static trip.Place.*;
+import static trads.io.TradsAttributes.*;
 
-public class RouteAttributeWriter {
+public class TradsWriter {
 
-    private final static Logger logger = Logger.getLogger(RouteAttributeWriter.class);
+    private final static Logger logger = Logger.getLogger(TradsWriter.class);
 
     // Write results to csv file
-    public static void write(Set<TradsTrip> trips, String filePath, Map<String, List<String>> attributes) {
+    public static void write(Set<Trip> trips, String filePath, Map<String, List<String>> attributes) {
 
         PrintWriter out = openFileForSequentialWriting(new File(filePath));
 
         out.println(createHeader(attributes));
 
         int counter = 0;
-        for (TradsTrip trip : trips) {
+        for (Trip trip : trips) {
             counter++;
             if (LongMath.isPowerOfTwo(counter)) {
                 logger.info(counter + " records written.");
@@ -60,7 +60,7 @@ public class RouteAttributeWriter {
         return builder.toString();
     }
 
-    private static String createRow(TradsTrip trip, Map<String, List<String>> attributes) {
+    private static String createRow(Trip trip, Map<String, List<String>> attributes) {
         StringBuilder builder = new StringBuilder();
 
         // Trip identifiers

@@ -1,6 +1,6 @@
 package trads.io;
 
-public class AttributeNames {
+public class TradsAttributes {
     final static String SEP = ";";
     final static String HOUSEHOLD_ID = "IDNumber";
     final static String PERSON_ID = "PersonNumber";

@@ -1,6 +1,6 @@
 package accessibility;
 
-import accessibility.impedance.DecayFunctions;
+import accessibility.decay.DecayFunctions;
 import gis.GisUtils;
 import gis.GpkgReader;
 import network.NetworkUtils2;

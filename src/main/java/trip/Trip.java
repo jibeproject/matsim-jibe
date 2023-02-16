@@ -1,12 +1,12 @@
-package trads;
+package trip;
 
-import data.Place;
 import org.matsim.api.core.v01.Coord;
+import trads.TradsPurpose;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class TradsTrip {
+public class Trip {
 
     private final String householdId;
     private final int personId;
@@ -15,6 +15,8 @@ public class TradsTrip {
     private final String mainMode;
     private final TradsPurpose startPurpose;
     private final TradsPurpose endPurpose;
+
+    private final Map<Place,String> zones;
     private final Map<Place,Coord> coords;
     private final Map<Place,Boolean> coordsInsideBoundary;
 
@@ -24,8 +26,8 @@ public class TradsTrip {
 
     private final Map<String, Coord> routeStartNodes = new LinkedHashMap<>();
 
-    public TradsTrip(String householdId, int personId, int tripId, int startTime,
-                     String mainMode, TradsPurpose startPurpose, TradsPurpose endPurpose, Map<Place,Coord> coords, Map<Place,Boolean> coordsInsideBoundary) {
+    public Trip(String householdId, int personId, int tripId, int startTime,
+                String mainMode, TradsPurpose startPurpose, TradsPurpose endPurpose, Map<Place, String> zones, Map<Place,Coord> coords, Map<Place,Boolean> coordsInsideBoundary) {
         this.householdId = householdId;
         this.personId = personId;
         this.tripId = tripId;
@@ -33,6 +35,7 @@ public class TradsTrip {
         this.mainMode = mainMode;
         this.startPurpose = startPurpose;
         this.endPurpose = endPurpose;
+        this.zones = zones;
         this.coords = coords;
         this.coordsInsideBoundary = coordsInsideBoundary;
     }
@@ -56,6 +59,8 @@ public class TradsTrip {
     }
 
     public int getStartTime() { return startTime; }
+
+    public String getZone(Place place) { return zones.get(place); }
 
     public Coord getCoord(Place place) { return coords.get(place); }
 

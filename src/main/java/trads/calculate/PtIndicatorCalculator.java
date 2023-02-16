@@ -1,6 +1,6 @@
 package trads.calculate;
 import ch.sbb.matsim.routing.pt.raptor.*;
-import data.Place;
+import trip.Place;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
@@ -11,7 +11,7 @@ import org.matsim.facilities.ActivityFacilitiesFactoryImpl;
 import org.matsim.facilities.ActivityFacility;
 import org.matsim.facilities.Facility;
 import org.matsim.pt.routes.DefaultTransitPassengerRoute;
-import trads.TradsTrip;
+import trip.Trip;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 
 public class PtIndicatorCalculator implements Runnable {
 
-    private final ConcurrentLinkedQueue<TradsTrip> trips;
+    private final ConcurrentLinkedQueue<Trip> trips;
     private final String route;
     private final Counter counter;
     private final Place origin;
@@ -29,7 +29,7 @@ public class PtIndicatorCalculator implements Runnable {
     private final ActivityFacilitiesFactory activityFacilitiesFactory;
     private final List<String> attributeNames;
 
-    public PtIndicatorCalculator(ConcurrentLinkedQueue<TradsTrip> trips, String route, Counter counter, Place origin, Place destination,
+    public PtIndicatorCalculator(ConcurrentLinkedQueue<Trip> trips, String route, Counter counter, Place origin, Place destination,
                                  Scenario scenario, SwissRailRaptor raptor,
                                  ActivityFacilitiesFactoryImpl activityFacilitiesFactory, List<String> attributeNames) {
         this.trips = trips;
@@ -45,7 +45,7 @@ public class PtIndicatorCalculator implements Runnable {
 
     public void run() {
         while(true) {
-            TradsTrip trip = this.trips.poll();
+            Trip trip = this.trips.poll();
             if(trip == null) {
                 return;
             }

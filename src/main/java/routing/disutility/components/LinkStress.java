@@ -1,9 +1,8 @@
 package routing.disutility.components;
 
-import data.CycleProtection;
 import org.matsim.api.core.v01.network.Link;
 
-import static data.CycleProtection.*;
+import static routing.disutility.components.CycleProtection.*;
 
 
 public class LinkStress {

@@ -1,6 +1,6 @@
 package trads.io;
 
-import data.Place;
+import trip.Place;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -12,7 +12,7 @@ import org.matsim.core.utils.misc.Counter;
 import resources.Properties;
 import resources.Resources;
 import trads.TradsPurpose;
-import trads.TradsTrip;
+import trip.Trip;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -23,14 +23,14 @@ import java.util.Map;
 import java.util.Set;
 
 import static trads.TradsPurpose.*;
-import static trads.io.AttributeNames.*;
+import static trads.io.TradsAttributes.*;
 
 public class TradsReader {
 
     private final static Logger logger = Logger.getLogger(TradsReader.class);
 
-    public static Set<TradsTrip> readTrips(Geometry geometry) throws IOException {
-        Set<TradsTrip> trips = new HashSet<>();
+    public static Set<Trip> readTrips(Geometry geometry) throws IOException {
+        Set<Trip> trips = new HashSet<>();
         String recString;
         Counter counter = new Counter("Processed " + " TRADS records.");
         int badCoords = 0;
@@ -38,6 +38,9 @@ public class TradsReader {
 
         // Open Reader
         String filePath = Resources.instance.getString(Properties.TRADS_TRIPS);
+        if(filePath == null) {
+            throw new RuntimeException("No TRADS survey path in the properties file!");
+        }
         BufferedReader in = new BufferedReader(new FileReader(filePath));
 
         GeometryFactory gf = new GeometryFactory();
@@ -125,7 +128,7 @@ public class TradsReader {
                 badCoords++;
             }
 
-            trips.add(new TradsTrip(householdId, personId, tripId, startTime, mainMode, startPurpose, endPurpose, coords, coordsInBoundary));
+            trips.add(new Trip(householdId, personId, tripId, startTime, mainMode, startPurpose, endPurpose, null, coords, coordsInBoundary));
         }
         in.close();
 

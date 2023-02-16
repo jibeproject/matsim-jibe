@@ -20,7 +20,7 @@ import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.referencing.FactoryException;
 import resources.Properties;
 import resources.Resources;
-import trads.TradsTrip;
+import trip.Trip;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,16 +29,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static data.Place.DESTINATION;
-import static data.Place.ORIGIN;
+import static trip.Place.DESTINATION;
+import static trip.Place.ORIGIN;
 
-public class RoutePathWriter {
+public class TradsRouteWriter {
 
-    private final static Logger logger = Logger.getLogger(RoutePathWriter.class);
+    private final static Logger logger = Logger.getLogger(TradsRouteWriter.class);
 
     // Write geometries to .gpkg
-    public static void write(Set<TradsTrip> trips, String inputEdgesGpkg, String outputGpkg,
-                      Map<String, List<String>> attributes) throws FactoryException, IOException {
+    public static void write(Set<Trip> trips, String inputEdgesGpkg, String outputGpkg,
+                             Map<String, List<String>> attributes) throws FactoryException, IOException {
 
         final GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory();
 
@@ -61,7 +61,7 @@ public class RoutePathWriter {
         int tripCounter = 0;
         int pathCounter = 0;
 
-        for(TradsTrip trip : trips) {
+        for(Trip trip : trips) {
 
             // Increment counter
             tripCounter++;

@@ -1,8 +1,8 @@
 package accessibility;
 
-import accessibility.impedance.DecayFunction;
-import accessibility.impedance.Hansen;
-import accessibility.impedance.Isochrone;
+import accessibility.decay.DecayFunction;
+import accessibility.decay.Hansen;
+import accessibility.decay.Isochrone;
 import accessibility.resources.AccessibilityProperties;
 import accessibility.resources.AccessibilityResources;
 import gis.GpkgReader;

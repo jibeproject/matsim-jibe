@@ -12,6 +12,8 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.IdSet;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
+import org.matsim.core.gbl.MatsimRandom;
+import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.core.utils.misc.Counter;
 import org.opengis.feature.simple.SimpleFeature;
 
@@ -84,6 +86,20 @@ public class GisUtils {
             }
         }
         return null;
+    }
+
+    public static Coord drawRandomPointFromGeometry(Geometry g) {
+        Random rnd = MatsimRandom.getLocalInstance();
+        Point p;
+        double x, y;
+        do {
+            x = g.getEnvelopeInternal().getMinX()
+                    + rnd.nextDouble() * (g.getEnvelopeInternal().getMaxX() - g.getEnvelopeInternal().getMinX());
+            y = g.getEnvelopeInternal().getMinY()
+                    + rnd.nextDouble() * (g.getEnvelopeInternal().getMaxY() - g.getEnvelopeInternal().getMinY());
+            p = MGC.xy2Point(x, y);
+        } while (!g.contains(p));
+        return new Coord(p.getX(), p.getY());
     }
 
 }

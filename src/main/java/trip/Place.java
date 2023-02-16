@@ -1,4 +1,4 @@
-package data;
+package trip;
 
 public enum Place {
     HOME,

@@ -1,7 +1,7 @@
 package accessibility;
 
-import accessibility.impedance.DecayFunction;
-import accessibility.impedance.Hansen;
+import accessibility.decay.DecayFunction;
+import accessibility.decay.Hansen;
 import gis.GisUtils;
 import network.NetworkUtils2;
 import org.apache.log4j.Logger;

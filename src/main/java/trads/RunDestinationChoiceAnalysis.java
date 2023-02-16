@@ -6,20 +6,18 @@ import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
-import org.matsim.core.network.NetworkUtils;
-import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.router.util.TravelTime;
-import resources.Properties;
 import resources.Resources;
 import routing.disutility.DistanceDisutility;
 import routing.travelTime.WalkTravelTime;
-import trads.io.RouteAttributeWriter;
+import trads.io.TradsWriter;
 import trads.io.TradsReader;
+import trip.Trip;
 
 import java.io.IOException;
 import java.util.Set;
 
-import static data.Place.*;
+import static trip.Place.*;
 
 // SCRIPT TO ADD MAIN DISTANCES FOR ANALYZING RUBBER BANDING IN TOUR-MAKING
 
@@ -51,7 +49,7 @@ public class RunDestinationChoiceAnalysis {
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
-        Set<TradsTrip> trips = TradsReader.readTrips(boundary);
+        Set<Trip> trips = TradsReader.readTrips(boundary);
 
         // Travel time
         TravelTime ttWalk = new WalkTravelTime();
@@ -69,6 +67,6 @@ public class RunDestinationChoiceAnalysis {
 
         // Write results
         logger.info("Writing results to csv file...");
-        RouteAttributeWriter.write(trips, outputFile, calc.getAllAttributeNames());
+        TradsWriter.write(trips, outputFile, calc.getAllAttributeNames());
     }
 }

@@ -1,4 +1,4 @@
-package accessibility.impedance;
+package accessibility.decay;
 
 public class Hansen extends DecayFunction {
     final private double beta;

@@ -2,7 +2,7 @@ package trads.calculate;
 
 import org.matsim.core.utils.misc.Counter;
 import routing.TravelAttribute;
-import data.Place;
+import trip.Place;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -12,7 +12,7 @@ import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.vehicles.Vehicle;
 import routing.disutility.JibeDisutility;
-import trads.TradsTrip;
+import trip.Trip;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class NetworkIndicatorCalculator implements Runnable {
 
-    private final ConcurrentLinkedQueue<TradsTrip> trips;
+    private final ConcurrentLinkedQueue<Trip> trips;
     private final Counter counter;
     private final String route;
     private final Vehicle vehicle;
@@ -36,7 +36,7 @@ public class NetworkIndicatorCalculator implements Runnable {
     private final LinkedHashMap<String, TravelAttribute> additionalAttributes;
     private final boolean savePath;
 
-    public NetworkIndicatorCalculator(ConcurrentLinkedQueue<TradsTrip> trips, Counter counter, String route,
+    public NetworkIndicatorCalculator(ConcurrentLinkedQueue<Trip> trips, Counter counter, String route,
                                       Place origin, Place destination, Vehicle vehicle,
                                       Network routingNetwork, Network xy2lNetwork,
                                       LeastCostPathCalculator pathCalculator, TravelDisutility travelDisutility,
@@ -58,7 +58,7 @@ public class NetworkIndicatorCalculator implements Runnable {
     public void run() {
 
         while(true) {
-            TradsTrip trip = this.trips.poll();
+            Trip trip = this.trips.poll();
             if(trip == null) {
                 return;
             }

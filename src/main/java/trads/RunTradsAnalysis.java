@@ -10,38 +10,28 @@ import network.NetworkUtils2;
 import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
 import routing.disutility.DistanceDisutility;
 import routing.disutility.JibeDisutility;
-import routing.disutility.components.JctStress;
-import routing.disutility.components.LinkAttractiveness;
-import routing.disutility.components.LinkStress;
 import routing.travelTime.WalkTravelTime;
-import routing.travelTime.speed.BicycleLinkSpeedCalculatorDefaultImpl;
-import routing.travelTime.BicycleTravelTime;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
-import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.*;
-import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.network.NetworkUtils;
-import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.router.costcalculators.FreespeedTravelTimeAndDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
-import org.matsim.vehicles.VehicleType;
-import org.matsim.vehicles.VehicleUtils;
-import trads.io.RouteAttributeWriter;
+import trads.io.TradsWriter;
 import trads.io.TradsReader;
+import trip.Trip;
 
 import java.io.*;
 import java.util.*;
 
-import static data.Place.*;
+import static trip.Place.*;
 
-public class RunTripAnalysis {
+public class RunTradsAnalysis {
 
-    private final static Logger logger = Logger.getLogger(RunTripAnalysis.class);
+    private final static Logger logger = Logger.getLogger(RunTradsAnalysis.class);
 
     public static void main(String[] args) throws IOException {
 
@@ -78,7 +68,7 @@ public class RunTripAnalysis {
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
-        Set<TradsTrip> trips = TradsReader.readTrips(boundary);
+        Set<Trip> trips = TradsReader.readTrips(boundary);
 
         // Travel time
         FreespeedTravelTimeAndDisutility freeSpeed = new FreespeedTravelTimeAndDisutility(config.planCalcScore());
@@ -117,7 +107,7 @@ public class RunTripAnalysis {
 
         // Write results
         logger.info("Writing results to csv file...");
-        RouteAttributeWriter.write(trips, outputFile, calc.getAllAttributeNames());
+        TradsWriter.write(trips, outputFile, calc.getAllAttributeNames());
     }
 
 }
