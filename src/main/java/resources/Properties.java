@@ -7,9 +7,6 @@ public class Properties {
     public static final String NETWORK_BOUNDARY = "network.boundary";
     public static final String NETWORK_LINKS = "network.links";
     public static final String NETWORK_NODES = "network.nodes";
-
-    public static final String HEX_GRID = "hex.grid";
-    public static final String HEX_SIDE_LENGTH = "hex.side.length";
     public static final String COORDINATE_SYSTEM = "coordinate.system";
 
     // MATSim data (must be in .xml format)

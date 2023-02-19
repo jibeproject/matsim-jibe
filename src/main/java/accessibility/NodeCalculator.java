@@ -6,7 +6,7 @@ package accessibility;
 
 import accessibility.decay.DecayFunction;
 import org.matsim.api.core.v01.Id;
-import org.matsim.api.core.v01.IdMap;
+import org.matsim.api.core.v01.IdSet;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Person;
@@ -20,9 +20,7 @@ import resources.Resources;
 import routing.graph.LeastCostPathTree3;
 import routing.graph.SpeedyGraph;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -35,8 +33,8 @@ public final class NodeCalculator {
 
     private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
 
-    public static <T> IdMap<Node,Double> calculate(Network routingNetwork, Set<Node> origins,
-                                                   Map<T, List<Node>> destinationNodes, Map<T, Double> destinationWeights,
+    public static Map<Id<Node>,Double> calculate(Network routingNetwork, Set<Id<Node>> origins,
+                                                   Map<String, IdSet<Node>> destinationNodes, Map<String, Double> destinationWeights,
                                                    TravelTime travelTime, TravelDisutility travelDisutility,
                                                    Vehicle vehicle, DecayFunction decayFunction) {
 
@@ -44,16 +42,16 @@ public final class NodeCalculator {
         SpeedyGraph routingGraph = new SpeedyGraph(routingNetwork,travelTime,travelDisutility,PERSON,vehicle);
 
         // prepare calculation
-        ConcurrentHashMap<Id<Node>,Double> accessibilityData = new ConcurrentHashMap<>(origins.size());
+        ConcurrentHashMap<Id<Node>,Double> accessibilityResults = new ConcurrentHashMap<>(origins.size());
 
         // do calculation
-        ConcurrentLinkedQueue<Node> originNodes = new ConcurrentLinkedQueue<>(origins);
+        ConcurrentLinkedQueue<Id<Node>> originNodes = new ConcurrentLinkedQueue<>(origins);
 
         Counter counter = new Counter("Calculating accessibility node ", " / " + origins.size());
         Thread[] threads = new Thread[numberOfThreads];
         for (int i = 0; i < numberOfThreads; i++) {
-            NodeWorker<T> worker = new NodeWorker<>(originNodes, destinationWeights, routingGraph,
-                    destinationNodes, accessibilityData, decayFunction, counter);
+            NodeWorker worker = new NodeWorker(originNodes, destinationWeights, destinationNodes,
+                    routingGraph, accessibilityResults, decayFunction, counter);
             threads[i] = new Thread(worker, "Accessibility-" + i);
             threads[i].start();
         }
@@ -67,29 +65,26 @@ public final class NodeCalculator {
             }
         }
 
-        IdMap<Node,Double> results = new IdMap<>(Node.class);
-        results.putAll(accessibilityData);
-
-        return results;
+        return Collections.unmodifiableMap(new HashMap<>(accessibilityResults));
     }
 
-    private static class NodeWorker<T> implements Runnable {
-        private final ConcurrentLinkedQueue<Node> originNodes;
-        private final Map<T, Double> destinations;
+    private static class NodeWorker implements Runnable {
+        private final ConcurrentLinkedQueue<Id<Node>> originNodes;
+        private final Map<String, Double> destinationWeights;
+        private final Map<String, IdSet<Node>> destinationNodes;
         private final SpeedyGraph graph;
-        private final Map<T, List<Node>> destinationNodes;
         private final ConcurrentHashMap<Id<Node>,Double> accessibilityData;
         private final DecayFunction decayFunction;
         private final Counter counter;
 
-        NodeWorker(ConcurrentLinkedQueue<Node> originNodes, Map<T, Double> destinationWeights, SpeedyGraph graph,
-                   Map<T, List<Node>> destinationNodes, ConcurrentHashMap<Id<Node>,Double> accessibilityData,
+        NodeWorker(ConcurrentLinkedQueue<Id<Node>> originNodes, Map<String, Double> destinationWeights, Map<String, IdSet<Node>> destinationNodes,
+                   SpeedyGraph graph, ConcurrentHashMap<Id<Node>,Double> results,
                    DecayFunction decayFunction, Counter counter) {
             this.originNodes = originNodes;
-            this.destinations = destinationWeights;
-            this.graph = graph;
+            this.destinationWeights = destinationWeights;
             this.destinationNodes = destinationNodes;
-            this.accessibilityData = accessibilityData;
+            this.graph = graph;
+            this.accessibilityData = results;
             this.decayFunction = decayFunction;
             this.counter = counter;
         }
@@ -99,22 +94,22 @@ public final class NodeCalculator {
             LeastCostPathTree3.StopCriterion stopCriterion = decayFunction.getTreeStopCriterion();
 
             while (true) {
-                Node fromNode = this.originNodes.poll();
-                if (fromNode == null) {
+                Id<Node> fromNodeId = this.originNodes.poll();
+                if (fromNodeId == null) {
                     return;
                 }
 
                 this.counter.incCounter();
-                lcpTree.calculate(fromNode.getId().index(),0,stopCriterion);
+                lcpTree.calculate(fromNodeId.index(),0.,stopCriterion);
 
                 double accessibility = 0.;
 
-                for (Map.Entry<T, Double> destination : this.destinations.entrySet()) {
+                for (Map.Entry<String, Double> destination : this.destinationWeights.entrySet()) {
 
                     double cost = Double.MAX_VALUE;
 
-                    for (Node toNode : this.destinationNodes.get(destination.getKey())) {
-                        int toNodeIndex = toNode.getId().index();
+                    for (Id<Node> toNodeId : this.destinationNodes.get(destination.getKey())) {
+                        int toNodeIndex = toNodeId.index();
                         double nodeDist = lcpTree.getDistance(toNodeIndex);
                         double nodeTime = lcpTree.getTime(toNodeIndex).orElse(Double.POSITIVE_INFINITY);
                         if(!decayFunction.withinCutoff(nodeDist,nodeTime)) {
@@ -130,7 +125,7 @@ public final class NodeCalculator {
                         accessibility += decayFunction.getDecay(cost) * wt;
                     }
                 }
-                this.accessibilityData.put(fromNode.getId(),accessibility);
+                this.accessibilityData.put(fromNodeId,accessibility);
             }
         }
     }

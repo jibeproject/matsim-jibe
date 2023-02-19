@@ -8,6 +8,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.IdMap;
 import org.matsim.api.core.v01.IdSet;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -58,10 +59,10 @@ public class NetworkUtils2 {
         for (Id<Node> nodeId : nodesToRemove) network.removeNode(nodeId);
     }
 
-    public static Set<Node> getNodesInBoundary(Network network, Geometry boundary) {
+    public static Set<Id<Node>> getNodesInBoundary(Network network, Geometry boundary) {
         ConcurrentLinkedQueue<Node> allNodes = new ConcurrentLinkedQueue<>(network.getNodes().values());
-        Set<Node> nodesInBoundary = ConcurrentHashMap.newKeySet();
-        Counter counter = new Counter("Calculating boundary status node ", " / " + network.getNodes().size());
+        Set<Id<Node>> nodesInBoundary = ConcurrentHashMap.newKeySet();
+        Counter counter = new Counter("Checking whether node ", " / " + network.getNodes().size() + " is within boundary");
         int numberOfThreads = Resources.instance.getInt(Properties.NUMBER_OF_THREADS);
         Thread[] threads = new Thread[numberOfThreads];
         for (int i = 0 ; i < numberOfThreads ; i++) {
@@ -79,18 +80,18 @@ public class NetworkUtils2 {
         }
 
         log.info("Identified " + nodesInBoundary.size() + " nodes within boundary.");
-        return nodesInBoundary;
+        return Set.copyOf(nodesInBoundary);
     }
 
     private static class NodeWorker implements Runnable {
 
         private static final GeometryFactory gf = new GeometryFactory();
         private final ConcurrentLinkedQueue<Node> allNodes;
-        private final Set<Node> nodesInBoundary;
+        private final Set<Id<Node>> nodesInBoundary;
         private final Geometry boundary;
         private final Counter counter;
 
-        NodeWorker(ConcurrentLinkedQueue<Node> allNodes, Set<Node> nodesInBoundary, Geometry boundary, Counter counter) {
+        NodeWorker(ConcurrentLinkedQueue<Node> allNodes, Set<Id<Node>> nodesInBoundary, Geometry boundary, Counter counter) {
             this.allNodes = allNodes;
             this.nodesInBoundary = nodesInBoundary;
             this.boundary = boundary;
@@ -105,7 +106,7 @@ public class NetworkUtils2 {
                 this.counter.incCounter();
                 Coord c = node.getCoord();
                 if(boundary.contains(gf.createPoint(new Coordinate(c.getX(),c.getY())))) {
-                    nodesInBoundary.add(node);
+                    nodesInBoundary.add(node.getId());
                 }
             }
         }
@@ -155,9 +156,9 @@ public class NetworkUtils2 {
         return xy2lNetwork;
     }
 
-    public static Map<Link,Double> precalculateLinkMarginalDisutilities(Network network, TravelDisutility disutility, double time, Person person, Vehicle vehicle) {
+    public static Map<Id<Link>,Double> precalculateLinkMarginalDisutilities(Network network, TravelDisutility disutility, double time, Person person, Vehicle vehicle) {
         log.info("Precalculating marginal disutilities for each link...");
-        Map<Link,Double> marginalDisutilities = new HashMap<>(network.getLinks().size());
+        IdMap<Link,Double> marginalDisutilities = new IdMap<>(Link.class,network.getLinks().size());
         Counter counter = new Counter("Processing node "," / " + network.getLinks().size());
         for(Link link : network.getLinks().values()) {
             counter.incCounter();
@@ -165,28 +166,8 @@ public class NetworkUtils2 {
             if(disutility instanceof JibeDisutility) {
                 linkDisutility -= ((JibeDisutility) disutility).getJunctionComponent(link); // todo: check this is happening
             }
-            marginalDisutilities.put(link, linkDisutility / link.getLength());
+            marginalDisutilities.put(link.getId(), linkDisutility / link.getLength());
         }
-        return marginalDisutilities;
+        return Collections.unmodifiableMap(marginalDisutilities);
     }
-
-    public static Map<Node,Double> precalculateNodeMarginalDisutilities(Network network, TravelDisutility disutility, double time, Person person, Vehicle vehicle) {
-        Map<Link,Double> linkMarginalDisutilities = precalculateLinkMarginalDisutilities(network, disutility, time, person, vehicle);
-        Map<Node,Double> nodeMarginalDisutilities = new HashMap<>();
-
-        for(Node node : network.getNodes().values()) {
-            Set<Link> links = new HashSet<>();
-            links.addAll(node.getOutLinks().values());
-            links.addAll(node.getInLinks().values());
-            if (links.size() > 0) {
-                nodeMarginalDisutilities.put(node,links.stream().mapToDouble(linkMarginalDisutilities::get).average().orElseThrow());
-            } else {
-                Link closestLink = NetworkUtils.getNearestLinkExactly(network,node.getCoord());
-                nodeMarginalDisutilities.put(node,linkMarginalDisutilities.get(closestLink));
-            }
-        }
-        return nodeMarginalDisutilities;
-    }
-
-
 }

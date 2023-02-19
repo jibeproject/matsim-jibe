@@ -64,7 +64,7 @@ public final class AccessibilityWriter {
         writer.flush();
     }
 
-    public static void writeNodesAsGpkg(IdMap<Node,Double> accessibilityData, Network network, String filename) throws IOException {
+    public static void writeNodesAsGpkg(Map<Id<Node>,Double> accessibilityData, Network network, String filename) throws IOException {
 
         final double min = Collections.min(accessibilityData.values());
         final double max = Collections.max(accessibilityData.values());
