@@ -8,7 +8,7 @@ import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 import resources.Properties;
 import resources.Resources;
-import trads.io.TradsWriter;
+import trads.io.TradsCsvWriter;
 import trads.io.TradsReader;
 import trip.Trip;
 
@@ -68,7 +68,7 @@ public class TradsPercentileCalculator {
 
         // Write outputs
         if(outputCsvPath != null) {
-            TradsWriter.write(validTrips,outputCsvPath,calc.getAllAttributeNames());
+            TradsCsvWriter.write(validTrips,outputCsvPath,calc.getAllAttributeNames());
         }
 
         // Calculate percentile

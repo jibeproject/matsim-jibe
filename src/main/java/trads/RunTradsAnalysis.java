@@ -20,7 +20,7 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.router.costcalculators.FreespeedTravelTimeAndDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
-import trads.io.TradsWriter;
+import trads.io.TradsCsvWriter;
 import trads.io.TradsReader;
 import trip.Trip;
 
@@ -107,7 +107,7 @@ public class RunTradsAnalysis {
 
         // Write results
         logger.info("Writing results to csv file...");
-        TradsWriter.write(trips, outputFile, calc.getAllAttributeNames());
+        TradsCsvWriter.write(trips, outputFile, calc.getAllAttributeNames());
     }
 
 }

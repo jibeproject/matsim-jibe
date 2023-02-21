@@ -82,15 +82,18 @@ public class NetworkIndicatorCalculator implements Runnable {
                     results.put("mc_stressJct", ((JibeDisutility) travelDisutility).getMarginalCostJunction());
                 }
 
-                // Set cost, time, and distance
+                // Set cost and time
                 results.put("cost",path.travelCost);
                 results.put("time",path.travelTime);
-                results.put("dist",path.links.stream().mapToDouble(Link::getLength).sum());
+
+                // Set distance
+                double dist = path.links.stream().mapToDouble(Link::getLength).sum();
+                results.put("dist",dist);
 
                 // Set path
                 if(savePath) {
                     int[] edgeIDs = path.links.stream().mapToInt(l -> (int) l.getAttributes().getAttribute("edgeID")).toArray();
-                    trip.setRoutePath(route,nOrig.getCoord(),edgeIDs);
+                    trip.setRoutePath(route,nOrig.getCoord(),edgeIDs,dist,path.travelTime);
                 }
 
                 // Additional attributes

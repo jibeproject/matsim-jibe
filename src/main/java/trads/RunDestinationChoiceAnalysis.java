@@ -10,7 +10,7 @@ import org.matsim.core.router.util.TravelTime;
 import resources.Resources;
 import routing.disutility.DistanceDisutility;
 import routing.travelTime.WalkTravelTime;
-import trads.io.TradsWriter;
+import trads.io.TradsCsvWriter;
 import trads.io.TradsReader;
 import trip.Trip;
 
@@ -67,6 +67,6 @@ public class RunDestinationChoiceAnalysis {
 
         // Write results
         logger.info("Writing results to csv file...");
-        TradsWriter.write(trips, outputFile, calc.getAllAttributeNames());
+        TradsCsvWriter.write(trips, outputFile, calc.getAllAttributeNames());
     }
 }

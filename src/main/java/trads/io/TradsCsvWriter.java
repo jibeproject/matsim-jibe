@@ -1,4 +1,4 @@
-package census;
+package trads.io;
 
 import com.google.common.math.LongMath;
 import org.apache.log4j.Logger;
@@ -8,10 +8,11 @@ import java.io.*;
 import java.util.*;
 
 import static trip.Place.*;
+import static trads.io.TradsAttributes.*;
 
-public class CensusWriter {
+public class TradsCsvWriter {
 
-    private final static Logger logger = Logger.getLogger(CensusWriter.class);
+    private final static Logger logger = Logger.getLogger(TradsCsvWriter.class);
     private final static String SEP = ",";
     private static final String NL = "\n";
 
@@ -30,6 +31,7 @@ public class CensusWriter {
             allAttributes.addAll(stringList);
         }
 
+        // Create header
         out.println(createHeader(allAttributes));
 
         int counter = 0;
@@ -41,22 +43,27 @@ public class CensusWriter {
             out.print(createRow(trip,routeNames,allAttributes));
         }
         out.close();
-        logger.info("Wrote " + counter + " records to " + filePath);
+        logger.info("Wrote " + counter + " trips to " + filePath);
     }
 
     private static String createHeader(Set<String> allAttributes) {
         StringBuilder builder = new StringBuilder();
 
         // Trip identifiers
-        builder.append("Id").
-                append(SEP).append("HomeZone").
-                append(SEP).append("HomeX").
-                append(SEP).append("HomeY").
-                append(SEP).append("WorkZone").
-                append(SEP).append("WorkX").
-                append(SEP).append("WorkY").
-                append(SEP).append("Route");
+        builder.append(HOUSEHOLD_ID).
+                append(SEP).append(PERSON_ID).
+                append(SEP).append(TRIP_ID).
+                append(SEP).append("HomeWithinBoundary").
+                append(SEP).append("OriginWithinBoundary").
+                append(SEP).append("DestinationWithinBoundary").
+                append(SEP).append("SameHomeAndDest").
+                append(SEP).append("SameOrigAndDest").
+                append(SEP).append("OriginZone").
+                append(SEP).append("DestinationZone").
+                append(SEP).append("Route").
+                append(SEP).append("PathId");
 
+        // Route attributes
         for(String attribute : allAttributes) {
             builder.append(SEP).append(attribute);
         }
@@ -65,20 +72,22 @@ public class CensusWriter {
     }
 
     private static String createRow(Trip trip, Set<String> routes, Set<String> allAttributes) {
-
         StringBuilder builder = new StringBuilder();
 
         for(String route : routes) {
-
             // Trip identifiers
-            builder.append(trip.getPersonId()).
-                    append(SEP).append(trip.getZone(HOME)).
-                    append(SEP).append(trip.getCoord(HOME).getX()).
-                    append(SEP).append(trip.getCoord(HOME).getY()).
+            builder.append(trip.getHouseholdId()).
+                    append(SEP).append(trip.getPersonId()).
+                    append(SEP).append(trip.getTripId()).
+                    append(SEP).append(trip.isWithinBoundary(HOME)).
+                    append(SEP).append(trip.isWithinBoundary(ORIGIN)).
+                    append(SEP).append(trip.isWithinBoundary(DESTINATION)).
+                    append(SEP).append(trip.match(HOME, DESTINATION)).
+                    append(SEP).append(trip.match(ORIGIN, DESTINATION)).
+                    append(SEP).append(trip.getZone(ORIGIN)).
                     append(SEP).append(trip.getZone(DESTINATION)).
-                    append(SEP).append(trip.getCoord(DESTINATION).getX()).
-                    append(SEP).append(trip.getCoord(DESTINATION).getY()).
-                    append(SEP).append(route);
+                    append(SEP).append(route).
+                    append(SEP).append(trip.getPathIndex(route));
 
             // Attributes
             for(String attribute : allAttributes) {

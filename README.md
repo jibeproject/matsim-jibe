@@ -46,20 +46,20 @@ Note that the output from this code is only meant for visualisation, it is not t
 ## Trads package (src/main/java/trads)
 This package contains everything related to routing trips from the Greater Manchester TRADS travel survey and collecting attributes to expand the trips dataset.
 
-### RunTripAnalysis.java
+### RunTradsAnalysis.java
 
 Uses the MATSim routing engine to estimates key route parameters for each origin-destination pair in the travel survey. 
 Important for mode choice model estimation. Outputs a .csv file with one line for each survey record.
 
-### RunTripRouter.java
+### RunTradsRouter.java
 
 Uses the MATSim routing engine to calculate routes for each origin-desination pair for the specified mode (walk and bike only). 
 Outputs the short, fast and jibe version of each route as a .gpkg file.
 
-### RunTripMcRouter.java
+### RunTradsMcRouter.java
 
 Similar to RunTripRouter.java, but uses monte-carlo simulation to sample many different marginal costs for the JIBE disutility function. 
-Outputs routes as a .gpkg file.
+Outputs route data as a .csv file, and corresponding routes as a .gpkg file.
 
 ## Accessibility package (src/main/java/accessibility)
 
@@ -67,21 +67,31 @@ This package contains tools and methods for calculating accessibility.
 Unlike zone-based accessibilities, the methods here calculate fully disaggregate accessibilities from every network node to every possible destination. 
 We currently support isochrone-based accessibility (with time and/or distance as a cutoff) and hansen accessibility (with an optional time and/or distance cutoff).
 
-Accessibility is calculated using the class **_RunAccessibility.java_**. As with all other runnable classes, the main properties file must be passed in as the first argument. Next, the configuration for each accessibility calculation can be calculated using an accessibility properties file. You can pass in as many accessibility config files as you would like, making it possible to run accessibility back-to-back without restarting the code.
+Accessibilities can be calculated for every network node and/or for hexagonal grid cells.
+Grid cells can be created using **_gis/grid/CreateGrid.java_**
+
+Accessibility is calculated using the class **_RunAccessibility.java_**. 
+As with all other runnable classes, the main properties file must be passed in as the first argument. 
+Next, the configuration for each accessibility calculation can be calculated using an accessibility properties file. 
+You can pass in as many accessibility properties files as you would like, making it possible to run accessibility back-to-back without restarting the code.
 
 ### Accessibility properties file
 
 An example accessibility properties file is given in accessibility/resources/example.properties.
 
 In this file, we specify:
-- Destinations file path (see below)
-- Output file path (a .gpkg)
-- Mode (walk, bike, or car)
-- Disutility (short, fast, or jibe)
-- Marginal cost overrides for jibe disutility (optional)
-- decay function (isochrone or hansen)
-- cutoff time and/or distance (optional for hansen decay function, but at least one must be specified for isochrone decay)
-- beta (for hansen decay function. If beta is not provided, the code will estimate a beta parameter based on TRADS survey data for the mode and purposes specified)
+- **Destinations** file path (see below)
+- [optional] **Node results** file path (.gpkg)
+- [optional] **Grid input** file path (.gpkg, created using _gis/grid/CreateGrid.java_)
+- [optional] **Grid results** file path (.gpkg)
+- **Mode** (walk, bike, or car)
+- **Disutility** (short, fast, or jibe)
+- [optional] **Marginal cost overrides** (only applicable if using jibe disutility)
+- **decay function** (isochrone or hansen)
+- **cutoff** time and/or distance (optional for hansen decay function, but at least one must be specified for isochrone decay)
+- **beta** (hansen decay parameter, for hansen decay function only. If beta is not provided, the code will estimate a beta parameter based on TRADS survey data for the mode and purposes specified)
+
+Further instructions on specifying accessibility properties are given in the accessibility properties file. 
 
 ### Destinations file
 
@@ -121,4 +131,7 @@ M85RB
 M252SW
 
 ### gis/CreateGridCellGpkg.java
-Creates a geopackage of hexagonal grid cells within the region boundary. Parameters including the boundary and side length can be specified in the properties file. For use with grid-based accessibility calculations.
+For use with grid-based accessibility calculations.
+Creates a geopackage of hexagonal grid cells within the region boundary
+(specified by the property _region.boundary_ in the properties file).
+The desired side length for each cell must be specified as an argument.
