@@ -26,7 +26,7 @@ public class CreateGrid {
     public static void main(String[] args) throws FactoryException, IOException {
 
         if(args.length != 3) {
-            throw new RuntimeException("Program requires 2 arguments: " +
+            throw new RuntimeException("Program requires 3 arguments: " +
                     "(0) Properties file\n" +
                     "(1) Hex side length in metres\n" +
                     "(2) Output file name");
