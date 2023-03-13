@@ -5,6 +5,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.IdSet;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.core.network.NetworkUtils;
@@ -13,10 +14,7 @@ import org.matsim.core.utils.misc.Counter;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class DestinationData {
     private final static Logger log = Logger.getLogger(DestinationData.class);
@@ -82,23 +80,23 @@ public class DestinationData {
     }
 
     public Map<String, List<Coord>> getCoords() {
-        return coords;
+        return Collections.unmodifiableMap(coords);
     }
 
     public Map<String, Double> getWeights() {
-        return weights;
+        return Collections.unmodifiableMap(weights);
     }
 
-    public Map<String, List<Node>> getNodes(Network xy2lNetwork, Network routingNetwork) {
-        Map<String, List<Node>> idNodeMap = new LinkedHashMap<>();
+    public Map<String, IdSet<Node>> getNodes(Network xy2lNetwork) {
+        Map<String, IdSet<Node>> idNodeMap = new LinkedHashMap<>();
         for (Map.Entry<String, List<Coord>> e : coords.entrySet()) {
-            List<Node> nodes = new ArrayList<>();
+            IdSet<Node> nodes = new IdSet<>(Node.class);
             for (Coord coord : e.getValue()) {
-                nodes.add(routingNetwork.getNodes().get(NetworkUtils.getNearestLinkExactly(xy2lNetwork, coord).getToNode().getId()));
+                nodes.add(NetworkUtils.getNearestLinkExactly(xy2lNetwork, coord).getToNode().getId());
             }
             idNodeMap.put(e.getKey(), nodes);
         }
-        return idNodeMap;
+        return Collections.unmodifiableMap(idNodeMap);
     }
 
     private static int findPositionInArray (String string, String[] array) {

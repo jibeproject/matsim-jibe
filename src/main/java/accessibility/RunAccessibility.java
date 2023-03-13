@@ -1,14 +1,17 @@
 package accessibility;
 
-import accessibility.impedance.DecayFunction;
-import accessibility.impedance.Hansen;
-import accessibility.impedance.Isochrone;
+import accessibility.decay.DecayFunction;
+import accessibility.decay.Hansen;
+import accessibility.decay.Isochrone;
 import accessibility.resources.AccessibilityProperties;
 import accessibility.resources.AccessibilityResources;
+import gis.GisUtils;
 import gis.GpkgReader;
+import gis.grid.GridData;
 import network.NetworkUtils2;
 import org.locationtech.jts.geom.Geometry;
-import org.matsim.api.core.v01.IdMap;
+import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.IdSet;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.core.router.util.TravelDisutility;
@@ -21,6 +24,7 @@ import trads.TradsPercentileCalculator;
 import trads.TradsPurpose;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.Set;
 
 public class RunAccessibility {
@@ -75,6 +79,12 @@ public class RunAccessibility {
         Vehicle veh = AccessibilityResources.instance.getVehicle();
         TravelDisutility td = AccessibilityResources.instance.getTravelDisutility();
 
+        // Inputs/outputs
+        String destinationFileName = AccessibilityResources.instance.getString(AccessibilityProperties.DESTINATIONS);
+        String outputNodesFileName = AccessibilityResources.instance.getString(AccessibilityProperties.NODE_OUTPUT);
+        String inputGridFileName = AccessibilityResources.instance.getString(AccessibilityProperties.GRID_INPUT);
+        String outputGridFileName = AccessibilityResources.instance.getString(AccessibilityProperties.GRID_OUTPUT);
+
         // Decay function
         String decayType = AccessibilityResources.instance.getString(AccessibilityProperties.DECAY_FUNCTION);
         double cutoffTime = AccessibilityResources.instance.getDouble(AccessibilityProperties.CUTOFF_TIME);
@@ -101,31 +111,53 @@ public class RunAccessibility {
                  "\nTime cutoff (seconds): " + cutoffTime +
                  "\nDistance cutoff (meters): " + cutoffDist);
 
-        // Destination data
-        String destinationFileName = AccessibilityResources.instance.getString(AccessibilityProperties.DESTINATIONS);
-        String outputFileName = AccessibilityResources.instance.getString(AccessibilityProperties.OUTPUT);
+        // Checks on whether to perform NODE calculation
         if(destinationFileName == null) {
-            log.warn("No destination information given. Skipping accessibility calculation.");
+            log.warn("No destination file given. Skipping all accessibility calculations.");
             return;
-        } else if (outputFileName == null) {
-            log.warn("No output filename given. Skipping accessibility calculation.");
+        }
+        if (outputNodesFileName == null && (inputGridFileName == null || outputGridFileName == null)) {
+            log.warn("No node output or grid input/output files given. Skipping all accessibility calculations.");
             return;
         }
         DestinationData destinations = new DestinationData(destinationFileName,networkBoundary);
+        Map<String, IdSet<Node>> destinationNodes = destinations.getNodes(network);
+        Map<String, Double> destinationWeights = destinations.getWeights();
 
-        // Origin nodes
+
+        // Get origin nodes
         log.info("Identifying origin nodes within boundary...");
-        Set<Node> originNodes = NetworkUtils2.getNodesInBoundary(network,regionBoundary);
+        Set<Id<Node>> nodes = NetworkUtils2.getNodesInBoundary(network,regionBoundary);
 
-        // Accessibility calculation
-        log.info("Running accessibility calculation...");
+        // Node accessibility calculation
+        log.info("Running node accessibility calculation...");
         long startTime = System.currentTimeMillis();
-        IdMap<Node,Double> accessibilities = NodeCalculator.calculate(
-                network, originNodes, destinations.getNodes(network,network), destinations.getWeights(), tt, td, veh, df);
+        Map<Id<Node>,Double> nodeResults = NodeCalculator.calculate(network, nodes,
+                destinationNodes, destinationWeights, tt, td, veh, df);
         long endTime = System.currentTimeMillis();
         log.info("Calculation time: " + (endTime - startTime));
 
-        // Write results as gpkg
-        AccessibilityWriter.writeNodesAsGpkg(accessibilities,fullNetwork,outputFileName);
+        // Output nodes as CSV (if it was provided in properties file)
+        if(outputNodesFileName != null) {
+            AccessibilityWriter.writeNodesAsGpkg(nodeResults,fullNetwork,outputNodesFileName);
+        }
+
+        // Check on whether to perform GRID calculation
+        if((inputGridFileName == null || outputGridFileName == null)) {
+            log.warn("Input/output grid files not given. Skipping grid calculation.");
+            return;
+        }
+
+        // Get grid
+        GridData grid = new GridData(inputGridFileName);
+
+        // Grid accessibility calculation
+        log.info("Running grid accessibility calculation...");
+        GridCalculator.calculate(network,nodeResults,grid.getGrid(),grid.getSideLength(),
+                destinationNodes,destinationWeights,tt,td,veh,df);
+
+        // Output grid as gpkg
+        log.info("Saving results grid to " + outputGridFileName);
+        GisUtils.writeFeaturesToGpkg(grid.getGrid(),grid.getDescription() + "_result",outputGridFileName);
     }
 }

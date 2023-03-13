@@ -1,25 +1,25 @@
 package trads.calculate;
 
-import data.Place;
+import trip.Place;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.core.utils.geometry.CoordUtils;
 import org.matsim.core.utils.misc.Counter;
-import trads.TradsTrip;
+import trip.Trip;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class BeelineCalculator implements Runnable {
 
-    private final ConcurrentLinkedQueue<TradsTrip> trips;
+    private final ConcurrentLinkedQueue<Trip> trips;
     private final Counter counter;
     private final String route;
 
     private final Place origin;
     private final Place destination;
 
-    public BeelineCalculator(ConcurrentLinkedQueue<TradsTrip> trips, Counter counter, String route,
-                      Place origin, Place destination) {
+    public BeelineCalculator(ConcurrentLinkedQueue<Trip> trips, Counter counter, String route,
+                             Place origin, Place destination) {
         this.trips = trips;
         this.counter = counter;
         this.route = route;
@@ -29,7 +29,7 @@ public class BeelineCalculator implements Runnable {
 
     public void run() {
         while(true) {
-            TradsTrip trip = this.trips.poll();
+            Trip trip = this.trips.poll();
             if(trip == null) {
                 return;
             }

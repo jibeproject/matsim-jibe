@@ -8,21 +8,22 @@ import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 import resources.Properties;
 import resources.Resources;
-import trads.io.RouteAttributeWriter;
+import trads.io.TradsCsvWriter;
 import trads.io.TradsReader;
+import trip.Trip;
 
 import java.io.IOException;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static data.Place.DESTINATION;
-import static data.Place.ORIGIN;
+import static trip.Place.DESTINATION;
+import static trip.Place.ORIGIN;
 
 public class TradsPercentileCalculator {
 
     private final static Logger logger = Logger.getLogger(TradsPercentileCalculator.class);
-    private static Set<TradsTrip> trips;
+    private static Set<Trip> trips;
 
     public static double estimateBeta(String mode, Vehicle vehicle, TravelTime travelTime, TravelDisutility travelDisutility,
                                       TradsPurpose.PairList purposePairs, Network network, Network xy2lNetwork,
@@ -37,11 +38,11 @@ public class TradsPercentileCalculator {
         }
 
         // Filter to trips meeting criteria
-        Stream<TradsTrip> tripsStream = trips.stream().filter(t -> t.routable(ORIGIN,DESTINATION) && t.getMainMode().equals(mode));
+        Stream<Trip> tripsStream = trips.stream().filter(t -> t.routable(ORIGIN,DESTINATION) && t.getMainMode().equals(mode));
         if(purposePairs != null) {
             tripsStream = tripsStream.filter(t -> purposePairs.contains(t.getStartPurpose(),t.getEndPurpose()));
         }
-        Set<TradsTrip> validTrips = tripsStream.collect(Collectors.toSet());
+        Set<Trip> validTrips = tripsStream.collect(Collectors.toSet());
 
         // Log results
         StringBuilder builder = new StringBuilder();
@@ -67,7 +68,7 @@ public class TradsPercentileCalculator {
 
         // Write outputs
         if(outputCsvPath != null) {
-            RouteAttributeWriter.write(validTrips,outputCsvPath,calc.getAllAttributeNames());
+            TradsCsvWriter.write(validTrips,outputCsvPath,calc.getAllAttributeNames());
         }
 
         // Calculate percentile

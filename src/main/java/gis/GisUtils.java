@@ -12,6 +12,8 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.IdSet;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
+import org.matsim.core.gbl.MatsimRandom;
+import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.core.utils.misc.Counter;
 import org.opengis.feature.simple.SimpleFeature;
 
@@ -29,8 +31,8 @@ public class GisUtils {
         return GEOMETRY_FACTORY.createPoint(new Coordinate(coord.getX(),coord.getY()));
     }
 
-    public static void writeFeaturesToGpkg(SimpleFeatureCollection collection, String outputFilePath) throws IOException {
-        log.info("Writing polygons...");
+    public static void writeFeaturesToGpkg(SimpleFeatureCollection collection, String description, String outputFilePath) throws IOException {
+        log.info("Writing features...");
         File outputFile = new File(outputFilePath);
         if(outputFile.delete()) {
             log.warn("File " + outputFile.getAbsolutePath() + " already exists. Overwriting.");
@@ -38,7 +40,7 @@ public class GisUtils {
         GeoPackage out = new GeoPackage(outputFile);
         out.init();
         FeatureEntry entry = new FeatureEntry();
-        entry.setDescription("grid");
+        entry.setDescription(description);
         out.add(entry,collection);
         out.createSpatialIndex(entry);
         out.close();
@@ -58,8 +60,7 @@ public class GisUtils {
                 log.warn("No polygon contains nodeId " + nodeId.toString());
             }
         }
-
-        return nodesPerZone;
+        return Collections.unmodifiableMap(nodesPerZone);
     }
 
     private static SpatialIndex createZoneQuadtree(Set<SimpleFeature> zones) {
@@ -84,6 +85,20 @@ public class GisUtils {
             }
         }
         return null;
+    }
+
+    public static Coord drawRandomPointFromGeometry(Geometry g) {
+        Random rnd = MatsimRandom.getLocalInstance();
+        Point p;
+        double x, y;
+        do {
+            x = g.getEnvelopeInternal().getMinX()
+                    + rnd.nextDouble() * (g.getEnvelopeInternal().getMaxX() - g.getEnvelopeInternal().getMinX());
+            y = g.getEnvelopeInternal().getMinY()
+                    + rnd.nextDouble() * (g.getEnvelopeInternal().getMaxY() - g.getEnvelopeInternal().getMinY());
+            p = MGC.xy2Point(x, y);
+        } while (!g.contains(p));
+        return new Coord(p.getX(), p.getY());
     }
 
 }

@@ -19,19 +19,20 @@ import org.opengis.referencing.FactoryException;
 import routing.disutility.DistanceDisutility;
 import routing.disutility.JibeDisutility;
 import routing.travelTime.WalkTravelTime;
-import trads.io.RoutePathWriter;
+import trads.io.TradsRouteWriter;
 import trads.io.TradsReader;
+import trip.Trip;
 
 import java.io.IOException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static data.Place.*;
-import static data.Place.DESTINATION;
+import static trip.Place.*;
+import static trip.Place.DESTINATION;
 
-public class RunTripRouter {
+public class RunTradsRouter {
 
-    private final static Logger logger = Logger.getLogger(RunTripRouter.class);
+    private final static Logger logger = Logger.getLogger(RunTradsRouter.class);
 
     public static void main(String[] args) throws IOException, FactoryException {
         if(args.length != 3) {
@@ -64,10 +65,10 @@ public class RunTripRouter {
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
-        Set<TradsTrip> trips = TradsReader.readTrips(boundary);
+        Set<Trip> trips = TradsReader.readTrips(boundary);
 
         // Filter to only routable bike/walk trips
-        Set<TradsTrip> tripsByMode = trips.stream()
+        Set<Trip> tripsByMode = trips.stream()
                 .filter(t -> t.routable(ORIGIN,DESTINATION) && t.getMainMode().equals(mode))
                 .collect(Collectors.toSet());
         logger.info("Identified " + tripsByMode.size() + " " + mode + " trips.");
@@ -93,6 +94,6 @@ public class RunTripRouter {
 
         // Write results
         logger.info("Writing results to gpkg file...");
-        RoutePathWriter.write(tripsByMode, inputEdgesGpkg, outputGpkg, calc.getAllAttributeNames());
+        TradsRouteWriter.write(tripsByMode, inputEdgesGpkg, outputGpkg, calc.getAllAttributeNames());
     }
 }

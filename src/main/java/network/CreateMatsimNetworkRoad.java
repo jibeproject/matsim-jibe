@@ -26,6 +26,7 @@ import java.util.stream.Stream;
 import static org.matsim.api.core.v01.TransportMode.*;
 
 // Script to create a MATSim Road network .xml file using the Edges and Nodes from JIBE WP2
+// Currently compatible with JIBE Network v3.11
 
 public class CreateMatsimNetworkRoad {
 

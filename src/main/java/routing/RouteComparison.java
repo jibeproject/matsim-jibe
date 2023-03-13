@@ -1,16 +1,11 @@
 package routing;
 
 import routing.travelTime.WalkTravelTime;
-import routing.disutility.components.LinkAttractiveness;
-import routing.disutility.components.JctStress;
-import routing.travelTime.speed.BicycleLinkSpeedCalculatorDefaultImpl;
-import routing.travelTime.BicycleTravelTime;
 import ch.sbb.matsim.analysis.calc.IndicatorCalculator;
 import ch.sbb.matsim.analysis.data.IndicatorData;
 import ch.sbb.matsim.analysis.io.IndicatorWriter;
 import data.CycleProtection;
 import routing.disutility.JibeDisutility;
-import routing.disutility.components.LinkStress;
 import ch.sbb.matsim.analysis.CalculateData;
 import ch.sbb.matsim.analysis.TravelAttribute;
 import ch.sbb.matsim.analysis.calc.GeometryCalculator;
@@ -18,21 +13,15 @@ import ch.sbb.matsim.analysis.data.GeometryData;
 import ch.sbb.matsim.analysis.io.GeometryWriter;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.Coord;
-import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
-import org.matsim.contrib.bicycle.BicycleConfigGroup;
-import org.matsim.core.config.Config;
-import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
 import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
-import org.matsim.vehicles.VehicleType;
-import org.matsim.vehicles.VehicleUtils;
 import org.opengis.referencing.FactoryException;
 
 import java.io.IOException;

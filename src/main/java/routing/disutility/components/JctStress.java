@@ -1,8 +1,7 @@
 package routing.disutility.components;
 
-import data.Crossing;
 import org.matsim.api.core.v01.network.Link;
-import static data.Crossing.*;
+import static routing.disutility.components.Crossing.*;
 
 
 public class JctStress {

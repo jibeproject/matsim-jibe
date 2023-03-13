@@ -1,5 +1,8 @@
-package gis;
+package gis.grid;
 
+import gis.GisUtils;
+import gis.GpkgReader;
+import gis.IntersectionGridBuilder;
 import org.apache.log4j.Logger;
 import org.geotools.data.simple.SimpleFeatureSource;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
@@ -16,21 +19,24 @@ import resources.Resources;
 
 import java.io.IOException;
 
-public class CreateGridCellGpkg {
+public class CreateGrid {
 
-    private final static Logger log = Logger.getLogger(CreateGridCellGpkg.class);
+    private final static Logger log = Logger.getLogger(CreateGrid.class);
 
     public static void main(String[] args) throws FactoryException, IOException {
 
-        if(args.length != 1) {
-            throw new RuntimeException("Program requires 1 argument: Properties file");
+        if(args.length != 3) {
+            throw new RuntimeException("Program requires 3 arguments: " +
+                    "(0) Properties file\n" +
+                    "(1) Hex side length in metres\n" +
+                    "(2) Output file name");
         }
 
         Resources.initializeResources(args[0]);
+        int sideLengthMetres = Integer.parseInt(args[1]);
+        String outputFile = args[2];
 
-        String outputFile = Resources.instance.getString(Properties.HEX_GRID);
         String coordinateSystem = Resources.instance.getString(Properties.COORDINATE_SYSTEM);
-        double sideLengthMetres = Resources.instance.getDouble(Properties.HEX_SIDE_LENGTH);
 
         // Read origin boundary file
         log.info("Reading grid boundary file...");
@@ -57,6 +63,7 @@ public class CreateGridCellGpkg {
 
         // Write grid to gpkg
         log.info("Writing grid to gpkg");
-        GisUtils.writeFeaturesToGpkg(grid.getFeatures(),outputFile);
+        String description = "grid_" + sideLengthMetres + "m";
+        GisUtils.writeFeaturesToGpkg(grid.getFeatures(),description,outputFile);
     }
 }

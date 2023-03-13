@@ -18,19 +18,21 @@ import org.opengis.referencing.FactoryException;
 import routing.disutility.DistanceDisutility;
 import routing.disutility.JibeDisutility;
 import routing.travelTime.WalkTravelTime;
-import trads.io.RoutePathWriter;
+import trads.io.TradsCsvWriter;
 import trads.io.TradsReader;
+import trads.io.TradsUniqueRouteWriter;
+import trip.Trip;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static data.Place.DESTINATION;
-import static data.Place.ORIGIN;
+import static trip.Place.DESTINATION;
+import static trip.Place.ORIGIN;
 
-public class RunTripMcRouter {
+public class RunTradsMcRouter {
 
-    private final static Logger logger = Logger.getLogger(RunTripMcRouter.class);
+    private final static Logger logger = Logger.getLogger(RunTradsMcRouter.class);
 
     // Parameters for MC Simulation
     private final static double MAX_MC_ATTRACTIVENESS = 5e-3; // based on avg travel time and rounded up
@@ -38,18 +40,20 @@ public class RunTripMcRouter {
     private final static double MAX_JCT_M_EQUIVALENT = 20;
 
     public static void main(String[] args) throws IOException, FactoryException {
-        if (args.length != 4) {
+        if (args.length != 5) {
             throw new RuntimeException("Program requires 4 arguments: \n" +
                     "(0) Properties file \n" +
-                    "(1) Output file path\n" +
-                    "(2) Mode\n" +
-                    "(3) Number of samples");
+                    "(1) Output gpkg file path\n" +
+                    "(2) Output csv file path\n" +
+                    "(3) Mode\n" +
+                    "(4) Number of samples");
         }
 
         Resources.initializeResources(args[0]);
         String outputGpkg = args[1];
-        String mode = args[2];
-        int numberOfSamples = Integer.parseInt(args[3]);
+        String outputCsv = args[2];
+        String mode = args[3];
+        int numberOfSamples = Integer.parseInt(args[4]);
 
         String inputEdgesGpkg = Resources.instance.getString(Properties.NETWORK_LINKS);
 
@@ -66,10 +70,10 @@ public class RunTripMcRouter {
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
-        Set<TradsTrip> trips = TradsReader.readTrips(boundary);
+        Set<Trip> trips = TradsReader.readTrips(boundary);
 
-        // Filter to only routable bike trips
-        Set<TradsTrip> bikeTrips = trips.stream()
+        // Filter to only routable trips with chosen mode
+        Set<Trip> selectedTrips = trips.stream()
                 .filter(t -> t.routable(ORIGIN, DESTINATION) && t.getMainMode().equals(mode))
                 .collect(Collectors.toSet());
 
@@ -93,11 +97,12 @@ public class RunTripMcRouter {
         double mcComfort = Resources.instance.getMarginalCost(mode,Properties.COMFORT);
 
         // CALCULATOR
-        TradsCalculator calc = new TradsCalculator(bikeTrips);
+        TradsCalculator calc = new TradsCalculator(selectedTrips);
 
         // Run short and fast routing (for reference)
-        calc.network(mode + "_short", ORIGIN, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new DistanceDisutility(), tt, ActiveAttributes.get(mode), true);
-        calc.network(mode + "_fast", ORIGIN, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new OnlyTimeDependentTravelDisutility(tt), tt, ActiveAttributes.get(mode), true);
+        calc.network("short", ORIGIN, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new DistanceDisutility(), tt, ActiveAttributes.get(mode), true);
+        calc.network("fast", ORIGIN, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new OnlyTimeDependentTravelDisutility(tt), tt, ActiveAttributes.get(mode), true);
+        calc.network("jibe",ORIGIN, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new JibeDisutility(mode,tt), tt, ActiveAttributes.getJibe(mode,veh), true);
 
         Random r = new Random();
 
@@ -111,11 +116,13 @@ public class RunTripMcRouter {
 
             JibeDisutility disutilty = new JibeDisutility(mode, tt, mcTime, mcDist, mcGrad, mcComfort, mcAttr, mcStress, mcJct);
 
-            calc.network(mode + "_jibe_" + i,ORIGIN,DESTINATION,veh,modeSpecificNetwork,modeSpecificNetwork,disutilty,tt,ActiveAttributes.getJibe(mode,veh),true);
+            calc.network("jibe_" + i,ORIGIN,DESTINATION,veh,modeSpecificNetwork,modeSpecificNetwork,disutilty,tt,ActiveAttributes.getJibe(mode,veh),true);
         }
 
         // Write results
         logger.info("Writing results to gpkg file...");
-        RoutePathWriter.write(bikeTrips, inputEdgesGpkg, outputGpkg, calc.getAllAttributeNames());
+        TradsUniqueRouteWriter.write(selectedTrips, inputEdgesGpkg, outputGpkg);
+        TradsCsvWriter.write(selectedTrips,outputCsv,calc.getAllAttributeNames());
+
     }
 }

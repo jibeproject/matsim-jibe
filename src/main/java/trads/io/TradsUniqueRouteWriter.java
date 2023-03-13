@@ -20,7 +20,8 @@ import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.referencing.FactoryException;
 import resources.Properties;
 import resources.Resources;
-import trads.TradsTrip;
+import trip.Route;
+import trip.Trip;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,25 +30,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static data.Place.DESTINATION;
-import static data.Place.ORIGIN;
+import static trads.io.TradsAttributes.*;
+import static trip.Place.DESTINATION;
+import static trip.Place.ORIGIN;
 
-public class RoutePathWriter {
+public class TradsUniqueRouteWriter {
 
-    private final static Logger logger = Logger.getLogger(RoutePathWriter.class);
+    private static final Logger logger = Logger.getLogger(TradsUniqueRouteWriter.class);
+    private static final GeometryFactory gf = JTSFactoryFinder.getGeometryFactory();
 
     // Write geometries to .gpkg
-    public static void write(Set<TradsTrip> trips, String inputEdgesGpkg, String outputGpkg,
-                      Map<String, List<String>> attributes) throws FactoryException, IOException {
+    public static void write(Set<Trip> trips, String inputEdgesGpkg, String outputGpkg) throws FactoryException, IOException {
 
-        final GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory();
-
-        final Set<String> allAttributes = new LinkedHashSet<>();
-        for(Map.Entry<String,List<String>> e : attributes.entrySet()) {
-            allAttributes.addAll(e.getValue());
-        }
-
-        final SimpleFeatureType routeTYPE = createRouteFeatureType(allAttributes);
+        final SimpleFeatureType routeTYPE = createRouteFeatureType();
         final SimpleFeatureType nodeTYPE = createNodeFeatureType();
 
         final SimpleFeatureBuilder routeFeatureBuilder = new SimpleFeatureBuilder(routeTYPE);
@@ -61,7 +56,9 @@ public class RoutePathWriter {
         int tripCounter = 0;
         int pathCounter = 0;
 
-        for(TradsTrip trip : trips) {
+        for(Trip trip : trips) {
+
+            int tripId = trip.getTripId();
 
             // Increment counter
             tripCounter++;
@@ -71,39 +68,44 @@ public class RoutePathWriter {
             Coord destCoord = trip.getCoord(DESTINATION);
 
             // Origin coordinate
-            Point origPoint = geometryFactory.createPoint(new Coordinate(origCoord.getX(),origCoord.getY()));
+            Point origPoint = gf.createPoint(new Coordinate(origCoord.getX(),origCoord.getY()));
             nodeFeatureBuilder.add(origPoint);
             nodeFeatureBuilder.add(true);
-            nodeFeatureBuilder.add(trip.getTripId());
+            nodeFeatureBuilder.add(tripId);
             SimpleFeature origFeature = nodeFeatureBuilder.buildFeature(null);
             nodeCollection.add(origFeature);
 
             // Destination coordinate
-            Point destPoint = geometryFactory.createPoint(new Coordinate(destCoord.getX(),destCoord.getY()));
+            Point destPoint = gf.createPoint(new Coordinate(destCoord.getX(),destCoord.getY()));
             nodeFeatureBuilder.add(destPoint);
             nodeFeatureBuilder.add(false);
-            nodeFeatureBuilder.add(trip.getTripId());
+            nodeFeatureBuilder.add(tripId);
             SimpleFeature destFeature = nodeFeatureBuilder.buildFeature(null);
             nodeCollection.add(destFeature);
 
             // Path
-            Map<String,int[]> routePaths = trip.getRoutePaths();
-            for(Map.Entry<String,int[]> e : routePaths.entrySet()) {
-                pathCounter++;
-                String route = e.getKey();
-                if(e.getValue().length > 0) {
-                    LineString path = buildPath(trip.getRouteStartNodes(route),e.getValue(),geometryFactory,networkFeatures);
-                    routeFeatureBuilder.add(path);
-                    routeFeatureBuilder.add(route);
-                    for(String attribute : allAttributes) {
-                        routeFeatureBuilder.add(trip.getAttribute(route,attribute));
-                    }
+            List<Route> routePaths = trip.getUniqueRoutes();
+            for (int i = 0 ; i < routePaths.size() ; i++) {
+                Route route = routePaths.get(i);
+                int[] links = route.getLinks();
+                if(links.length > 0) {
+                    pathCounter++;
+                    LineString line = buildPath(route.getStartCoord(),links,networkFeatures);
+                    routeFeatureBuilder.add(line);
+                    routeFeatureBuilder.add(trip.getHouseholdId());
+                    routeFeatureBuilder.add(trip.getPersonId());
+                    routeFeatureBuilder.add(tripId);
+                    routeFeatureBuilder.add(trip.getZone(ORIGIN));
+                    routeFeatureBuilder.add(trip.getZone(DESTINATION));
+                    routeFeatureBuilder.add(i);
+                    routeFeatureBuilder.add(route.getDistance());
+                    routeFeatureBuilder.add(route.getTime());
                     SimpleFeature feature = routeFeatureBuilder.buildFeature(null);
                     routeCollection.add(feature);
                 }
             }
         }
-        logger.info("Wrote " + tripCounter + " trips with " + pathCounter + " paths.");
+        logger.info("Writing " + tripCounter + " trips with " + pathCounter + " paths...");
 
         // Write Geopackage
         File outputFile = new File(outputGpkg);
@@ -124,7 +126,7 @@ public class RoutePathWriter {
 
     }
 
-    private static SimpleFeatureType createRouteFeatureType(Set<String> attributes) throws FactoryException {
+    private static SimpleFeatureType createRouteFeatureType() throws FactoryException {
 
         SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
         builder.setName("Routes");
@@ -132,10 +134,14 @@ public class RoutePathWriter {
 
         // add attributes in order
         builder.add("Path", LineString.class);
-        builder.length(20).add("Route", String.class);
-        for(String attribute : attributes) {
-            builder.add(attribute, Double.class);
-        }
+        builder.add(HOUSEHOLD_ID,String.class);
+        builder.add(PERSON_ID,Integer.class);
+        builder.add(TRIP_ID,Integer.class);
+        builder.add("origin",String.class);
+        builder.add("destination",String.class);
+        builder.add("RouteId", Integer.class);
+        builder.add("distance",Double.class);
+        builder.add("time",Double.class);
 
         // build the type
         return builder.buildFeatureType();
@@ -156,7 +162,7 @@ public class RoutePathWriter {
         return builder.buildFeatureType();
     }
 
-    public static LineString buildPath(Coord startNode, int[] edgeIDs, GeometryFactory geometryFactory, Map<Integer, SimpleFeature> networkFeatures) {
+    public static LineString buildPath(Coord startNode, int[] edgeIDs, Map<Integer, SimpleFeature> networkFeatures) {
 
         Coordinate[] path = new Coordinate[]{};
         Coordinate refCoord = new Coordinate(startNode.getX(),startNode.getY());
@@ -186,7 +192,7 @@ public class RoutePathWriter {
             path = ArrayUtils.addAll(path, coords);
         }
 
-        return geometryFactory.createLineString(path);
+        return gf.createLineString(path);
     }
 
 }

@@ -1,4 +1,4 @@
-package accessibility.impedance;
+package accessibility.decay;
 
 import routing.graph.LeastCostPathTree3;
 

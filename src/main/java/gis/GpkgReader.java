@@ -1,13 +1,9 @@
 package gis;
 
-import org.geotools.data.DataUtilities;
 import org.geotools.data.simple.SimpleFeatureReader;
-import org.geotools.feature.DefaultFeatureCollection;
-import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.geopkg.GeoPackage;
 import org.locationtech.jts.geom.Geometry;
 import org.opengis.feature.simple.SimpleFeature;
-import org.opengis.feature.simple.SimpleFeatureType;
 import resources.Properties;
 import resources.Resources;
 
@@ -78,44 +74,6 @@ public class GpkgReader {
         r.close();
         geopkg.close();
         return boundary;
-    }
-
-    public static DefaultFeatureCollection readGridAndUpdateFeatureType(String filePath) throws IOException {
-
-        GeoPackage geopkg = new GeoPackage(openFile(filePath));
-        SimpleFeatureReader r = geopkg.reader(geopkg.features().get(0), null,null);
-
-        // Define new feature type
-        SimpleFeatureType schema = r.getFeatureType();
-        SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
-        builder.setName(schema.getName());
-        builder.setSuperType((SimpleFeatureType) schema.getSuper());
-        builder.addAll(schema.getAttributeDescriptors());
-        builder.add("nodes_within",Integer.class);
-        builder.add("connector_node",Integer.class);
-        builder.add("connector_dist",Double.class);
-        builder.add("connector_marg_disutility",Double.class);
-        builder.add("connector_disutility",Double.class);
-        builder.add("connector_adj",Double.class);
-        builder.add("accessibility",Double.class);
-        builder.add("normalised",Double.class);
-        SimpleFeatureType newSchema = builder.buildFeatureType();
-
-        // Create set of zones with updated feature types
-        DefaultFeatureCollection collection = new DefaultFeatureCollection("Zones",newSchema);
-
-        while(r.hasNext()) {
-            SimpleFeature zone = DataUtilities.reType(newSchema,r.next());
-//            Point centroid = ((Polygon) zone.getDefaultGeometry()).getCentroid();
-//            zone.setAttribute("centroid_x",centroid.getX());
-//            zone.setAttribute("centroid_y",centroid.getY());
-            collection.add(zone);
-        }
-
-        r.close();
-        geopkg.close();
-
-        return collection;
     }
 
     private static File openFile(String filePath) {

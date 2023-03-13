@@ -1,6 +1,6 @@
 package trads.io;
 
-import data.Place;
+import trip.Place;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -12,7 +12,7 @@ import org.matsim.core.utils.misc.Counter;
 import resources.Properties;
 import resources.Resources;
 import trads.TradsPurpose;
-import trads.TradsTrip;
+import trip.Trip;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -23,14 +23,14 @@ import java.util.Map;
 import java.util.Set;
 
 import static trads.TradsPurpose.*;
-import static trads.io.AttributeNames.*;
+import static trads.io.TradsAttributes.*;
 
 public class TradsReader {
 
     private final static Logger logger = Logger.getLogger(TradsReader.class);
 
-    public static Set<TradsTrip> readTrips(Geometry geometry) throws IOException {
-        Set<TradsTrip> trips = new HashSet<>();
+    public static Set<Trip> readTrips(Geometry geometry) throws IOException {
+        Set<Trip> trips = new HashSet<>();
         String recString;
         Counter counter = new Counter("Processed " + " TRADS records.");
         int badCoords = 0;
@@ -38,6 +38,9 @@ public class TradsReader {
 
         // Open Reader
         String filePath = Resources.instance.getString(Properties.TRADS_TRIPS);
+        if(filePath == null) {
+            throw new RuntimeException("No TRADS survey path in the properties file!");
+        }
         BufferedReader in = new BufferedReader(new FileReader(filePath));
 
         GeometryFactory gf = new GeometryFactory();
@@ -52,8 +55,11 @@ public class TradsReader {
         int posMainMode = findPositionInArray(MAIN_MODE, header);
         int posStartPurpose = findPositionInArray(START_PURPOSE, header);
         int posEndPurpose = findPositionInArray(END_PURPOSE, header);
-        int posHomeX = findPositionInArray(X_HOUSEHOLD_COORD, header);
-        int posHomeY = findPositionInArray(Y_HOUSEHOLD_COORD, header);
+        int posHomeZone = findPositionInArray(HOME_ZONE,header);
+        int posOriginZone = findPositionInArray(ORIGIN_ZONE,header);
+        int posDestinationZone = findPositionInArray(DESTINATION_ZONE,header);
+        int posHomeX = findPositionInArray(X_HOME_COORD, header);
+        int posHomeY = findPositionInArray(Y_HOME_COORD, header);
         int posOrigX = findPositionInArray(X_ORIGIN_COORD, header);
         int posOrigY = findPositionInArray(Y_ORIGIN_COORD, header);
         int posDestX = findPositionInArray(X_DESTINATION_COORD, header);
@@ -87,6 +93,13 @@ public class TradsReader {
             TradsPurpose startPurpose = getPurpose(lineElements[posStartPurpose]);
             TradsPurpose endPurpose = getPurpose(lineElements[posEndPurpose]);
 
+            // Zones
+            Map<Place,String> zones = new HashMap<>(3);
+            zones.put(Place.HOME,lineElements[posHomeZone]);
+            zones.put(Place.ORIGIN,lineElements[posOriginZone]);
+            zones.put(Place.DESTINATION,lineElements[posDestinationZone]);
+
+            // COORDS
             Map<Place, Coord> coords = new HashMap<>(3);
             Map<Place, Boolean> coordsInBoundary = new HashMap<>(3);
 
@@ -125,7 +138,7 @@ public class TradsReader {
                 badCoords++;
             }
 
-            trips.add(new TradsTrip(householdId, personId, tripId, startTime, mainMode, startPurpose, endPurpose, coords, coordsInBoundary));
+            trips.add(new Trip(householdId, personId, tripId, startTime, mainMode, startPurpose, endPurpose, zones, coords, coordsInBoundary));
         }
         in.close();
 

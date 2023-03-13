@@ -1,10 +1,8 @@
 package trads;
 
-import com.fasterxml.jackson.databind.annotation.JsonAppend;
 import resources.Properties;
 import resources.Resources;
 import routing.TravelAttribute;
-import data.Place;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.router.FastDijkstraFactory;
@@ -25,6 +23,8 @@ import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.facilities.ActivityFacilitiesFactoryImpl;
 import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
 import trads.calculate.PtIndicatorCalculator;
+import trip.Place;
+import trip.Trip;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -33,21 +33,21 @@ public class TradsCalculator {
 
     private final static Logger logger = Logger.getLogger(TradsCalculator.class);
     private final int numberOfThreads;
-    private final Set<TradsTrip> trips;
+    private final Set<Trip> trips;
     private final Map<String, List<String>> allAttributeNames;
 
-    public TradsCalculator(Set<TradsTrip> trips) {
+    public TradsCalculator(Set<Trip> trips) {
         this.numberOfThreads = Resources.instance.getInt(Properties.NUMBER_OF_THREADS);
         this.trips = trips;
         this.allAttributeNames = new LinkedHashMap<>();
     }
 
-    Map<String,List<String>> getAllAttributeNames() { return allAttributeNames; }
+    public Map<String,List<String>> getAllAttributeNames() { return allAttributeNames; }
 
-    void network(String route, Place origin, Place destination, Vehicle vehicle,
-                 Network network, Network xy2lNetwork,
-                 TravelDisutility travelDisutility, TravelTime travelTime,
-                 LinkedHashMap<String,TravelAttribute> additionalAttributes, boolean savePath) {
+    public void network(String route, Place origin, Place destination, Vehicle vehicle,
+                        Network network, Network xy2lNetwork,
+                        TravelDisutility travelDisutility, TravelTime travelTime,
+                        LinkedHashMap<String,TravelAttribute> additionalAttributes, boolean savePath) {
 
         logger.info("Calculating network indicators for route " + route);
 
@@ -59,7 +59,7 @@ public class TradsCalculator {
         allAttributeNames.put(route, attributeNames);
 
         // Do calculation
-        ConcurrentLinkedQueue<TradsTrip> odPairsQueue = new ConcurrentLinkedQueue<>(trips);
+        ConcurrentLinkedQueue<Trip> odPairsQueue = new ConcurrentLinkedQueue<>(trips);
 
         Counter counter = new Counter(route + ": Route ", " / " + trips.size());
         Thread[] threads = new Thread[numberOfThreads];
@@ -102,7 +102,7 @@ public class TradsCalculator {
         raptorConfig.setOptimization(RaptorStaticConfig.RaptorOptimization.OneToOneRouting);
         SwissRailRaptorData raptorData = SwissRailRaptorData.create(scenario.getTransitSchedule(), scenario.getTransitVehicles(), raptorConfig, scenario.getNetwork(), null);
 
-        ConcurrentLinkedQueue<TradsTrip> odPairsQueue = new ConcurrentLinkedQueue<>(trips);
+        ConcurrentLinkedQueue<Trip> odPairsQueue = new ConcurrentLinkedQueue<>(trips);
 
         Counter counter = new Counter("Routing PT trip ", " / " + trips.size());
         Thread[] threads = new Thread[numberOfThreads];
@@ -138,7 +138,7 @@ public class TradsCalculator {
         allAttributeNames.put(route, List.of(""));
 
         // do calculation
-        ConcurrentLinkedQueue<TradsTrip> odPairsQueue = new ConcurrentLinkedQueue<>(trips);
+        ConcurrentLinkedQueue<Trip> odPairsQueue = new ConcurrentLinkedQueue<>(trips);
 
         Counter counter = new Counter(route + ": Route ", " / " + trips.size());
         Thread[] threads = new Thread[numberOfThreads];
