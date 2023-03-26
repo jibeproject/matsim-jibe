@@ -32,9 +32,8 @@ public class RunCensusMcRouter {
     private final static Logger logger = Logger.getLogger(RunCensusMcRouter.class);
 
     // Parameters for MC Simulation
-    private final static double MAX_MC_ATTRACTIVENESS = 5e-3; // based on avg travel time and rounded up
+    private final static double MAX_MC_AMBIENCE = 5e-3; // based on avg travel time and rounded up
     private final static double MAX_MC_STRESS = 5e-3; // based on average travel time and rounded up
-    private final static double MAX_JCT_M_EQUIVALENT = 20;
 
     public static void main(String[] args) throws IOException, FactoryException {
         if (args.length != 5) {
@@ -101,11 +100,10 @@ public class RunCensusMcRouter {
         for (int i = 0; i < numberOfSamples; i++) {
             counter.incCounter();
 
-            double mcAttr = r.nextDouble() * MAX_MC_ATTRACTIVENESS;
+            double mcAttr = r.nextDouble() * MAX_MC_AMBIENCE;
             double mcStress = r.nextDouble() * MAX_MC_STRESS;
-            double mcJct = r.nextDouble() * MAX_MC_STRESS * MAX_JCT_M_EQUIVALENT;
 
-            JibeDisutility disutilty = new JibeDisutility(mode, tt, mcTime, mcDist, mcGrad, mcComfort, mcAttr, mcStress, mcJct);
+            JibeDisutility disutilty = new JibeDisutility(mode, tt, mcTime, mcDist, mcGrad, mcComfort, mcAttr, mcStress);
 
             calc.network(mode + "_jibe_" + i,HOME,DESTINATION,veh,modeSpecificNetwork,modeSpecificNetwork,disutilty,tt,null,false);
         }

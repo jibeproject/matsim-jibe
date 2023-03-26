@@ -1,15 +1,17 @@
 package network;
 
 import gis.GpkgReader;
+import org.matsim.api.core.v01.Id;
 import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
 import resources.Properties;
 import resources.Resources;
 import routing.Bicycle;
 import routing.Gradient;
+import routing.disutility.JibeDisutility;
 import routing.travelTime.WalkTravelTime;
 import routing.disutility.components.Crossing;
 import routing.disutility.components.CycleProtection;
-import routing.disutility.components.LinkAttractiveness;
+import routing.disutility.components.LinkAmbience;
 import routing.disutility.components.JctStress;
 import routing.disutility.components.LinkStress;
 import com.google.common.math.LongMath;
@@ -83,12 +85,21 @@ public class WriteNetworkGpkg {
             network = modeSpecificNetwork;
         }
 
+        // Set up bicycle data
         Bicycle bicycle = new Bicycle(null);
         Vehicle bike = bicycle.getVehicle();
 
-        // Set up bicycle data
+        // Travel Times
         TravelTime ttBike = bicycle.getTravelTime();
         TravelTime ttWalk = new WalkTravelTime();
+
+        // Travel Disutilities
+        JibeDisutility tdJibeBike = new JibeDisutility(TransportMode.bike, ttBike);
+        JibeDisutility tdJibeWalk = new JibeDisutility(TransportMode.walk, ttWalk);
+
+        // Marginal Disutility maps
+        Map<Id<Link>,Double> bikeMarginalDisutilities = NetworkUtils2.precalculateLinkMarginalDisutilities(network,tdJibeBike,0.,null,bike);
+        Map<Id<Link>,Double> walkMarginalDisutilities = NetworkUtils2.precalculateLinkMarginalDisutilities(network,tdJibeWalk,0.,null,null);
 
         // Prepare geopackage data
         final GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory();
@@ -158,7 +169,10 @@ public class WriteNetworkGpkg {
             featureBuilder.add(length / walkTime * 3.6);
             featureBuilder.add(link.getAttributes().getAttribute("speedLimitMPH"));
             featureBuilder.add(link.getAttributes().getAttribute("veh85percSpeedKPH"));
+            featureBuilder.add(bikeMarginalDisutilities.get(link.getId()));
+            featureBuilder.add(walkMarginalDisutilities.get(link.getId()));
             featureBuilder.add(!aadt.isNaN());
+            featureBuilder.add(link.getAttributes().getAttribute("width"));
             featureBuilder.add((int) link.getNumberOfLanes());
             featureBuilder.add(aadt);
             featureBuilder.add(aadtFwd);
@@ -180,18 +194,19 @@ public class WriteNetworkGpkg {
             featureBuilder.add(Crossing.getType(link,"bike").toString());
             featureBuilder.add(Crossing.getType(link, "walk").toString());
             featureBuilder.add(link.getAttributes().getAttribute("crossLanes"));
+            featureBuilder.add(link.getAttributes().getAttribute("crossWidth"));
             featureBuilder.add(link.getAttributes().getAttribute("crossAadt"));
             featureBuilder.add(link.getAttributes().getAttribute("crossSpeedLimitMPH"));
             featureBuilder.add(link.getAttributes().getAttribute("cross85PercSpeed"));
-            featureBuilder.add(LinkAttractiveness.getVgviFactor(link));
-            featureBuilder.add(LinkAttractiveness.getLightingFactor(link));
-            featureBuilder.add(LinkAttractiveness.getShannonFactor(link));
-            featureBuilder.add(LinkAttractiveness.getCrimeFactor(link));
-            featureBuilder.add(LinkAttractiveness.getPoiFactor(link));
-            featureBuilder.add(LinkAttractiveness.getNegativePoiFactor(link));
+            featureBuilder.add(LinkAmbience.getVgviFactor(link));
+            featureBuilder.add(LinkAmbience.getLightingFactor(link));
+            featureBuilder.add(LinkAmbience.getShannonFactor(link));
+            featureBuilder.add(LinkAmbience.getCrimeFactor(link));
+            featureBuilder.add(LinkAmbience.getPoiFactor(link));
+            featureBuilder.add(LinkAmbience.getNegativePoiFactor(link));
             featureBuilder.add(LinkStress.getFreightPoiFactor(link));
-            featureBuilder.add(LinkAttractiveness.getDayAttractiveness(link));
-            featureBuilder.add(LinkAttractiveness.getNightAttractiveness(link));
+            featureBuilder.add(LinkAmbience.getDayAmbience(link));
+            featureBuilder.add(LinkAmbience.getNightAmbience(link));
             featureBuilder.add(LinkStress.getStress(link, TransportMode.bike));
             featureBuilder.add(JctStress.getJunctionStress(link,TransportMode.bike));
             featureBuilder.add(LinkStress.getStress(link,TransportMode.walk));
@@ -231,7 +246,10 @@ public class WriteNetworkGpkg {
         builder.add("walkSpeedKPH",Double.class);
         builder.add("carSpeedLimitMPH",Double.class);
         builder.add("car85PercSpeedKPH",Double.class);
+        builder.add("bikeJibeMarginalDisutility",Double.class);
+        builder.add("walkJibeMarginalDisutility",Double.class);
         builder.add("mainNetwork",Boolean.class);
+        builder.add("width",Double.class);
         builder.add("lanes",Integer.class);
         builder.add("aadt",Double.class);
         builder.add("aadtFwd",Double.class);
@@ -253,6 +271,7 @@ public class WriteNetworkGpkg {
         builder.add("crossingTypeBike",String.class);
         builder.add("crossingTypeWalk",String.class);
         builder.add("crossingLanes",Double.class);
+        builder.add("crossingWidth",Double.class);
         builder.add("crossingAADT",Double.class);
         builder.add("crossingSpeedLimit",Double.class);
         builder.add("crossing85PercSpeed",Double.class);
@@ -263,8 +282,8 @@ public class WriteNetworkGpkg {
         builder.add("f_POIs",Double.class);
         builder.add("f_negPOIs",Double.class);
         builder.add("f_freightPOIs",Double.class);
-        builder.add("f_attractiveness_day",Double.class);
-        builder.add("f_attractiveness_night",Double.class);
+        builder.add("f_ambience_day",Double.class);
+        builder.add("f_ambience_night",Double.class);
         builder.add("f_bikeStress",Double.class);
         builder.add("f_bikeStressJct",Double.class);
         builder.add("f_walkStress",Double.class);

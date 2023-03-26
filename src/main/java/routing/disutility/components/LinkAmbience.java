@@ -2,7 +2,7 @@ package routing.disutility.components;
 
 import org.matsim.api.core.v01.network.Link;
 
-public class LinkAttractiveness {
+public class LinkAmbience {
 
 
     public static double getVgviFactor (Link link){
@@ -35,7 +35,7 @@ public class LinkAttractiveness {
         return Math.min(1., 4 * crime / link.getLength());
     }
 
-    public static double getDayAttractiveness (Link link){
+    public static double getDayAmbience(Link link){
         double vgvi = getVgviFactor(link);
         double pois = getPoiFactor(link);
         double shannon = getShannonFactor(link);
@@ -45,7 +45,7 @@ public class LinkAttractiveness {
         return vgvi / 3 + (pois + shannon + negativePois + crime) / 6;
     }
 
-    public static double getNightAttractiveness (Link link){
+    public static double getNightAmbience(Link link){
         double pois = getPoiFactor(link);
         double shannon = getShannonFactor(link);
         double lighting = getLightingFactor(link);

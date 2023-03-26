@@ -117,15 +117,13 @@ public class RouteComparison {
         travelDisutilities.put("jibe", new JibeDisutility(mode,tt));
 
 
-        // Run for testing multiple attractiveness/stress/junction costs
+        // Run for testing multiple ambience/stress/junction costs
 /*        for(int i = 0 ; i <= 4 ; i++) {
             for(int j = 0 ; j <= 2 ; j++) {
-                for(int k = 0 ; k <= 10 ; k = k+2) {
-                    String name = "t_" + i + "_" + j + "_" + k;
+                    String name = "t_" + i + "_" + j;
                     travelDisutilities.put(name,new JibeDisutility(MODE, tt, MARGINAL_COST_TIME,MARGINAL_COST_DISTANCE,
                             marginalCostOfGradient,marginalCostOfSurfaceComfort,
-                            i*1e-3,j*1e-3,k*1e-2));
-                }
+                            i*1e-3,j*1e-3));
             }
         }*/
 

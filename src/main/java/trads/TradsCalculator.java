@@ -52,7 +52,7 @@ public class TradsCalculator {
         logger.info("Calculating network indicators for route " + route);
 
         // Specify attribute names
-        List<String> attributeNames = new ArrayList<>(List.of("mc_attractiveness","mc_stressLink","mc_stressJct","cost","time","dist"));
+        List<String> attributeNames = new ArrayList<>(List.of("mc_ambience","mc_stress","cost","time","dist"));
         if(additionalAttributes != null) {
             attributeNames.addAll(additionalAttributes.keySet());
         }

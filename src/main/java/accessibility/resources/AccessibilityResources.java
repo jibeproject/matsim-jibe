@@ -95,10 +95,9 @@ public class AccessibilityResources {
                 double mcDist = getMarginalCostOrDefault(mode, resources.Properties.DISTANCE);
                 double mcGrad = getMarginalCostOrDefault(mode, resources.Properties.GRADIENT);
                 double mcComfort = getMarginalCostOrDefault(mode, resources.Properties.COMFORT);
-                double mcAttractiveness = getMarginalCostOrDefault(mode, resources.Properties.ATTRACTIVENESS);
-                double mcStressLink = getMarginalCostOrDefault(mode, resources.Properties.LINK_STRESS);
-                double mcStressJct = getMarginalCostOrDefault(mode, resources.Properties.JUNCTION_STRESS);
-                td = new JibeDisutility(mode,tt,mcTime,mcDist,mcGrad,mcComfort,mcAttractiveness,mcStressLink,mcStressJct);
+                double mcAmbience = getMarginalCostOrDefault(mode, resources.Properties.AMBIENCE);
+                double mcStress = getMarginalCostOrDefault(mode, resources.Properties.STRESS);
+                td = new JibeDisutility(mode,tt,mcTime,mcDist,mcGrad,mcComfort,mcAmbience,mcStress);
                 break;
             default:
                 throw new RuntimeException("Disutility type " + type + " not recognised for mode " + mode);

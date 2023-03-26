@@ -77,9 +77,8 @@ public class NetworkIndicatorCalculator implements Runnable {
 
                 // If JibeDisutility, get marginal costs
                 if(travelDisutility instanceof JibeDisutility) {
-                    results.put("mc_attractiveness", ((JibeDisutility) travelDisutility).getMarginalCostAttractiveness_m());
-                    results.put("mc_stressLink", ((JibeDisutility) travelDisutility).getMarginalCostStress_m());
-                    results.put("mc_stressJct", ((JibeDisutility) travelDisutility).getMarginalCostJunction());
+                    results.put("mc_ambience", ((JibeDisutility) travelDisutility).getMarginalCostAmbience_m());
+                    results.put("mc_stress", ((JibeDisutility) travelDisutility).getMarginalCostStress_m());
                 }
 
                 // Set cost and time

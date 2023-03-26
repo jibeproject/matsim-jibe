@@ -235,18 +235,21 @@ public class CreateMatsimNetworkRoad {
             l1.getAttributes().putAttribute("aadtFwd",aadtOut);
             l2.getAttributes().putAttribute("aadtFwd",aadtRtn);
 
-            // Width and number of lanes
-            Double width = (Double) edge.getAttribute("avg_wdt");
-            double lanesOut = 1.;
-            double lanesRtn = 1.;
-            if (allowsCarOut) {
-                if (allowsCarRtn) {
-                    lanesOut = estimateNumberOflanes(width / 2.);
-                    lanesRtn = lanesOut;
-                } else {
-                    lanesOut = estimateNumberOflanes(width);
-                }
+            // Width
+            double widthOut = (double) edge.getAttribute("avg_wdt_mp");
+            double widthRtn = 0.;
+
+            if(allowsCarRtn || (!allowsCarOut && !allowedModesRtn.isEmpty())) {
+                widthOut /= 2.;
+                widthRtn = widthOut;
             }
+
+            l1.getAttributes().putAttribute("width",widthOut);
+            l2.getAttributes().putAttribute("width",widthRtn);
+
+            // Width and number of lanes
+            double lanesOut = allowsCarOut ? estimateNumberOflanes(widthOut) : 1.;
+            double lanesRtn = allowsCarRtn ? estimateNumberOflanes(widthRtn) : 1.;
             l1.setNumberOfLanes(lanesOut);
             l2.setNumberOfLanes(lanesRtn);
 
@@ -404,16 +407,6 @@ public class CreateMatsimNetworkRoad {
             l1.getAttributes().putAttribute("crime",crime);
             l2.getAttributes().putAttribute("crime",crime);
 
-            // Average width
-            double avgWidth = (double) edge.getAttribute("avg_wdt_mp");
-            l1.getAttributes().putAttribute("averageWidth.imp",avgWidth);
-            l2.getAttributes().putAttribute("averageWidth.imp",avgWidth);
-
-            // Slope
-            double slope = (double) edge.getAttribute("slope");
-            l1.getAttributes().putAttribute("slope",slope);
-            l2.getAttributes().putAttribute("slope",slope);
-
             // Add links to network
             net.addLink(l1);
             if(!l2.getAllowedModes().isEmpty()) {
@@ -457,6 +450,7 @@ public class CreateMatsimNetworkRoad {
             boolean endsAtJct = isJunction.get(link.getToNode());
             boolean crossVehicles = false;
             double crossAadt = Double.NaN;
+            double crossWidth = Double.NaN;
             double crossLanes = Double.NaN;
             double crossSpeedLimit = Double.NaN;
             double cross85PercSpeed = Double.NaN;
@@ -473,7 +467,9 @@ public class CreateMatsimNetworkRoad {
                 if(!crossingLinks.isEmpty()) {
 
                     crossVehicles = true;
-
+                    crossWidth = crossingLinks.stream()
+                            .mapToDouble(l -> (double) l.getAttributes().getAttribute("width"))
+                            .sum();
                     crossLanes = crossingLinks.stream()
                             .mapToDouble(Link::getNumberOfLanes)
                             .sum();
@@ -491,6 +487,7 @@ public class CreateMatsimNetworkRoad {
 
             link.getAttributes().putAttribute("endsAtJct",endsAtJct);
             link.getAttributes().putAttribute("crossVehicles",crossVehicles);
+            link.getAttributes().putAttribute("crossWidth",crossWidth);
             link.getAttributes().putAttribute("crossLanes",crossLanes);
             link.getAttributes().putAttribute("crossAadt",crossAadt);
             link.getAttributes().putAttribute("crossSpeedLimitMPH",crossSpeedLimit);
