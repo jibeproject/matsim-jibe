@@ -71,6 +71,23 @@ public class JibeDisutility implements TravelDisutility {
         printMarginalCosts();
     }
 
+    public JibeDisutility(String mode, TravelTime tt, double marginalCostAmbience_m, double marginalCostStress_m) {
+
+        if(!mode.equals(TransportMode.bike) && !mode.equals(TransportMode.walk)) {
+            throw new RuntimeException("Mode " + mode + " not supported for JIBE disutility.");
+        }
+
+        this.mode = mode;
+        this.timeCalculator = tt;
+        this.marginalCostOfTime_s = Resources.instance.getMarginalCost(mode,Properties.TIME);
+        this.marginalCostOfDistance_m = Resources.instance.getMarginalCost(mode,Properties.DISTANCE);
+        this.marginalCostOfGradient_m_100m = Resources.instance.getMarginalCost(mode,Properties.GRADIENT);
+        this.marginalCostOfComfort_m = Resources.instance.getMarginalCost(mode,Properties.COMFORT);
+        this.marginalCostAmbience_m = marginalCostAmbience_m;
+        this.marginalCostStress_m = marginalCostStress_m;
+        printMarginalCosts();
+    }
+
     private void printMarginalCosts() {
         logger.info("Initialised JIBE disutility with the following parameters:" +
                 "\nMode: " + this.mode +
@@ -113,8 +130,7 @@ public class JibeDisutility implements TravelDisutility {
 
         // Junction stress factor
         double junctionStress = JctStress.getJunctionStress(link,mode);
-        double crossingWidth = (double) link.getAttributes().getAttribute("crossWidth");
-        disutility += marginalCostStress_m * junctionStress * crossingWidth;
+        disutility += marginalCostStress_m * junctionStress;
 
         return disutility;
 
@@ -165,7 +181,6 @@ public class JibeDisutility implements TravelDisutility {
 
     public double getJunctionComponent(Link link) {
         double jctStress = JctStress.getJunctionStress(link, mode);
-        double crossingWidth = (double) link.getAttributes().getAttribute("crossWidth");
-        return marginalCostStress_m * jctStress * crossingWidth;
+        return marginalCostStress_m * jctStress;
     }
 }
