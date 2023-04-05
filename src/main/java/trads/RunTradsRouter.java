@@ -11,8 +11,6 @@ import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
-import org.matsim.core.network.NetworkUtils;
-import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 import org.opengis.referencing.FactoryException;
@@ -47,17 +45,9 @@ public class RunTradsRouter {
         String mode = args[2];
 
         String boundaryFilePath = Resources.instance.getString(Properties.NETWORK_BOUNDARY);
-        String networkFilePath = Resources.instance.getString(Properties.MATSIM_ROAD_NETWORK);
-        String inputEdgesGpkg = Resources.instance.getString(Properties.NETWORK_LINKS);
 
         // Read network
-        logger.info("Reading MATSim network...");
-        Network network = NetworkUtils.createNetwork();
-        new MatsimNetworkReader(network).readFile(networkFilePath);
-
-        // Create mode-specific networks
-        logger.info("Creating " + mode + "-specific network...");
-        Network modeSpecificNetwork = NetworkUtils2.extractModeSpecificNetwork(network, mode);
+        Network modeNetwork = NetworkUtils2.readModeSpecificNetwork(mode);
 
         // Read Boundary Shapefile
         logger.info("Reading boundary shapefile...");
@@ -88,12 +78,12 @@ public class RunTradsRouter {
 
         // Calculate shortest, fastest, and jibe route
         TradsCalculator calc = new TradsCalculator(tripsByMode);
-        calc.network(mode + "_short", ORIGIN, DESTINATION,  veh, modeSpecificNetwork, modeSpecificNetwork, new DistanceDisutility(), tt, ActiveAttributes.get(mode),true);
-        calc.network(mode + "_fast", ORIGIN, DESTINATION,  veh, modeSpecificNetwork, modeSpecificNetwork, new OnlyTimeDependentTravelDisutility(tt), tt, ActiveAttributes.get(mode),true);
-        calc.network(mode + "_jibe", ORIGIN, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new JibeDisutility(mode,tt), tt, ActiveAttributes.get(mode),true);
+        calc.network(mode + "_short", ORIGIN, DESTINATION,  veh, modeNetwork, modeNetwork, new DistanceDisutility(), tt, ActiveAttributes.get(mode),true);
+        calc.network(mode + "_fast", ORIGIN, DESTINATION,  veh, modeNetwork, modeNetwork, new OnlyTimeDependentTravelDisutility(tt), tt, ActiveAttributes.get(mode),true);
+        calc.network(mode + "_jibe", ORIGIN, DESTINATION, veh, modeNetwork, modeNetwork, new JibeDisutility(mode,tt), tt, ActiveAttributes.get(mode),true);
 
         // Write results
         logger.info("Writing results to gpkg file...");
-        TradsRouteWriter.write(tripsByMode, inputEdgesGpkg, outputGpkg, calc.getAllAttributeNames());
+        TradsRouteWriter.write(tripsByMode, outputGpkg, calc.getAllAttributeNames());
     }
 }

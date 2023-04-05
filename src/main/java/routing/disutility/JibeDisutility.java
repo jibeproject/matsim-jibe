@@ -132,6 +132,10 @@ public class JibeDisutility implements TravelDisutility {
         double junctionStress = JctStress.getJunctionStress(link,mode);
         disutility += marginalCostStress_m * junctionStress;
 
+        if(Double.isNaN(disutility)) {
+            throw new RuntimeException("Null JIBE disutility for link " + link.getId().toString());
+        }
+
         return disutility;
 
     }

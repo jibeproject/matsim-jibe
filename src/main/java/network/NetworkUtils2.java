@@ -43,6 +43,10 @@ public class NetworkUtils2 {
         return fullNetwork;
     }
 
+    public static Network readModeSpecificNetwork(String transportMode) {
+        return extractModeSpecificNetwork(readFullNetwork(),transportMode);
+    }
+
     // Extracts mode-specific network  (e.g. walk network, car network, cycle network)
     public static Network extractModeSpecificNetwork(Network network, String transportMode) {
         Network modeSpecificNetwork = NetworkUtils.createNetwork();

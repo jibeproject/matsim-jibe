@@ -37,15 +37,17 @@ public class TradsRouteWriter {
     private final static Logger logger = Logger.getLogger(TradsRouteWriter.class);
 
     // Write geometries to .gpkg
-    public static void write(Set<Trip> trips, String inputEdgesGpkg, String outputGpkg,
-                             Map<String, List<String>> attributes) throws FactoryException, IOException {
-
-        final GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory();
-
+    public static void write(Set<Trip> trips, String outputGpkg, Map<String, List<String>> attributes) throws FactoryException, IOException {
         final Set<String> allAttributes = new LinkedHashSet<>();
         for(Map.Entry<String,List<String>> e : attributes.entrySet()) {
             allAttributes.addAll(e.getValue());
         }
+        write(trips,outputGpkg,allAttributes);
+    }
+
+    public static void write(Set<Trip> trips, String outputGpkg, Set<String> allAttributes) throws FactoryException, IOException {
+
+        final GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory();
 
         final SimpleFeatureType routeTYPE = createRouteFeatureType(allAttributes);
         final SimpleFeatureType nodeTYPE = createNodeFeatureType();
@@ -57,6 +59,7 @@ public class TradsRouteWriter {
         final DefaultFeatureCollection nodeCollection = new DefaultFeatureCollection("Nodes",nodeTYPE);
 
         // Read in edges file
+        String inputEdgesGpkg = Resources.instance.getString(Properties.NETWORK_LINKS);
         Map<Integer, SimpleFeature> networkFeatures = GpkgReader.readEdges(new File(inputEdgesGpkg));
         int tripCounter = 0;
         int pathCounter = 0;

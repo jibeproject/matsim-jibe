@@ -1,5 +1,6 @@
 package routing;
 
+import network.NetworkUtils2;
 import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
 import resources.Properties;
 import resources.Resources;
@@ -18,9 +19,6 @@ import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
-import org.matsim.core.network.NetworkUtils;
-import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
-import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
@@ -30,9 +28,9 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class RouteComparison {
+public class RunZoneRouter {
 
-    private final static Logger log = Logger.getLogger(RouteComparison.class);
+    private final static Logger log = Logger.getLogger(RunZoneRouter.class);
     private final static Integer SAMPLE_SIZE = 400;
 
     public static void main(String[] args) throws IOException, FactoryException {
@@ -51,17 +49,10 @@ public class RouteComparison {
         String outputFile = args[2];
         String mode = args[3];
 
-        String networkFilePath = Resources.instance.getString(Properties.MATSIM_ROAD_NETWORK);
         String edgesFilePath = Resources.instance.getString(Properties.NETWORK_LINKS);
 
         // Read network
-        log.info("Reading MATSim network...");
-        Network network = NetworkUtils.createNetwork();
-        new MatsimNetworkReader(network).readFile(networkFilePath);
-
-        // Use mode-specific network
-        Network modeNetwork = NetworkUtils.createNetwork();
-        new TransportModeNetworkFilter(network).filter(modeNetwork, Collections.singleton(mode));
+        Network modeNetwork = NetworkUtils2.readModeSpecificNetwork(mode);
 
         // Create zone-coord map and remove spaces
         Map<String, Coord> zoneCoordMap;
@@ -106,14 +97,8 @@ public class RouteComparison {
 
         // DEFINE TRAVEL DISUTILITIES HERE
         Map<String,TravelDisutility> travelDisutilities = new LinkedHashMap<>();
-
-        // Shortest
         travelDisutilities.put("short", new DistanceDisutility());
-
-        // Fastest
         travelDisutilities.put("fast", new OnlyTimeDependentTravelDisutility(tt));
-
-        // Jibe
         travelDisutilities.put("jibe", new JibeDisutility(mode,tt));
 
 
