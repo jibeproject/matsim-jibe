@@ -57,11 +57,7 @@ public class RunTradsMcRouter {
         String inputEdgesGpkg = Resources.instance.getString(Properties.NETWORK_LINKS);
 
         // Read network
-        Network network = NetworkUtils2.readFullNetwork();
-
-        // Create mode-specific networks
-        logger.info("Creating " + mode + "-specific network...");
-        Network modeSpecificNetwork = NetworkUtils2.extractModeSpecificNetwork(network, mode);
+        Network modeSpecificNetwork = NetworkUtils2.readModeSpecificNetwork(mode);
 
         // Read Boundary Shapefile
         logger.info("Reading boundary shapefile...");
@@ -89,12 +85,6 @@ public class RunTradsMcRouter {
             veh = null;
         } else throw new RuntimeException("Modes other than walk and bike are not supported!");
 
-        // Constant marginal costs
-        double mcTime = Resources.instance.getMarginalCost(mode,Properties.TIME);
-        double mcDist = Resources.instance.getMarginalCost(mode,Properties.DISTANCE);
-        double mcGrad = Resources.instance.getMarginalCost(mode,Properties.GRADIENT);
-        double mcComfort = Resources.instance.getMarginalCost(mode,Properties.COMFORT);
-
         // CALCULATOR
         TradsCalculator calc = new TradsCalculator(selectedTrips);
 
@@ -112,7 +102,7 @@ public class RunTradsMcRouter {
             double mcAttr = r.nextDouble() * MAX_MC_AMBIENCE;
             double mcStress = r.nextDouble() * MAX_MC_STRESS;
 
-            JibeDisutility disutilty = new JibeDisutility(mode, tt, mcTime, mcDist, mcGrad, mcComfort, mcAttr, mcStress);
+            JibeDisutility disutilty = new JibeDisutility(mode, tt, mcAttr, mcStress);
 
             calc.network("jibe_" + i,ORIGIN,DESTINATION,veh,modeSpecificNetwork,modeSpecificNetwork,disutilty,tt,ActiveAttributes.getJibe(mode,veh),true);
         }
