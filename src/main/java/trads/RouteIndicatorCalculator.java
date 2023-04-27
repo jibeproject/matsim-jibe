@@ -29,14 +29,14 @@ import trip.Trip;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class TradsCalculator {
+public class RouteIndicatorCalculator {
 
-    private final static Logger logger = Logger.getLogger(TradsCalculator.class);
+    private final static Logger logger = Logger.getLogger(RouteIndicatorCalculator.class);
     private final int numberOfThreads;
     private final Set<Trip> trips;
     private final Map<String, List<String>> allAttributeNames;
 
-    public TradsCalculator(Set<Trip> trips) {
+    public RouteIndicatorCalculator(Set<Trip> trips) {
         this.numberOfThreads = Resources.instance.getInt(Properties.NUMBER_OF_THREADS);
         this.trips = trips;
         this.allAttributeNames = new LinkedHashMap<>();

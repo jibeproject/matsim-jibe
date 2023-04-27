@@ -101,43 +101,49 @@ public class JibeDisutility implements TravelDisutility {
 
     @Override
     public double getLinkTravelDisutility(Link link, double time, Person person, Vehicle vehicle) {
-        double travelTime = timeCalculator.getLinkTravelTime(link, time, person, vehicle);
 
-        double distance = link.getLength();
+        if(link.getAllowedModes().contains(this.mode)) {
 
-        // Travel time disutility
-        double disutility = marginalCostOfTime_s * travelTime;
+            double travelTime = timeCalculator.getLinkTravelTime(link, time, person, vehicle);
 
-        // Distance disutility (0 by default)
-        disutility += marginalCostOfDistance_m * distance;
+            double distance = link.getLength();
 
-        // Gradient factor
-        double gradient = Gradient.getGradient(link);
-        if(gradient < 0.) gradient = 0.;
-        disutility += marginalCostOfGradient_m_100m * gradient * distance;
+            // Travel time disutility
+            double disutility = marginalCostOfTime_s * travelTime;
 
-        // Comfort of surface
-        double comfortFactor = LinkComfort.getComfortFactor(link);
-        disutility += marginalCostOfComfort_m * comfortFactor * distance;
+            // Distance disutility (0 by default)
+            disutility += marginalCostOfDistance_m * distance;
 
-        // Ambience factors
-        double ambience = LinkAmbience.getDayAmbience(link);
-        disutility += marginalCostAmbience_m * ambience * distance;
+            // Gradient factor
+            double gradient = Gradient.getGradient(link);
+            if(gradient < 0.) gradient = 0.;
+            disutility += marginalCostOfGradient_m_100m * gradient * distance;
 
-        // Stress factors
-        double linkStress = LinkStress.getStress(link,mode);
-        disutility += marginalCostStress_m * linkStress * distance;
+            // Comfort of surface
+            double comfortFactor = LinkComfort.getComfortFactor(link);
+            disutility += marginalCostOfComfort_m * comfortFactor * distance;
 
-        // Junction stress factor
-        double junctionStress = JctStress.getJunctionStress(link,mode);
-        disutility += marginalCostStress_m * junctionStress;
+            // Ambience factors
+            double ambience = LinkAmbience.getDayAmbience(link);
+            disutility += marginalCostAmbience_m * ambience * distance;
 
-        if(Double.isNaN(disutility)) {
-            throw new RuntimeException("Null JIBE disutility for link " + link.getId().toString());
+            // Stress factors
+            double linkStress = LinkStress.getStress(link,mode);
+            disutility += marginalCostStress_m * linkStress * distance;
+
+            // Junction stress factor
+            double junctionStress = JctStress.getJunctionStress(link,mode);
+            disutility += marginalCostStress_m * junctionStress;
+
+            if(Double.isNaN(disutility)) {
+                throw new RuntimeException("Null JIBE disutility for link " + link.getId().toString());
+            }
+
+            return disutility;
+
+        } else {
+            return Double.NaN;
         }
-
-        return disutility;
-
     }
 
     @Override

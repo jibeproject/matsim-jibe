@@ -76,7 +76,7 @@ public class RunTradsAnalysis {
         TravelTime ttWalk = new WalkTravelTime();
 
         // CALCULATOR
-        TradsCalculator calc = new TradsCalculator(trips);
+        RouteIndicatorCalculator calc = new RouteIndicatorCalculator(trips);
 
         // Extra attributes
         LinkedHashMap<String,TravelAttribute> bikeAttributes = ActiveAttributes.getJibe(TransportMode.bike,bike);

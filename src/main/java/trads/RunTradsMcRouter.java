@@ -86,7 +86,7 @@ public class RunTradsMcRouter {
         } else throw new RuntimeException("Modes other than walk and bike are not supported!");
 
         // CALCULATOR
-        TradsCalculator calc = new TradsCalculator(selectedTrips);
+        RouteIndicatorCalculator calc = new RouteIndicatorCalculator(selectedTrips);
 
         // Run short and fast routing (for reference)
         calc.network("short", ORIGIN, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new DistanceDisutility(), tt, ActiveAttributes.get(mode), true);

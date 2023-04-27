@@ -60,7 +60,7 @@ public class TradsPercentileCalculator {
         logger.info(builder.toString());
 
         // Route trips
-        TradsCalculator calc = new TradsCalculator(validTrips);
+        RouteIndicatorCalculator calc = new RouteIndicatorCalculator(validTrips);
         calc.network("pc",ORIGIN,DESTINATION,vehicle,network,xy2lNetwork,travelDisutility,travelTime,null,false);
 
         // Get sorted array of costs

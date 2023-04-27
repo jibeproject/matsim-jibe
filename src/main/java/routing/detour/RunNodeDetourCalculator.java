@@ -1,6 +1,7 @@
 package routing.detour;
 
 import gis.GpkgReader;
+import io.ioUtils;
 import network.NetworkUtils2;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
@@ -67,7 +68,7 @@ public class RunNodeDetourCalculator {
         // Write headers to output files
         PrintWriter out1;
         log.info("Writing header to file: " + densitiesOutputFile);
-        out1 = openFileForSequentialWriting(new File(densitiesOutputFile),false);
+        out1 = ioUtils.openFileForSequentialWriting(new File(densitiesOutputFile),false);
         assert out1 != null;
         out1.println("mcAmbience,mcStress,detour,count");
         out1.close();
@@ -75,7 +76,7 @@ public class RunNodeDetourCalculator {
 
         PrintWriter out2;
         log.info("Writing header to file: " + largeDetoursOutputFile);
-        out2 = openFileForSequentialWriting(new File(largeDetoursOutputFile),false);
+        out2 = ioUtils.openFileForSequentialWriting(new File(largeDetoursOutputFile),false);
         assert out2 != null;
         out2.println("mcAmbience,mcStress,originNode,destinationNode,timeFast,timeJibe");
         out2.close();
@@ -99,7 +100,7 @@ public class RunNodeDetourCalculator {
 
                 // Save densities to CSV
                 log.info("Appending detour densities to file: " + densitiesOutputFile);
-                out1 = openFileForSequentialWriting(new File(densitiesOutputFile),true);
+                out1 = ioUtils.openFileForSequentialWriting(new File(densitiesOutputFile),true);
                 assert out1 != null;
                 for(int k = 0 ; k < 500 ; k++) {
                     double detour = (((double) k) / 100) + 1;
@@ -114,7 +115,7 @@ public class RunNodeDetourCalculator {
                     log.info("No large detours to print.");
                 } else {
                     log.info("Writing " + largeDetours.size() + " OD pairs with large detours to: " + largeDetoursOutputFile);
-                    out2 = openFileForSequentialWriting(new File(largeDetoursOutputFile),true);
+                    out2 = ioUtils.openFileForSequentialWriting(new File(largeDetoursOutputFile),true);
                     assert out2 != null;
                     for(Map.Entry<String,double[]> e : largeDetours.entrySet()) {
                         out2.println(mcAmbience + "," + mcStress + "," + e.getKey() + "," + e.getValue()[0] + "," + e.getValue()[1]);
@@ -123,22 +124,6 @@ public class RunNodeDetourCalculator {
                     log.info("Closing file:tdragon " + densitiesOutputFile);
                 }
             }
-        }
-    }
-
-    private static PrintWriter openFileForSequentialWriting(File outputFile, boolean append) {
-        if (outputFile.getParent() != null) {
-            File parent = outputFile.getParentFile();
-            parent.mkdirs();
-        }
-
-        try {
-            FileWriter fw = new FileWriter(outputFile, append);
-            BufferedWriter bw = new BufferedWriter(fw);
-            return new PrintWriter(bw);
-        } catch (IOException var5) {
-            log.info("Could not open file <" + outputFile.getName() + ">.");
-            return null;
         }
     }
 }

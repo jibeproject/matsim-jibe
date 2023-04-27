@@ -1,6 +1,7 @@
 package trads.io;
 
 import com.google.common.math.LongMath;
+import io.ioUtils;
 import org.apache.log4j.Logger;
 import trip.Trip;
 
@@ -19,7 +20,7 @@ public class TradsCsvWriter {
     // Write results to csv file
     public static void write(Set<Trip> trips, String filePath, Map<String, List<String>> attributes) {
 
-        PrintWriter out = openFileForSequentialWriting(new File(filePath));
+        PrintWriter out = ioUtils.openFileForSequentialWriting(new File(filePath),false);
         assert out != null;
 
         // Route names
@@ -99,21 +100,5 @@ public class TradsCsvWriter {
         }
 
         return builder.toString();
-    }
-
-    private static PrintWriter openFileForSequentialWriting(File outputFile) {
-        if (outputFile.getParent() != null) {
-            File parent = outputFile.getParentFile();
-            parent.mkdirs();
-        }
-
-        try {
-            FileWriter fw = new FileWriter(outputFile, false);
-            BufferedWriter bw = new BufferedWriter(fw);
-            return new PrintWriter(bw);
-        } catch (IOException var5) {
-            logger.info("Could not open file <" + outputFile.getName() + ">.");
-            return null;
-        }
     }
 }

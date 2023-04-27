@@ -55,7 +55,7 @@ public class RunDestinationChoiceAnalysis {
         TravelTime ttWalk = new WalkTravelTime();
 
         // CALCULATOR
-        TradsCalculator calc = new TradsCalculator(trips);
+        RouteIndicatorCalculator calc = new RouteIndicatorCalculator(trips);
 
         // beeline
         calc.beeline("home_beeline",HOME, DESTINATION);

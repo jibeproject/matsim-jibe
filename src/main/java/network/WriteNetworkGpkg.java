@@ -164,6 +164,7 @@ public class WriteNetworkGpkg {
             // Other attributes
             featureBuilder.add(edgeID);
             featureBuilder.add(link.getAttributes().getAttribute("osmID"));
+            featureBuilder.add(link.getId().toString());
             featureBuilder.add(fwd);
             featureBuilder.add(length / cycleTime * 3.6);
             featureBuilder.add(length / walkTime * 3.6);
@@ -241,6 +242,7 @@ public class WriteNetworkGpkg {
         builder.add("path", LineString.class);
         builder.add("edgeID",Integer.class);
         builder.add("osmID",Integer.class);
+        builder.add("linkID",String.class);
         builder.add("fwd",Boolean.class);
         builder.add("cycleSpeedKPH",Double.class);
         builder.add("walkSpeedKPH",Double.class);

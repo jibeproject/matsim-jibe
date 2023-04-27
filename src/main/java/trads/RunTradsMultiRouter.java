@@ -24,7 +24,6 @@ import trip.Trip;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static trip.Place.DESTINATION;
 import static trip.Place.ORIGIN;
@@ -81,7 +80,7 @@ public class RunTradsMultiRouter {
         } else throw new RuntimeException("Modes other than walk and bike are not supported!");
 
         // CALCULATOR
-        TradsCalculator calc = new TradsCalculator(selectedTrips);
+        RouteIndicatorCalculator calc = new RouteIndicatorCalculator(selectedTrips);
 
         // JIBE Attributes
         LinkedHashMap<String, TravelAttribute> jibeAttr = ActiveAttributes.getJibe(mode,veh);

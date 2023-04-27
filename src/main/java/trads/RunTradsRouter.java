@@ -77,7 +77,7 @@ public class RunTradsRouter {
         } else throw new RuntimeException("Modes other than walk and bike are not supported!");
 
         // Calculate shortest, fastest, and jibe route
-        TradsCalculator calc = new TradsCalculator(tripsByMode);
+        RouteIndicatorCalculator calc = new RouteIndicatorCalculator(tripsByMode);
         calc.network(mode + "_short", ORIGIN, DESTINATION,  veh, modeNetwork, modeNetwork, new DistanceDisutility(), tt, ActiveAttributes.get(mode),true);
         calc.network(mode + "_fast", ORIGIN, DESTINATION,  veh, modeNetwork, modeNetwork, new OnlyTimeDependentTravelDisutility(tt), tt, ActiveAttributes.get(mode),true);
         calc.network(mode + "_jibe", ORIGIN, DESTINATION, veh, modeNetwork, modeNetwork, new JibeDisutility(mode,tt), tt, ActiveAttributes.get(mode),true);

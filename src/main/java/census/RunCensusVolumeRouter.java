@@ -1,14 +1,15 @@
 package census;
 
 import gis.ShpReader;
+import io.ioUtils;
 import network.NetworkUtils2;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
 import org.matsim.core.router.util.TravelTime;
-import org.matsim.core.utils.misc.Counter;
 import org.matsim.vehicles.Vehicle;
 import org.opengis.referencing.FactoryException;
 import resources.Resources;
@@ -16,32 +17,28 @@ import routing.Bicycle;
 import routing.disutility.DistanceDisutility;
 import routing.disutility.JibeDisutility;
 import routing.travelTime.WalkTravelTime;
-import trads.RouteIndicatorCalculator;
 import trip.Trip;
 
-import java.io.IOException;
+import java.io.*;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 
-import static trip.Place.*;
+import static trip.Place.DESTINATION;
+import static trip.Place.HOME;
 
-public class RunCensusMcRouter {
+public class RunCensusVolumeRouter {
 
-    private final static Logger logger = Logger.getLogger(RunCensusMcRouter.class);
+    private final static Logger logger = Logger.getLogger(RunCensusVolumeRouter.class);
 
-    // Parameters for MC Simulation
-    private final static double MAX_MC_AMBIENCE = 5e-3; // based on avg travel time and rounded up
-    private final static double MAX_MC_STRESS = 5e-3; // based on average travel time and rounded up
+    private final static char SEP = ',';
 
     public static void main(String[] args) throws IOException, FactoryException {
-        if (args.length != 5) {
-            throw new RuntimeException("Program requires 5 arguments: \n" +
+        if (args.length != 4) {
+            throw new RuntimeException("Program requires 4 arguments: \n" +
                     "(0) Properties file\n" +
                     "(1) MSOAs Shapefile\n" +
                     "(2) Census matrix\n" +
-                    "(3) Output file path\n" +
-                    "(4) Number of samples");
+                    "(3) Output file path");
         }
 
         Resources.initializeResources(args[0]);
@@ -49,7 +46,6 @@ public class RunCensusMcRouter {
         String zonesFile = args[1];
         String censusMatrix = args[2];
         String outputCsv = args[3];
-        int numberOfSamples = Integer.parseInt(args[4]);
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
@@ -77,28 +73,37 @@ public class RunCensusMcRouter {
         } else throw new RuntimeException("Modes other than walk and bike are not supported!");
 
         // CALCULATOR
-        RouteIndicatorCalculator calc = new RouteIndicatorCalculator(trips);
+        LinkVolumeCalculator calc = new LinkVolumeCalculator(trips);
 
         // Run short and fast routing (for reference)
-        calc.network(mode + "_short", HOME, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new DistanceDisutility(), tt, null, false);
-        calc.network(mode + "_fast", HOME, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new OnlyTimeDependentTravelDisutility(tt), tt, null, false);
+        calc.calculate(mode + "_short", HOME, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new DistanceDisutility(), tt);
+        calc.calculate(mode + "_fast", HOME, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new OnlyTimeDependentTravelDisutility(tt), tt);
+        calc.calculate(mode + "_jibe", HOME, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new JibeDisutility(mode,tt), tt);
 
-        Random r = new Random();
-
-        Counter counter = new Counter("Sampling route ", "/" + numberOfSamples);
-        for (int i = 0; i < numberOfSamples; i++) {
-            counter.incCounter();
-
-            double mcAttr = r.nextDouble() * MAX_MC_AMBIENCE;
-            double mcStress = r.nextDouble() * MAX_MC_STRESS;
-
-            JibeDisutility disutilty = new JibeDisutility(mode, tt, mcAttr, mcStress);
-
-            calc.network(mode + "_jibe_" + i,HOME,DESTINATION,veh,modeSpecificNetwork,modeSpecificNetwork,disutilty,tt,null,false);
-        }
 
         // Write results
-        logger.info("Writing results to csv file...");
-        CensusWriter.write(trips,outputCsv,calc.getAllAttributeNames());
+        Map<String,int[]> allResults = calc.getAllResults();
+
+        PrintWriter out = ioUtils.openFileForSequentialWriting(new File(outputCsv),false);
+        assert out != null;
+
+        StringBuilder header = new StringBuilder();
+        header.append("link");
+        for(String name : allResults.keySet()) {
+            header.append(SEP).append(name);
+        }
+        out.println(header);
+
+        for(Link link : modeSpecificNetwork.getLinks().values()) {
+            StringBuilder line = new StringBuilder();
+            line.append(link.getId().toString());
+            for(int[] result : allResults.values()) {
+                line.append(SEP).append(result[link.getId().index()]);
+            }
+            out.println(line);
+        }
+        out.close();
+        logger.info("Printed " + allResults.size() + " volumes for " + modeSpecificNetwork.getLinks().size() + " links.");
     }
+
 }

@@ -16,7 +16,7 @@ import resources.Resources;
 import routing.disutility.DistanceDisutility;
 import routing.disutility.JibeDisutility;
 import routing.travelTime.WalkTravelTime;
-import trads.TradsCalculator;
+import trads.RouteIndicatorCalculator;
 import trads.io.TradsRouteWriter;
 import trip.Place;
 import trip.Trip;
@@ -95,7 +95,7 @@ public class RunNodeRouter {
         }
 
         // Route results
-        TradsCalculator calc = new TradsCalculator(trips);
+        RouteIndicatorCalculator calc = new RouteIndicatorCalculator(trips);
         calc.network(mode + "_short", ORIGIN, DESTINATION, veh, modeNetwork, modeNetwork, new DistanceDisutility(), tt, null, true);
         calc.network(mode + "_fast", ORIGIN, DESTINATION, veh, modeNetwork, modeNetwork, new OnlyTimeDependentTravelDisutility(tt), tt, null, true);
         calc.network(mode + "_jibe", ORIGIN, DESTINATION, veh, modeNetwork, modeNetwork, new JibeDisutility(mode,tt,0.,0.), tt, null, true);
