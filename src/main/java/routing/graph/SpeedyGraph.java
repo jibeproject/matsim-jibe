@@ -106,8 +106,12 @@ public class SpeedyGraph {
         this.linkData[base + 4] = (int) Math.round(link.getLength() * 100.0);
         this.linkData[base + 5] = (int) Math.round(link.getLength() / link.getFreespeed() * 100.0);
 
-        this.linkDisutility[linkIdx] = td.getLinkTravelDisutility(link,TIME_VALUE,person,vehicle);
-        this.linkTime[linkIdx] = tt.getLinkTravelTime(link,TIME_VALUE,person,vehicle);
+        if(this.td != null) {
+            this.linkDisutility[linkIdx] = td.getLinkTravelDisutility(link,TIME_VALUE,person,vehicle);
+        }
+        if(this.tt != null) {
+            this.linkTime[linkIdx] = tt.getLinkTravelTime(link,TIME_VALUE,person,vehicle);
+        }
 
         setOutLink(fromNodeIdx, linkIdx);
         setInLink(toNodeIdx, linkIdx);

@@ -28,6 +28,10 @@ public enum TradsPurpose {
     OTHER,
     NO_RESPONSE;
 
+    public boolean isMandatory() {
+        return List.of(WORK,EDUCATION).contains(this);
+    }
+
     public static class Pair {
         private final TradsPurpose startPurpose;
         private final TradsPurpose endPurpose;
