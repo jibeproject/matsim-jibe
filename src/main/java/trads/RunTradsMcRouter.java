@@ -1,6 +1,5 @@
 package trads;
 
-import resources.Properties;
 import resources.Resources;
 import routing.ActiveAttributes;
 import routing.Bicycle;
@@ -53,8 +52,6 @@ public class RunTradsMcRouter {
         String outputCsv = args[2];
         String mode = args[3];
         int numberOfSamples = Integer.parseInt(args[4]);
-
-        String inputEdgesGpkg = Resources.instance.getString(Properties.NETWORK_LINKS);
 
         // Read network
         Network modeSpecificNetwork = NetworkUtils2.readModeSpecificNetwork(mode);
@@ -109,7 +106,7 @@ public class RunTradsMcRouter {
 
         // Write results
         logger.info("Writing results to gpkg file...");
-        TradsUniqueRouteWriter.write(selectedTrips, inputEdgesGpkg, outputGpkg);
+        TradsUniqueRouteWriter.write(selectedTrips, outputGpkg);
         TradsCsvWriter.write(selectedTrips,outputCsv,calc.getAllAttributeNames());
 
     }

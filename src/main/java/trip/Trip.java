@@ -1,6 +1,7 @@
 package trip;
 
 import org.matsim.api.core.v01.Coord;
+import routing.graph.TreeNode;
 import trads.TradsPurpose;
 
 import java.util.*;
@@ -20,6 +21,7 @@ public class Trip {
     private final Map<String, Map<String,Object>> routeAttributes = new LinkedHashMap<>();
     private final Map<String,Integer> routePathIndices = new LinkedHashMap<>();
     private final List<Route> routes = new ArrayList<>();
+    private Set<TreeNode> paths;
 
     public Trip(String householdId, int personId, int tripId, int startTime,
                 String mainMode, TradsPurpose startPurpose, TradsPurpose endPurpose, Map<Place, String> zones, Map<Place,Coord> coords, Map<Place,Boolean> coordsInsideBoundary) {
@@ -117,6 +119,10 @@ public class Trip {
         } else return null;
     }
 
+    public Set<String> getRouteNames() {
+        return routeAttributes.keySet();
+    }
+
     private static Integer findPathKey(List<Route> routes, int[] newPath, Coord startCoord, double distance, double time) {
         for(int i = 0 ; i < routes.size() ; i++) {
             Route route = routes.get(i);
@@ -130,5 +136,12 @@ public class Trip {
         }
         return null;
     }
-    
+
+    public Set<TreeNode> getPaths() {
+        return paths;
+    }
+
+    public void setPaths(Set<TreeNode> paths) {
+        this.paths = paths;
+    }
 }

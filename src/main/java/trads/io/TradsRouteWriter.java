@@ -15,19 +15,18 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.network.Link;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.referencing.FactoryException;
 import resources.Properties;
 import resources.Resources;
+import routing.graph.TreeNode;
 import trip.Trip;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static trip.Place.DESTINATION;
 import static trip.Place.ORIGIN;
@@ -90,16 +89,31 @@ public class TradsRouteWriter {
             nodeCollection.add(destFeature);
 
             // Path
-            Map<String,int[]> routePaths = trip.getAllRoutePaths();
-            for(Map.Entry<String,int[]> e : routePaths.entrySet()) {
-                pathCounter++;
-                String route = e.getKey();
-                if(e.getValue().length > 0) {
-                    LineString path = buildPath(trip.getStartCoord(route),e.getValue(),geometryFactory,networkFeatures);
+            if(!trip.getUniqueRoutes().isEmpty()) {
+                for(Map.Entry<String,int[]> e : trip.getAllRoutePaths().entrySet()) {
+                    pathCounter++;
+                    String route = e.getKey();
+                    if(e.getValue().length > 0) {
+                        LineString path = drawFromEdgeIDs(trip.getStartCoord(route),e.getValue(),geometryFactory,networkFeatures);
+                        routeFeatureBuilder.add(path);
+                        routeFeatureBuilder.add(route);
+                        for(String attribute : allAttributes) {
+                            routeFeatureBuilder.add(trip.getAttribute(route,attribute));
+                        }
+                        SimpleFeature feature = routeFeatureBuilder.buildFeature(null);
+                        routeCollection.add(feature);
+                    }
+                }
+            } else {
+                Set<TreeNode> paths = trip.getPaths();
+                for(TreeNode p : paths) {
+                    pathCounter++;
+                    String name = String.valueOf(pathCounter);
+                    LineString path = drawFromPathNode(p,geometryFactory,networkFeatures);
                     routeFeatureBuilder.add(path);
-                    routeFeatureBuilder.add(route);
+                    routeFeatureBuilder.add(name);
                     for(String attribute : allAttributes) {
-                        routeFeatureBuilder.add(trip.getAttribute(route,attribute));
+                        routeFeatureBuilder.add(trip.getAttribute(name,attribute));
                     }
                     SimpleFeature feature = routeFeatureBuilder.buildFeature(null);
                     routeCollection.add(feature);
@@ -159,7 +173,7 @@ public class TradsRouteWriter {
         return builder.buildFeatureType();
     }
 
-    public static LineString buildPath(Coord startNode, int[] edgeIDs, GeometryFactory geometryFactory, Map<Integer, SimpleFeature> networkFeatures) {
+    public static LineString drawFromEdgeIDs(Coord startNode, int[] edgeIDs, GeometryFactory geometryFactory, Map<Integer, SimpleFeature> networkFeatures) {
 
         Coordinate[] path = new Coordinate[]{};
         Coordinate refCoord = new Coordinate(startNode.getX(),startNode.getY());
@@ -187,6 +201,44 @@ public class TradsRouteWriter {
             }
 
             path = ArrayUtils.addAll(path, coords);
+        }
+
+        return geometryFactory.createLineString(path);
+    }
+
+    public static LineString drawFromPathNode(TreeNode n, GeometryFactory geometryFactory, Map<Integer, SimpleFeature> networkFeatures) {
+
+        Coord endNodeCoord = n.link.getToNode().getCoord();
+
+        Coordinate[] path = new Coordinate[]{};
+        Coordinate refCoord = new Coordinate(endNodeCoord.getX(),endNodeCoord.getY());
+
+        TreeNode curr = n;
+        while(curr.link != null) {
+            Link link = curr.link;
+            int edgeId = (int) link.getAttributes().getAttribute("edgeID");
+            SimpleFeature edge = networkFeatures.get(edgeId);
+            Coordinate[] coords = new Coordinate[0];
+            try {
+                coords = ((LineString) edge.getDefaultGeometry()).getCoordinates().clone();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            Coordinate firstCoord = coords[0];
+            Coordinate lastCoord = coords[coords.length - 1];
+
+            if(refCoord.equals2D(lastCoord)) {
+                refCoord = firstCoord;
+            } else {
+                if(!refCoord.equals2D(firstCoord)) {
+                    throw new RuntimeException("Edge " + edgeId + " does not line up with previous edge");
+                }
+                ArrayUtils.reverse(coords);
+                refCoord = lastCoord;
+            }
+
+            path = ArrayUtils.addAll(coords,path);
+            curr = curr.parent;
         }
 
         return geometryFactory.createLineString(path);

@@ -25,7 +25,6 @@ import trip.Trip;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,7 +39,7 @@ public class TradsUniqueRouteWriter {
     private static final GeometryFactory gf = JTSFactoryFinder.getGeometryFactory();
 
     // Write geometries to .gpkg
-    public static void write(Set<Trip> trips, String inputEdgesGpkg, String outputGpkg) throws FactoryException, IOException {
+    public static void write(Set<Trip> trips, String outputGpkg) throws FactoryException, IOException {
 
         final SimpleFeatureType routeTYPE = createRouteFeatureType();
         final SimpleFeatureType nodeTYPE = createNodeFeatureType();
@@ -52,6 +51,7 @@ public class TradsUniqueRouteWriter {
         final DefaultFeatureCollection nodeCollection = new DefaultFeatureCollection("Nodes",nodeTYPE);
 
         // Read in edges file
+        String inputEdgesGpkg = Resources.instance.getString(Properties.NETWORK_LINKS);
         Map<Integer, SimpleFeature> networkFeatures = GpkgReader.readEdges(new File(inputEdgesGpkg));
         int tripCounter = 0;
         int pathCounter = 0;

@@ -209,9 +209,9 @@ public class WriteNetworkGpkg {
             featureBuilder.add(LinkAmbience.getDayAmbience(link));
             featureBuilder.add(LinkAmbience.getNightAmbience(link));
             featureBuilder.add(LinkStress.getStress(link, TransportMode.bike));
-            featureBuilder.add(JctStress.getJunctionStress(link,TransportMode.bike));
+            featureBuilder.add(JctStress.getStress(link,TransportMode.bike));
             featureBuilder.add(LinkStress.getStress(link,TransportMode.walk));
-            featureBuilder.add(JctStress.getJunctionStress(link,TransportMode.walk));
+            featureBuilder.add(JctStress.getStress(link,TransportMode.walk));
             SimpleFeature feature = featureBuilder.buildFeature(null);
             collection.add(feature);
         }

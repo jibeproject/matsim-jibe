@@ -9,7 +9,6 @@ import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 import org.opengis.referencing.FactoryException;
-import resources.Properties;
 import resources.Resources;
 import routing.ActiveAttributes;
 import routing.Bicycle;
@@ -47,8 +46,6 @@ public class RunTradsMultiRouter {
         String outputPrefix = args[1];
         String outputCsv = args[2];
         String mode = args[3];
-
-        String inputEdgesGpkg = Resources.instance.getString(Properties.NETWORK_LINKS);
 
         // Read network
         Network modeSpecificNetwork = NetworkUtils2.readModeSpecificNetwork(mode);
@@ -112,7 +109,7 @@ public class RunTradsMultiRouter {
 
         // Write results to one GPKG
         logger.info("Writing results to gpkg file...");
-        TradsUniqueRouteWriter.write(selectedTrips, inputEdgesGpkg, outputPrefix + ".gpkg");
+        TradsUniqueRouteWriter.write(selectedTrips, outputPrefix + ".gpkg");
 
 /*        // Also split into multiple GPKG files
         HashMap<String, Set<Trip>> seperatedTrips = new HashMap<>();

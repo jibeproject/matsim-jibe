@@ -17,10 +17,7 @@ import trip.Trip;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static trads.TradsPurpose.*;
 import static trads.io.TradsAttributes.*;
@@ -30,7 +27,7 @@ public class TradsReader {
     private final static Logger logger = Logger.getLogger(TradsReader.class);
 
     public static Set<Trip> readTrips(Geometry geometry) throws IOException {
-        Set<Trip> trips = new HashSet<>();
+        Set<Trip> trips = new LinkedHashSet<>();
         String recString;
         Counter counter = new Counter("Processed " + " TRADS records.");
         int badCoords = 0;

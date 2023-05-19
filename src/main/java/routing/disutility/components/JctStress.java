@@ -6,7 +6,7 @@ import static routing.disutility.components.Crossing.*;
 
 public class JctStress {
 
-    public static double getJunctionStress(Link link, String mode) {
+    public static double getStress(Link link, String mode) {
 
         double stress = 0.;
 

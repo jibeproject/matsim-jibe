@@ -21,7 +21,7 @@ public class ActiveAttributes {
         attributes.put("freightPOIs",(l,td) -> LinkStress.getFreightPoiFactor(l) * l.getLength());
         attributes.put("ambience", (l,td) -> LinkAmbience.getDayAmbience(l) * l.getLength());
         attributes.put("stressLink",(l,td) -> LinkStress.getStress(l,mode) * l.getLength());
-        attributes.put("stressJct",(l,td) -> JctStress.getJunctionStress(l,mode));
+        attributes.put("stressJct",(l,td) -> JctStress.getStress(l,mode));
         return attributes;
     }
 

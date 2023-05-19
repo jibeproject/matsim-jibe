@@ -157,7 +157,7 @@ public class SpeedyGraph {
         return new InLinkIterator(this);
     }
 
-    Link getLink(int index) {
+    public Link getLink(int index) {
         return this.links[index];
     }
 
@@ -166,6 +166,10 @@ public class SpeedyGraph {
 
     Node getNode(int index) {
         return this.nodes[index];
+    }
+
+    public int getNodeCount() {
+        return this.nodeCount;
     }
 
     public interface LinkIterator {
