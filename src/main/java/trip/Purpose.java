@@ -1,9 +1,9 @@
-package trads;
+package trip;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public enum TradsPurpose {
+public enum Purpose {
 
     HOME,
     WORK,
@@ -33,19 +33,19 @@ public enum TradsPurpose {
     }
 
     public static class Pair {
-        private final TradsPurpose startPurpose;
-        private final TradsPurpose endPurpose;
+        private final Purpose startPurpose;
+        private final Purpose endPurpose;
 
-        public Pair(TradsPurpose startPurpose, TradsPurpose endPurpose) {
+        public Pair(Purpose startPurpose, Purpose endPurpose) {
             this.startPurpose = startPurpose;
             this.endPurpose = endPurpose;
         }
 
-        public TradsPurpose getStartPurpose() {
+        public Purpose getStartPurpose() {
             return startPurpose;
         }
 
-        public TradsPurpose getEndPurpose() {
+        public Purpose getEndPurpose() {
             return endPurpose;
         }
     }
@@ -55,11 +55,11 @@ public enum TradsPurpose {
         public PairList() {
             list = new ArrayList<>();
         }
-        public void addPair(TradsPurpose startPurpose, TradsPurpose endPurpose) {
+        public void addPair(Purpose startPurpose, Purpose endPurpose) {
             list.add(new Pair(startPurpose,endPurpose));
         }
 
-        public boolean contains(TradsPurpose startPurpose, TradsPurpose endPurpose) {
+        public boolean contains(Purpose startPurpose, Purpose endPurpose) {
             for(Pair pair : list) {
                 if(pair.getStartPurpose().equals(startPurpose) && pair.getEndPurpose().equals(endPurpose)) {
                     return true;

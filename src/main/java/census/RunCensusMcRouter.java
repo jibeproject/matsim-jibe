@@ -16,7 +16,7 @@ import routing.Bicycle;
 import routing.disutility.DistanceDisutility;
 import routing.disutility.JibeDisutility;
 import routing.travelTime.WalkTravelTime;
-import trads.RouteIndicatorCalculator;
+import trads.calculate.RouteIndicatorCalculator;
 import trip.Trip;
 
 import java.io.IOException;

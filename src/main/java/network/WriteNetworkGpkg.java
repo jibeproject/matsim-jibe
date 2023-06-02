@@ -166,8 +166,9 @@ public class WriteNetworkGpkg {
             featureBuilder.add(link.getAttributes().getAttribute("osmID"));
             featureBuilder.add(link.getId().toString());
             featureBuilder.add(fwd);
-            featureBuilder.add(length / cycleTime * 3.6);
-            featureBuilder.add(length / walkTime * 3.6);
+            featureBuilder.add(length);
+            featureBuilder.add(cycleTime);
+            featureBuilder.add(walkTime);
             featureBuilder.add(link.getAttributes().getAttribute("speedLimitMPH"));
             featureBuilder.add(link.getAttributes().getAttribute("veh85percSpeedKPH"));
             featureBuilder.add(bikeMarginalDisutilities.get(link.getId()));
@@ -199,6 +200,12 @@ public class WriteNetworkGpkg {
             featureBuilder.add(link.getAttributes().getAttribute("crossAadt"));
             featureBuilder.add(link.getAttributes().getAttribute("crossSpeedLimitMPH"));
             featureBuilder.add(link.getAttributes().getAttribute("cross85PercSpeed"));
+            featureBuilder.add(link.getAttributes().getAttribute("vgvi"));
+            featureBuilder.add(link.getAttributes().getAttribute("shannon"));
+            featureBuilder.add(link.getAttributes().getAttribute("POIs"));
+            featureBuilder.add(link.getAttributes().getAttribute("negPOIs"));
+            featureBuilder.add(link.getAttributes().getAttribute("crime"));
+            featureBuilder.add(link.getAttributes().getAttribute("streetLights"));
             featureBuilder.add(LinkAmbience.getVgviFactor(link));
             featureBuilder.add(LinkAmbience.getLightingFactor(link));
             featureBuilder.add(LinkAmbience.getShannonFactor(link));
@@ -236,7 +243,7 @@ public class WriteNetworkGpkg {
 
         SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
         builder.setName("links");
-        builder.setCRS(CRS.decode(Resources.instance.getString(Properties.COORDINATE_SYSTEM))); // <- Coordinate reference system
+        builder.setCRS(CRS.decode(Resources.instance.getString(Properties.COORDINATE_SYSTEM)));
 
         // add attributes in order
         builder.add("path", LineString.class);
@@ -244,8 +251,9 @@ public class WriteNetworkGpkg {
         builder.add("osmID",Integer.class);
         builder.add("linkID",String.class);
         builder.add("fwd",Boolean.class);
-        builder.add("cycleSpeedKPH",Double.class);
-        builder.add("walkSpeedKPH",Double.class);
+        builder.add("length",Double.class);
+        builder.add("cycleTime",Double.class);
+        builder.add("walkTime",Double.class);
         builder.add("carSpeedLimitMPH",Double.class);
         builder.add("car85PercSpeedKPH",Double.class);
         builder.add("bikeJibeMarginalDisutility",Double.class);
@@ -277,6 +285,12 @@ public class WriteNetworkGpkg {
         builder.add("crossingAADT",Double.class);
         builder.add("crossingSpeedLimit",Double.class);
         builder.add("crossing85PercSpeed",Double.class);
+        builder.add("vgvi",Double.class);
+        builder.add("shannon",Double.class);
+        builder.add("POIs",Double.class);
+        builder.add("negPOIs",Double.class);
+        builder.add("crime",Double.class);
+        builder.add("streetLights",Integer.class);
         builder.add("f_vgvi",Double.class);
         builder.add("f_lighting",Double.class);
         builder.add("f_shannon",Double.class);

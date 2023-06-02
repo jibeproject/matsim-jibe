@@ -1,13 +1,11 @@
 package routing.graph;
 
-import org.matsim.api.core.v01.network.Link;
-
 import java.util.*;
 
 /**
- * Multi-tree based on LeastCostPathTree
+ * Simple distance tree based on LeastCostPathTree
  */
-public class DistTree {
+public class SimpleTree {
 
     private final SpeedyGraph graph;
     private final double[] data;
@@ -18,7 +16,7 @@ public class DistTree {
     private final SpeedyGraph.LinkIterator inLI;
     private final NodeMinHeap pq;
 
-    public DistTree(SpeedyGraph graph) {
+    public SimpleTree(SpeedyGraph graph) {
         this.graph = graph;
         this.data = new double[graph.nodeCount];
         this.comingFrom = new int[graph.nodeCount];
@@ -82,12 +80,11 @@ public class DistTree {
             LI.reset(nodeIdx);
             while (LI.next()) {
                 int linkIdx = LI.getLinkIndex();
-                Link link = this.graph.getLink(linkIdx);
 
                 int nextNode = fwd ? LI.getToNodeIndex() : LI.getFromNodeIndex();
 
                 double oldCost = getCost(nextNode);
-                double newCost = currCost + link.getLength();
+                double newCost = currCost + this.graph.getLinkDisutility(linkIdx); // link.getLength();
 
                 if (Double.isFinite(oldCost)) {
                     if (newCost < oldCost) {

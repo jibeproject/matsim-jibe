@@ -2,7 +2,6 @@ package trip;
 
 import org.matsim.api.core.v01.Coord;
 import routing.graph.TreeNode;
-import trads.TradsPurpose;
 
 import java.util.*;
 
@@ -13,8 +12,8 @@ public class Trip {
     private final int tripId;
     private final int startTime;
     private final String mainMode;
-    private final TradsPurpose startPurpose;
-    private final TradsPurpose endPurpose;
+    private final Purpose startPurpose;
+    private final Purpose endPurpose;
     private final Map<Place,String> zones;
     private final Map<Place,Coord> coords;
     private final Map<Place,Boolean> coordsInsideBoundary;
@@ -24,7 +23,7 @@ public class Trip {
     private Set<TreeNode> paths;
 
     public Trip(String householdId, int personId, int tripId, int startTime,
-                String mainMode, TradsPurpose startPurpose, TradsPurpose endPurpose, Map<Place, String> zones, Map<Place,Coord> coords, Map<Place,Boolean> coordsInsideBoundary) {
+                String mainMode, Purpose startPurpose, Purpose endPurpose, Map<Place, String> zones, Map<Place,Coord> coords, Map<Place,Boolean> coordsInsideBoundary) {
         this.householdId = householdId;
         this.personId = personId;
         this.tripId = tripId;
@@ -89,8 +88,8 @@ public class Trip {
 
     public String getMainMode() { return mainMode; }
 
-    public TradsPurpose getStartPurpose() { return startPurpose; }
-    public TradsPurpose getEndPurpose() { return endPurpose; }
+    public Purpose getStartPurpose() { return startPurpose; }
+    public Purpose getEndPurpose() { return endPurpose; }
 
     public Coord getStartCoord(String route) {
         return routes.get(routePathIndices.get(route)).getStartCoord();

@@ -20,8 +20,8 @@ import org.matsim.vehicles.Vehicle;
 import resources.Resources;
 
 import org.apache.log4j.Logger;
-import trads.TradsPercentileCalculator;
-import trads.TradsPurpose;
+import trads.PercentileCalculator;
+import trip.Purpose;
 
 import java.io.IOException;
 import java.util.Map;
@@ -95,9 +95,9 @@ public class RunAccessibility {
         if (decayType.equalsIgnoreCase("hansen")) {
             if(Double.isNaN(beta)) {
                 log.info("Hansen accessibility desired but no beta value given. Estimating beta from TRADS survey");
-                TradsPurpose.PairList includedPurposePairs = AccessibilityResources.instance.getPurposePairs();
+                Purpose.PairList includedPurposePairs = AccessibilityResources.instance.getPurposePairs();
                 String outputCsv = AccessibilityResources.instance.getString(AccessibilityProperties.TRADS_OUTPUT_CSV);
-                beta = TradsPercentileCalculator.estimateBeta(mode,veh,tt,td,includedPurposePairs,
+                beta = PercentileCalculator.estimateBeta(mode,veh,tt,td,includedPurposePairs,
                         network,network,networkBoundary,outputCsv);
             }
             df = new Hansen(beta,cutoffTime,cutoffDist);

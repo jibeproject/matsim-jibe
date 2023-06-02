@@ -13,7 +13,7 @@ import resources.Properties;
 import resources.Resources;
 import routing.Bicycle;
 import routing.travelTime.WalkTravelTime;
-import trads.calculate.MultiRouteCalculator;
+import trads.calculate.RouteCorridorCalculator;
 import trads.io.TradsCsvWriter;
 import trads.io.TradsReader;
 import trads.io.TradsRouteWriter;
@@ -27,9 +27,12 @@ import java.util.stream.Collectors;
 import static trip.Place.DESTINATION;
 import static trip.Place.ORIGIN;
 
-public class RunTradsKRouter {
+// Code to calculate route-based corridors between origin-destination pairs.
+// NOTE: Takes a very long time for larger detour factors (> 5%)
 
-    private final static Logger logger = Logger.getLogger(RunTradsKRouter.class);
+public class RunRouteCorridor {
+
+    private final static Logger logger = Logger.getLogger(RunRouteCorridor.class);
 
     public static void main(String[] args) throws IOException, FactoryException {
         if(args.length != 4) {
@@ -78,7 +81,7 @@ public class RunTradsKRouter {
         } else throw new RuntimeException("Modes other than walk and bike are not supported!");
 
         // Calculate shortest, fastest, and jibe route
-        MultiRouteCalculator.calculate(tripsByMode, ORIGIN, DESTINATION, modeNetwork, modeNetwork, tt, veh,1.15);
+        RouteCorridorCalculator.calculate(tripsByMode, ORIGIN, DESTINATION, modeNetwork, modeNetwork, tt, veh,1.15);
 
         // Write results to combined CSV
         TradsCsvWriter.write(tripsByMode, outputCsv,

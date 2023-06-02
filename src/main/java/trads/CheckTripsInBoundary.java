@@ -6,6 +6,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.TransportMode;
 import resources.Resources;
 import trads.io.TradsReader;
+import trip.Purpose;
 import trip.Trip;
 
 import java.io.IOException;
@@ -41,13 +42,13 @@ public class CheckTripsInBoundary {
         logger.info("MANDATORY Walk trips: " + trips.stream()
                 .filter(t -> t.routable(ORIGIN,DESTINATION) &&
                                 t.getMainMode().equals(TransportMode.bike) &&
-                        ((t.getStartPurpose().equals(TradsPurpose.HOME) && t.getEndPurpose().isMandatory())))
+                        ((t.getStartPurpose().equals(Purpose.HOME) && t.getEndPurpose().isMandatory())))
                 .count());
 
         logger.info("DISCRETIONARY Walk trips: " + trips.stream()
                 .filter(t -> t.routable(ORIGIN,DESTINATION) &&
                         t.getMainMode().equals(TransportMode.bike) &&
-                        t.getStartPurpose().equals(TradsPurpose.HOME) &&
+                        t.getStartPurpose().equals(Purpose.HOME) &&
                         !t.getEndPurpose().isMandatory())
                 .count());
 

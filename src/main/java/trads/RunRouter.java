@@ -2,14 +2,11 @@ package trads;
 
 import resources.Properties;
 import resources.Resources;
-import routing.ActiveAttributes;
 import routing.Bicycle;
-import routing.TravelAttribute;
 import gis.GpkgReader;
 import network.NetworkUtils2;
 import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
 import routing.disutility.DistanceDisutility;
-import routing.disutility.JibeDisutility;
 import routing.travelTime.WalkTravelTime;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
@@ -20,6 +17,7 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.router.costcalculators.FreespeedTravelTimeAndDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
+import trads.calculate.RouteIndicatorCalculator;
 import trads.io.TradsCsvWriter;
 import trads.io.TradsReader;
 import trip.Trip;
@@ -29,9 +27,9 @@ import java.util.*;
 
 import static trip.Place.*;
 
-public class RunTradsAnalysis {
+public class RunRouter {
 
-    private final static Logger logger = Logger.getLogger(RunTradsAnalysis.class);
+    private final static Logger logger = Logger.getLogger(RunRouter.class);
 
     public static void main(String[] args) throws IOException {
 
@@ -69,6 +67,10 @@ public class RunTradsAnalysis {
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
         Set<Trip> trips = TradsReader.readTrips(boundary);
+//                .stream()
+//                .filter(t -> (t.getEndPurpose().isMandatory() && t.getStartPurpose().equals(TradsPurpose.HOME)) ||
+//                        (t.getStartPurpose().isMandatory() && t.getEndPurpose().equals(TradsPurpose.HOME)))
+//                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         // Travel time
         FreespeedTravelTimeAndDisutility freeSpeed = new FreespeedTravelTimeAndDisutility(config.planCalcScore());
@@ -78,10 +80,6 @@ public class RunTradsAnalysis {
         // CALCULATOR
         RouteIndicatorCalculator calc = new RouteIndicatorCalculator(trips);
 
-        // Extra attributes
-        LinkedHashMap<String,TravelAttribute> bikeAttributes = ActiveAttributes.getJibe(TransportMode.bike,bike);
-        LinkedHashMap<String,TravelAttribute> walkAttributes = ActiveAttributes.getJibe(TransportMode.walk,null);
-
         // beeline
         calc.beeline("beeline_orig_dest", ORIGIN, DESTINATION);
         calc.beeline("beeline_home_dest", HOME, DESTINATION);
@@ -90,17 +88,11 @@ public class RunTradsAnalysis {
         calc.network("car", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,false);
 
         // bike (shortest, fastest, and jibe)
-        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, null, new DistanceDisutility(), ttBike, bikeAttributes,false);
-        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, null, new OnlyTimeDependentTravelDisutility(ttBike), ttBike, bikeAttributes,false);
-        calc.network("bike_jibe", ORIGIN, DESTINATION, bike, networkBike, null, new JibeDisutility(TransportMode.bike,ttBike), ttBike, bikeAttributes,false);
+        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new DistanceDisutility(), ttBike, null,false);
+        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new OnlyTimeDependentTravelDisutility(ttBike), ttBike, null,false);
 
-        // walk (shortest, fastest, and jibe)
-        calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, null, new DistanceDisutility(), ttWalk, walkAttributes,false);
-        calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, null, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, walkAttributes,false);
-        calc.network("walk_jibe", ORIGIN, DESTINATION, null, networkWalk, null, new JibeDisutility(TransportMode.walk,ttWalk), ttWalk, walkAttributes,false);
-
-        // distance from home (use walk shortest for this)
-        calc.network("home", HOME, DESTINATION, null, networkWalk, null, new DistanceDisutility(), ttWalk, null,false);
+        calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new DistanceDisutility(), ttWalk, null,false);
+        calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, null,false);
 
         // public transport
         calc.pt("pt", ORIGIN, DESTINATION, config, transitScheduleFilePath, transitNetworkFilePath);

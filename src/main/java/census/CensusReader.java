@@ -6,7 +6,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.TransportMode;
 import trip.Place;
-import trads.TradsPurpose;
+import trip.Purpose;
 import trip.Trip;
 
 import java.io.BufferedReader;
@@ -88,7 +88,7 @@ public class CensusReader {
                                 coordsInBoundary.put(Place.DESTINATION,true);
 
                                 trips.add(new Trip(HOUSEHOLD_ID,commutersRead,0,0,mode,
-                                        TradsPurpose.HOME,TradsPurpose.WORK, MSOAs, coords,coordsInBoundary));
+                                        Purpose.HOME, Purpose.WORK, MSOAs, coords,coordsInBoundary));
                             }
                         }
                     }

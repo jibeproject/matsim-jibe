@@ -10,6 +10,7 @@ import org.matsim.core.router.util.TravelTime;
 import resources.Resources;
 import routing.disutility.DistanceDisutility;
 import routing.travelTime.WalkTravelTime;
+import trads.calculate.RouteIndicatorCalculator;
 import trads.io.TradsCsvWriter;
 import trads.io.TradsReader;
 import trip.Trip;

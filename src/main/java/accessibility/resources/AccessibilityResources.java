@@ -12,7 +12,7 @@ import routing.Bicycle;
 import routing.disutility.DistanceDisutility;
 import routing.disutility.JibeDisutility;
 import routing.travelTime.WalkTravelTime;
-import trads.TradsPurpose;
+import trip.Purpose;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -138,20 +138,20 @@ public class AccessibilityResources {
         return value != null ? Double.parseDouble(value) : Double.NaN;
     }
 
-    public synchronized TradsPurpose.PairList getPurposePairs() {
+    public synchronized Purpose.PairList getPurposePairs() {
         int counter = 1;
         String nextPair = properties.getProperty(AccessibilityProperties.PURPOSE_PAIR + "." + counter);
         if(nextPair == null) {
             return null;
         }
-        TradsPurpose.PairList list = new TradsPurpose.PairList();
+        Purpose.PairList list = new Purpose.PairList();
         while (nextPair != null) {
             String[] purposes = nextPair.split(";");
             if(purposes.length != 2) {
                 throw new RuntimeException("ACCESSIBILITY PROPERTIES ERROR: Incorrect number of purposes given for purpose pair " + counter);
             }
-            TradsPurpose startPurpose = TradsPurpose.valueOf(purposes[0].toUpperCase());
-            TradsPurpose endPurpose = TradsPurpose.valueOf(purposes[1].toUpperCase()); // todo: error if not recognised
+            Purpose startPurpose = Purpose.valueOf(purposes[0].toUpperCase());
+            Purpose endPurpose = Purpose.valueOf(purposes[1].toUpperCase()); // todo: error if not recognised
             list.addPair(startPurpose,endPurpose);
             counter++;
             nextPair = properties.getProperty(AccessibilityProperties.PURPOSE_PAIR + "." + counter);

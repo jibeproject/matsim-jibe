@@ -16,7 +16,7 @@ import resources.Resources;
 import routing.disutility.components.JctStress;
 import routing.disutility.components.LinkAmbience;
 import routing.disutility.components.LinkStress;
-import routing.graph.DistTree;
+import routing.graph.SimpleTree;
 import routing.graph.SpeedyGraph;
 import routing.graph.TreeNode;
 import trip.Place;
@@ -27,14 +27,14 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 // Calculates all possible routes within certain detour limit
 
-public final class MultiRouteCalculator {
+public final class RouteCorridorCalculator {
 
-    private MultiRouteCalculator() {
+    private RouteCorridorCalculator() {
     }
 
     private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
 
-    public static final Logger log = Logger.getLogger(MultiRouteCalculator.class);
+    public static final Logger log = Logger.getLogger(RouteCorridorCalculator.class);
 
     public static void calculate(Set<Trip> trips, Place origin, Place destination,
                                  Network routingNetwork, Network xy2lNetwork,
@@ -100,8 +100,8 @@ public final class MultiRouteCalculator {
 
         public void run() {
 
-            DistTree origTree = new DistTree(graph);
-            DistTree destTree = new DistTree(graph);
+            SimpleTree origTree = new SimpleTree(graph);
+            SimpleTree destTree = new SimpleTree(graph);
 
             while(true) {
 
@@ -147,7 +147,7 @@ public final class MultiRouteCalculator {
                     log.info(tripName + ": Identified " + j + " candidate nodes");
                     log.info(tripName + ": Creating shortest cost matrix...");
                     double[][] matrix = new double[j][j];
-                    DistTree tree = new DistTree(graph);
+                    SimpleTree tree = new SimpleTree(graph);
                     for(int i = 0 ; i < graph.getNodeCount() ; i++) {
                         if(ref[i] != -1) {
                             tree.calculate(startNodeIdx,endNodeIdx,i,-1,true);

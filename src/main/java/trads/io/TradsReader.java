@@ -11,7 +11,7 @@ import org.matsim.core.utils.geometry.CoordUtils;
 import org.matsim.core.utils.misc.Counter;
 import resources.Properties;
 import resources.Resources;
-import trads.TradsPurpose;
+import trip.Purpose;
 import trip.Trip;
 
 import java.io.BufferedReader;
@@ -19,7 +19,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 
-import static trads.TradsPurpose.*;
+import static trip.Purpose.*;
 import static trads.io.TradsAttributes.*;
 
 public class TradsReader {
@@ -87,8 +87,8 @@ public class TradsReader {
             String mainMode = getTransportMode(lineElements[posMainMode]);
 
             // Read start and end purpose
-            TradsPurpose startPurpose = getPurpose(lineElements[posStartPurpose]);
-            TradsPurpose endPurpose = getPurpose(lineElements[posEndPurpose]);
+            Purpose startPurpose = getPurpose(lineElements[posStartPurpose]);
+            Purpose endPurpose = getPurpose(lineElements[posEndPurpose]);
 
             // Zones
             Map<Place,String> zones = new HashMap<>(3);
@@ -174,7 +174,7 @@ public class TradsReader {
         }
     }
 
-    private static TradsPurpose getPurpose(String purpose) {
+    private static Purpose getPurpose(String purpose) {
         switch(purpose) {
             case "Home": return HOME;
             case "Usual place of work": return WORK;

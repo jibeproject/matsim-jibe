@@ -15,6 +15,7 @@ import routing.Bicycle;
 import routing.TravelAttribute;
 import routing.disutility.JibeDisutility;
 import routing.travelTime.WalkTravelTime;
+import trads.calculate.RouteIndicatorCalculator;
 import trads.io.TradsCsvWriter;
 import trads.io.TradsReader;
 import trads.io.TradsUniqueRouteWriter;
@@ -27,9 +28,9 @@ import java.util.stream.Collectors;
 import static trip.Place.DESTINATION;
 import static trip.Place.ORIGIN;
 
-public class RunTradsMultiRouter {
+public class RunMultiRouter {
 
-    private final static Logger logger = Logger.getLogger(RunTradsMultiRouter.class);
+    private final static Logger logger = Logger.getLogger(RunMultiRouter.class);
 
     // Parameters for MC Simulation
     private final static double MAX_MC = 0.002;

@@ -16,7 +16,7 @@ import resources.Resources;
 import routing.disutility.DistanceDisutility;
 import routing.disutility.JibeDisutility;
 import routing.travelTime.WalkTravelTime;
-import trads.RouteIndicatorCalculator;
+import trads.calculate.RouteIndicatorCalculator;
 import trads.io.TradsRouteWriter;
 import trip.Place;
 import trip.Trip;

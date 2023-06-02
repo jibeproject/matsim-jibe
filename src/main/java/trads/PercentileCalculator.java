@@ -8,8 +8,10 @@ import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 import resources.Properties;
 import resources.Resources;
+import trads.calculate.RouteIndicatorCalculator;
 import trads.io.TradsCsvWriter;
 import trads.io.TradsReader;
+import trip.Purpose;
 import trip.Trip;
 
 import java.io.IOException;
@@ -20,13 +22,13 @@ import java.util.stream.Stream;
 import static trip.Place.DESTINATION;
 import static trip.Place.ORIGIN;
 
-public class TradsPercentileCalculator {
+public class PercentileCalculator {
 
-    private final static Logger logger = Logger.getLogger(TradsPercentileCalculator.class);
+    private final static Logger logger = Logger.getLogger(PercentileCalculator.class);
     private static Set<Trip> trips;
 
     public static double estimateBeta(String mode, Vehicle vehicle, TravelTime travelTime, TravelDisutility travelDisutility,
-                                      TradsPurpose.PairList purposePairs, Network network, Network xy2lNetwork,
+                                      Purpose.PairList purposePairs, Network network, Network xy2lNetwork,
                                       Geometry boundary, String outputCsvPath) throws IOException {
 
         double percentile = Resources.instance.getDouble(Properties.DECAY_PERCENTILE);
@@ -50,7 +52,7 @@ public class TradsPercentileCalculator {
         builder.append("Mode: ").append(mode).append("\n");
         builder.append("Allowed purpose pairs: ");
         if(purposePairs != null) {
-            for(TradsPurpose.Pair pair : purposePairs.getList()){
+            for(Purpose.Pair pair : purposePairs.getList()){
                 builder.append("\n").append("START: ").append(pair.getStartPurpose().toString());
                 builder.append("\n").append("  END: ").append(pair.getEndPurpose().toString());
             }

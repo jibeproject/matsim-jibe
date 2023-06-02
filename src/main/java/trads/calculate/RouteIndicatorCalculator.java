@@ -1,4 +1,4 @@
-package trads;
+package trads.calculate;
 
 import resources.Properties;
 import resources.Resources;
@@ -11,8 +11,6 @@ import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.utils.misc.Counter;
 import org.matsim.vehicles.Vehicle;
-import trads.calculate.BeelineCalculator;
-import trads.calculate.NetworkIndicatorCalculator;
 import ch.sbb.matsim.routing.pt.raptor.*;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.core.config.Config;
@@ -22,7 +20,6 @@ import org.matsim.core.router.TeleportationRoutingModule;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.facilities.ActivityFacilitiesFactoryImpl;
 import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
-import trads.calculate.PtIndicatorCalculator;
 import trip.Place;
 import trip.Trip;
 
@@ -82,7 +79,7 @@ public class RouteIndicatorCalculator {
         }
     }
 
-    void pt(String route, Place origin, Place destination, Config config, String scheduleFilePath, String networkFilePath) {
+    public void pt(String route, Place origin, Place destination, Config config, String scheduleFilePath, String networkFilePath) {
 
         config.transit().setUseTransit(true);
         Scenario scenario = ScenarioUtils.createScenario(config);
@@ -130,7 +127,7 @@ public class RouteIndicatorCalculator {
         }
     }
 
-    void beeline(String route, Place origin, Place destination) {
+    public void beeline(String route, Place origin, Place destination) {
 
         logger.info("Calculating beeline distances for route " + route);
 

@@ -68,55 +68,58 @@ public class TradsRouteWriter {
             // Increment counter
             tripCounter++;
 
-            // Get origin/destination
-            Coord origCoord = trip.getCoord(ORIGIN);
-            Coord destCoord = trip.getCoord(DESTINATION);
+            if (trip.routable(ORIGIN, DESTINATION)) {
 
-            // Origin coordinate
-            Point origPoint = geometryFactory.createPoint(new Coordinate(origCoord.getX(),origCoord.getY()));
-            nodeFeatureBuilder.add(origPoint);
-            nodeFeatureBuilder.add(true);
-            nodeFeatureBuilder.add(trip.getTripId());
-            SimpleFeature origFeature = nodeFeatureBuilder.buildFeature(null);
-            nodeCollection.add(origFeature);
+                // Get origin/destination
+                Coord origCoord = trip.getCoord(ORIGIN);
+                Coord destCoord = trip.getCoord(DESTINATION);
 
-            // Destination coordinate
-            Point destPoint = geometryFactory.createPoint(new Coordinate(destCoord.getX(),destCoord.getY()));
-            nodeFeatureBuilder.add(destPoint);
-            nodeFeatureBuilder.add(false);
-            nodeFeatureBuilder.add(trip.getTripId());
-            SimpleFeature destFeature = nodeFeatureBuilder.buildFeature(null);
-            nodeCollection.add(destFeature);
+                // Origin coordinate
+                Point origPoint = geometryFactory.createPoint(new Coordinate(origCoord.getX(), origCoord.getY()));
+                nodeFeatureBuilder.add(origPoint);
+                nodeFeatureBuilder.add(true);
+                nodeFeatureBuilder.add(trip.getTripId());
+                SimpleFeature origFeature = nodeFeatureBuilder.buildFeature(null);
+                nodeCollection.add(origFeature);
 
-            // Path
-            if(!trip.getUniqueRoutes().isEmpty()) {
-                for(Map.Entry<String,int[]> e : trip.getAllRoutePaths().entrySet()) {
-                    pathCounter++;
-                    String route = e.getKey();
-                    if(e.getValue().length > 0) {
-                        LineString path = drawFromEdgeIDs(trip.getStartCoord(route),e.getValue(),geometryFactory,networkFeatures);
+                // Destination coordinate
+                Point destPoint = geometryFactory.createPoint(new Coordinate(destCoord.getX(), destCoord.getY()));
+                nodeFeatureBuilder.add(destPoint);
+                nodeFeatureBuilder.add(false);
+                nodeFeatureBuilder.add(trip.getTripId());
+                SimpleFeature destFeature = nodeFeatureBuilder.buildFeature(null);
+                nodeCollection.add(destFeature);
+
+                // Path
+                if (!trip.getUniqueRoutes().isEmpty()) {
+                    for (Map.Entry<String, int[]> e : trip.getAllRoutePaths().entrySet()) {
+                        pathCounter++;
+                        String route = e.getKey();
+                        if (e.getValue().length > 0) {
+                            LineString path = drawFromEdgeIDs(trip.getStartCoord(route), e.getValue(), geometryFactory, networkFeatures);
+                            routeFeatureBuilder.add(path);
+                            routeFeatureBuilder.add(route);
+                            for (String attribute : allAttributes) {
+                                routeFeatureBuilder.add(trip.getAttribute(route, attribute));
+                            }
+                            SimpleFeature feature = routeFeatureBuilder.buildFeature(null);
+                            routeCollection.add(feature);
+                        }
+                    }
+                } else {
+                    Set<TreeNode> paths = trip.getPaths();
+                    for (TreeNode p : paths) {
+                        pathCounter++;
+                        String name = String.valueOf(pathCounter);
+                        LineString path = drawFromPathNode(p, geometryFactory, networkFeatures);
                         routeFeatureBuilder.add(path);
-                        routeFeatureBuilder.add(route);
-                        for(String attribute : allAttributes) {
-                            routeFeatureBuilder.add(trip.getAttribute(route,attribute));
+                        routeFeatureBuilder.add(name);
+                        for (String attribute : allAttributes) {
+                            routeFeatureBuilder.add(trip.getAttribute(name, attribute));
                         }
                         SimpleFeature feature = routeFeatureBuilder.buildFeature(null);
                         routeCollection.add(feature);
                     }
-                }
-            } else {
-                Set<TreeNode> paths = trip.getPaths();
-                for(TreeNode p : paths) {
-                    pathCounter++;
-                    String name = String.valueOf(pathCounter);
-                    LineString path = drawFromPathNode(p,geometryFactory,networkFeatures);
-                    routeFeatureBuilder.add(path);
-                    routeFeatureBuilder.add(name);
-                    for(String attribute : allAttributes) {
-                        routeFeatureBuilder.add(trip.getAttribute(name,attribute));
-                    }
-                    SimpleFeature feature = routeFeatureBuilder.buildFeature(null);
-                    routeCollection.add(feature);
                 }
             }
         }

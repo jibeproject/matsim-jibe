@@ -7,10 +7,14 @@ import org.matsim.api.core.v01.IdMap;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
+import org.matsim.api.core.v01.population.Person;
 import org.matsim.core.network.NetworkUtils;
+import org.matsim.core.population.PopulationUtils;
+import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.utils.misc.Counter;
+import org.matsim.vehicles.Vehicle;
 import resources.Resources;
-import routing.graph.DistTree;
+import routing.graph.SimpleTree;
 import routing.graph.SpeedyGraph;
 import trip.Place;
 import trip.Trip;
@@ -20,20 +24,21 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 // Calculates all possible routes within certain detour limit
 
-public final class MultiLinkCalculator {
+public final class LinkCorridorCalculator {
 
-    private MultiLinkCalculator() {
+    private LinkCorridorCalculator() {
     }
 
     private final static int MAX_MATRIX_DIM = 25000;
+    private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
 
-    public static final Logger log = Logger.getLogger(MultiLinkCalculator.class);
+    public static final Logger log = Logger.getLogger(LinkCorridorCalculator.class);
 
     public static Map<Trip,IdMap<Link,Double>> calculate(Collection<Trip> trips, Place origin, Place destination,
-                                 Network routingNetwork, Network xy2lNetwork, double distDetour) {
+                                                         TravelDisutility td, Vehicle vehicle, Network routingNetwork, Network xy2lNetwork, double distDetour) {
 
         int numberOfThreads = Resources.instance.getInt(resources.Properties.NUMBER_OF_THREADS);
-        SpeedyGraph graph = new SpeedyGraph(routingNetwork,null,null,null,null);
+        SpeedyGraph graph = new SpeedyGraph(routingNetwork,null,td,PERSON,vehicle);
 
         // prepare calculation
         ConcurrentLinkedQueue<Trip> odPairsQueue = new ConcurrentLinkedQueue<>(trips);
@@ -76,14 +81,14 @@ public final class MultiLinkCalculator {
         private final double detourLimit;
         private final int[] ref;
         private final double[][] matrix;
-        private final DistTree origTree;
-        private final DistTree destTree;
+        private final SimpleTree origTree;
+        private final SimpleTree destTree;
         private final Map<Trip,IdMap<Link,Double>> results;
 
         public RouteWorker(ConcurrentLinkedQueue<Trip> trips, Counter counter,
                            Place origin, Place destination,
                            Network routingNetwork, Network xy2lNetwork, SpeedyGraph graph,
-                           double distDetour) {
+                           double detourLimit) {
             this.trips = trips;
             this.counter = counter;
             this.origin = origin;
@@ -91,11 +96,11 @@ public final class MultiLinkCalculator {
             this.routingNetwork = routingNetwork;
             this.xy2lNetwork = xy2lNetwork;
             this.graph = graph;
-            this.detourLimit = distDetour;
+            this.detourLimit = detourLimit;
             this.ref = new int[graph.getNodeCount()];
             this.matrix = new double[MAX_MATRIX_DIM+500][MAX_MATRIX_DIM+500];
-            this.origTree = new DistTree(graph);
-            this.destTree = new DistTree(graph);
+            this.origTree = new SimpleTree(graph);
+            this.destTree = new SimpleTree(graph);
             this.results = new HashMap<>(trips.size() / Resources.instance.getInt(resources.Properties.NUMBER_OF_THREADS));
         }
 
@@ -163,13 +168,13 @@ public final class MultiLinkCalculator {
                         if (ref[i] != -1) {
                             li.reset(i);
                             while (li.next()) {
-                                Link link = graph.getLink(li.getLinkIndex());
+                                int linkIdx = li.getLinkIndex();
                                 int j = li.getToNodeIndex();
                                 if (ref[j] != -1) {
-                                    double maxDetour = getMaxDetour(i, j, link.getLength(),tripName);
+                                    double maxDetour = getMaxDetour(i, j, graph.getLinkDisutility(linkIdx),tripName);
                                     if (maxDetour < this.detourLimit) {
                                         c++;
-                                        linkDetours.put(link.getId(), maxDetour);
+                                        linkDetours.put(graph.getLink(linkIdx).getId(), maxDetour);
                                         fromNodeIdxDetours.put(i, maxDetour);
                                         toNodeIdxDetours.put(j, maxDetour);
                                     }
@@ -210,7 +215,7 @@ public final class MultiLinkCalculator {
             for(double[] row : matrix) {
                 Arrays.fill(row,Double.NaN);
             }
-            DistTree iTree = new DistTree(graph);
+            SimpleTree iTree = new SimpleTree(graph);
             for (int i = 0; i < graph.getNodeCount(); i++) {
                 if (ref[i] != -1) {
                     iTree.calculate(startNodeIdx, endNodeIdx, i, -1, true);
@@ -223,7 +228,7 @@ public final class MultiLinkCalculator {
             }
         }
 
-        private void fillGaps(DistTree tree, IdMap<Link, Double> linkDetours, Map<Integer, Double> nodeIdxDetours) {
+        private void fillGaps(SimpleTree tree, IdMap<Link, Double> linkDetours, Map<Integer, Double> nodeIdxDetours) {
             for (Map.Entry<Integer, Double> node : nodeIdxDetours.entrySet()) {
 
                 int currIdx = node.getKey();
@@ -256,13 +261,13 @@ public final class MultiLinkCalculator {
             while (currIdxA != -1) {
                 int refCurrIdxA = ref[currIdxA];
                 if(refCurrIdxA != -1) {
-                    double distA = origTree.getCost(currIdxA);
+                    double costA = origTree.getCost(currIdxA);
                     int currIdxB = idxB;
                     while(currIdxB != -1) {
                         int refCurrIdxB = ref[currIdxB];
                         if(refCurrIdxB != -1) {
-                            double distB = destTree.getCost(currIdxB);
-                            double pathDist = totalCost - distA - distB;
+                            double costB = destTree.getCost(currIdxB);
+                            double pathDist = totalCost - costA - costB;
                             double shortDist = matrix[refCurrIdxA][refCurrIdxB];
                             double detour = pathDist / shortDist;
                             if (detour > this.detourLimit) {

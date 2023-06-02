@@ -161,7 +161,7 @@ public class SpeedyGraph {
         return this.links[index];
     }
 
-    double getLinkDisutility(int index) {return this.linkDisutility[index];}
+    public double getLinkDisutility(int index) {return this.linkDisutility[index];}
     double getLinkTime(int index) {return this.linkTime[index];}
 
     Node getNode(int index) {
