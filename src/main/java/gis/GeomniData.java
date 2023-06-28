@@ -1,4 +1,4 @@
-package gis.grid;
+package gis;
 
 import org.apache.log4j.Logger;
 import org.geotools.data.DataUtilities;
@@ -15,25 +15,13 @@ import java.io.IOException;
 
 // Tools for reading edges and nodes files produced by the JIBE WP2 team
 
-public class GridData {
+public class GeomniData {
 
-    private final static Logger log = Logger.getLogger(GridData.class);
-    private final DefaultFeatureCollection grid;
-    private final String description;
-    private final int sideLength;
+    private final DefaultFeatureCollection collection;
 
-    public GridData(String filePath) throws IOException {
+    public GeomniData(String filePath) throws IOException {
         GeoPackage geopkg = new GeoPackage(openFile(filePath));
         FeatureEntry entry = geopkg.features().get(0);
-        this.description = entry.getDescription();
-        if(!this.description.startsWith("grid_") || !this.description.endsWith("m")) {
-            throw new RuntimeException("Invalid grid feature description!\n" +
-                    "Did you create the grid using CreateGridCellGpkg.java?");
-        }
-
-        // Get side length
-        this.sideLength = Integer.parseInt(this.description.substring(5,this.description.length() - 1));
-        log.info("Read grid with side length " +  this.sideLength + " meters.");
 
         // Define new feature type
         SimpleFeatureReader r = geopkg.reader(entry, null,null);
@@ -42,7 +30,6 @@ public class GridData {
         builder.setName(schema.getName());
         builder.setSuperType((SimpleFeatureType) schema.getSuper());
         builder.addAll(schema.getAttributeDescriptors());
-        builder.add("nodes_within",Integer.class);
         builder.add("connector_node",Integer.class);
         builder.add("connector_dist",Double.class);
         builder.add("connector_cost",Double.class);
@@ -52,10 +39,10 @@ public class GridData {
         SimpleFeatureType newSchema = builder.buildFeatureType();
 
         // Create set of zones with updated feature types
-        this.grid = new DefaultFeatureCollection("grid",newSchema);
+        this.collection = new DefaultFeatureCollection("households",newSchema);
         while(r.hasNext()) {
             SimpleFeature zone = DataUtilities.reType(newSchema,r.next());
-            this.grid.add(zone);
+            this.collection.add(zone);
         }
 
         // Close
@@ -63,16 +50,8 @@ public class GridData {
         geopkg.close();
     }
 
-    public DefaultFeatureCollection getGrid() {
-        return this.grid;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public int getSideLength() {
-        return this.sideLength;
+    public DefaultFeatureCollection getCollection() {
+        return this.collection;
     }
 
     private static File openFile(String filePath) {

@@ -65,7 +65,7 @@ Outputs route data as a .csv file, and corresponding routes as a .gpkg file.
 
 This package contains tools and methods for calculating accessibility. 
 Unlike zone-based accessibilities, the methods here calculate fully disaggregate accessibilities from every network node to every possible destination. 
-We currently support isochrone-based accessibility (with time and/or distance as a cutoff) and hansen accessibility (with an optional time and/or distance cutoff).
+We currently support cumulative accessibility (with time and/or distance as a cutoff) and exponential accessibility (with an optional time and/or distance cutoff).
 
 Accessibilities can be calculated for every network node and/or for hexagonal grid cells.
 Grid cells can be created using **_gis/grid/CreateGrid.java_**
@@ -87,9 +87,9 @@ In this file, we specify:
 - **Mode** (walk, bike, or car)
 - **Disutility** (short, fast, or jibe)
 - [optional] **Marginal cost overrides** (only applicable if using jibe disutility)
-- **decay function** (isochrone or hansen)
-- **cutoff** time and/or distance (optional for hansen decay function, but at least one must be specified for isochrone decay)
-- **beta** (hansen decay parameter, for hansen decay function only. If beta is not provided, the code will estimate a beta parameter based on TRADS survey data for the mode and purposes specified)
+- **decay function** (cumulative or exponential)
+- **cutoff** time and/or distance (optional for exponential decay function, but at least one must be specified for cumulative decay)
+- **beta** (decay parameter for exponential decay function. If not provided, the code will estimate a beta parameter based on travel survey data for the mode and purposes specified)
 
 Further instructions on specifying accessibility properties are given in the accessibility properties file. 
 

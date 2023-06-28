@@ -168,7 +168,7 @@ public class GridCalculator {
                     nodeIds.add(link.getToNode().getId());
 
                     for (Id<Node> nodeId : nodeIds) {
-                        lcpTree.calculate(nodeId.index(),0.,stopCriterion);
+                        lcpTree.calculate(nodeId.index(),0.,stopCriterion,true);
                         double accessibility = 0.;
                         double connectorLength = Math.max(0.,CoordUtils.calcProjectedEuclideanDistance(centroid,network.getNodes().get(nodeId).getCoord()) - hexSideLength);
                         double connectorCost = connectorMarginalCost * connectorLength;

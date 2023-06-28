@@ -126,8 +126,8 @@ public final class NodeDetourCalculator {
                 lcpTreeFast = new LeastCostPathTree3(this.graphFast);
                 lcpTreeJibe = new LeastCostPathTree3(this.graphJibe);
 
-                lcpTreeFast.calculate(fromNodeId.index(),0.);
-                lcpTreeJibe.calculate(fromNodeId.index(),0.);
+                lcpTreeFast.calculate(fromNodeId.index(),0.,true);
+                lcpTreeJibe.calculate(fromNodeId.index(),0.,true);
 
                 for (Id<Node> toNodeId : destinationNodes) {
 

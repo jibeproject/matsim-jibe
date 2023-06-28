@@ -5,7 +5,8 @@ public class AccessibilityProperties {
     public static final String MODE = "mode";
     public static final String PURPOSE_PAIR = "purpose.pair";
     public static final String DISUTILITY = "disutility";
-    public static final String DESTINATIONS = "destinations";
+    public static final String END_LOCATIONS = "end.coords";
+    public static final String FORWARD = "forward";
     public static final String NODE_OUTPUT = "node.output";
 
     public static final String GRID_INPUT = "grid.input";

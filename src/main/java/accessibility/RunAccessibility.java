@@ -1,10 +1,12 @@
 package accessibility;
 
 import accessibility.decay.DecayFunction;
-import accessibility.decay.Hansen;
-import accessibility.decay.Isochrone;
+import accessibility.decay.DecayFunctions;
+import accessibility.decay.Exponential;
+import accessibility.decay.Cumulative;
 import accessibility.resources.AccessibilityProperties;
 import accessibility.resources.AccessibilityResources;
+import gis.GeomniData;
 import gis.GisUtils;
 import gis.GpkgReader;
 import gis.grid.GridData;
@@ -80,7 +82,7 @@ public class RunAccessibility {
         TravelDisutility td = AccessibilityResources.instance.getTravelDisutility();
 
         // Inputs/outputs
-        String destinationFileName = AccessibilityResources.instance.getString(AccessibilityProperties.DESTINATIONS);
+        String endDataFilename = AccessibilityResources.instance.getString(AccessibilityProperties.END_LOCATIONS);
         String outputNodesFileName = AccessibilityResources.instance.getString(AccessibilityProperties.NODE_OUTPUT);
         String inputGridFileName = AccessibilityResources.instance.getString(AccessibilityProperties.GRID_INPUT);
         String outputGridFileName = AccessibilityResources.instance.getString(AccessibilityProperties.GRID_OUTPUT);
@@ -91,28 +93,29 @@ public class RunAccessibility {
         double cutoffDist = AccessibilityResources.instance.getDouble(AccessibilityProperties.CUTOFF_DISTANCE);
         double beta = AccessibilityResources.instance.getDouble(AccessibilityProperties.BETA);
 
-        DecayFunction df;
-        if (decayType.equalsIgnoreCase("hansen")) {
+        DecayFunction df = DecayFunctions.WALK_CUGA1;
+/*        if (decayType.equalsIgnoreCase("exponential")) {
             if(Double.isNaN(beta)) {
-                log.info("Hansen accessibility desired but no beta value given. Estimating beta from TRADS survey");
+                log.info("Exponential accessibility specified but no beta value given. Estimating beta from TRADS survey...");
                 Purpose.PairList includedPurposePairs = AccessibilityResources.instance.getPurposePairs();
                 String outputCsv = AccessibilityResources.instance.getString(AccessibilityProperties.TRADS_OUTPUT_CSV);
                 beta = PercentileCalculator.estimateBeta(mode,veh,tt,td,includedPurposePairs,
                         network,network,networkBoundary,outputCsv);
             }
-            df = new Hansen(beta,cutoffTime,cutoffDist);
-        } else if (decayType.equalsIgnoreCase("isochrone")) {
-            df = new Isochrone(cutoffTime, cutoffDist);
+            df = new Exponential(beta,cutoffTime,cutoffDist);
+        } else if (decayType.equalsIgnoreCase("cumulative")) {
+            df = new Cumulative(cutoffTime, cutoffDist);
         } else {
-            throw new RuntimeException("Do not recognise decay function type \"" + decayType + "\"");
+            log.warn("Do not recognise decay function type \"" + decayType + "\"");
+            return;
         }
         log.info("Initialised " + decayType + " decay function with the following parameters:" +
-                 "\nBeta: " +  (decayType.equalsIgnoreCase("hansen") ? beta : "N/A") +
+                 "\nBeta: " +  (decayType.equalsIgnoreCase("exponential") ? beta : "N/A") +
                  "\nTime cutoff (seconds): " + cutoffTime +
-                 "\nDistance cutoff (meters): " + cutoffDist);
+                 "\nDistance cutoff (meters): " + cutoffDist);*/
 
         // Checks on whether to perform NODE calculation
-        if(destinationFileName == null) {
+        if(endDataFilename == null) {
             log.warn("No destination file given. Skipping all accessibility calculations.");
             return;
         }
@@ -120,20 +123,21 @@ public class RunAccessibility {
             log.warn("No node output or grid input/output files given. Skipping all accessibility calculations.");
             return;
         }
-        DestinationData destinations = new DestinationData(destinationFileName,networkBoundary);
-        Map<String, IdSet<Node>> destinationNodes = destinations.getNodes(network);
-        Map<String, Double> destinationWeights = destinations.getWeights();
+        LocationData endData = new LocationData(endDataFilename,networkBoundary);
+        Map<String, IdSet<Node>> endNodes = endData.getNodes(network);
+        Map<String, Double> endWeights = endData.getWeights();
 
+        boolean fwd = AccessibilityResources.instance.fwdCalculation();
 
-        // Get origin nodes
+ /*       // Get start nodes
         log.info("Identifying origin nodes within boundary...");
-        Set<Id<Node>> nodes = NetworkUtils2.getNodesInBoundary(network,regionBoundary);
+        Set<Id<Node>> startNodes = NetworkUtils2.getNodesInBoundary(network,regionBoundary);
 
         // Node accessibility calculation
         log.info("Running node accessibility calculation...");
         long startTime = System.currentTimeMillis();
-        Map<Id<Node>,Double> nodeResults = NodeCalculator.calculate(network, nodes,
-                destinationNodes, destinationWeights, tt, td, veh, df);
+        Map<Id<Node>,Double> nodeResults = NodeCalculator.calculate(network, startNodes,
+                endNodes, endWeights, fwd, tt, td, veh, df);
         long endTime = System.currentTimeMillis();
         log.info("Calculation time: " + (endTime - startTime));
 
@@ -142,22 +146,31 @@ public class RunAccessibility {
             AccessibilityWriter.writeNodesAsGpkg(nodeResults,fullNetwork,outputNodesFileName);
         }
 
-        // Check on whether to perform GRID calculation
-        if((inputGridFileName == null || outputGridFileName == null)) {
+        // Perform grid-level calculation todo: update to include active+passive
+        if(inputGridFileName != null && outputGridFileName != null) {
+            // Get grid
+            GridData grid = new GridData(inputGridFileName);
+
+            // Grid accessibility calculation
+            log.info("Running grid accessibility calculation...");
+            GridCalculator.calculate(network,nodeResults,grid.getGrid(),grid.getSideLength(),
+                    endNodes,endWeights,tt,td,veh,df);
+
+            // Output grid as gpkg
+            log.info("Saving results grid to " + outputGridFileName);
+            GisUtils.writeFeaturesToGpkg(grid.getGrid(),grid.getDescription() + "_result",outputGridFileName);
+        } else {
             log.warn("Input/output grid files not given. Skipping grid calculation.");
-            return;
         }
+*/
+        // Perform xy-level calculation
+        GeomniData hh = new GeomniData("accessibility/selected_households.gpkg");
 
-        // Get grid
-        GridData grid = new GridData(inputGridFileName);
+        XYCalculator.calculate(network,hh.getCollection(),endNodes,endWeights,tt,td,veh,df);
 
-        // Grid accessibility calculation
-        log.info("Running grid accessibility calculation...");
-        GridCalculator.calculate(network,nodeResults,grid.getGrid(),grid.getSideLength(),
-                destinationNodes,destinationWeights,tt,td,veh,df);
+        GisUtils.writeFeaturesToGpkg(hh.getCollection(),"food_result","accessibility/residential_results.gpkg");
 
-        // Output grid as gpkg
-        log.info("Saving results grid to " + outputGridFileName);
-        GisUtils.writeFeaturesToGpkg(grid.getGrid(),grid.getDescription() + "_result",outputGridFileName);
+
     }
+
 }

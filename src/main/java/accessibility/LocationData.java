@@ -16,8 +16,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.*;
 
-public class DestinationData {
-    private final static Logger log = Logger.getLogger(DestinationData.class);
+public class LocationData {
+    private final static Logger log = Logger.getLogger(LocationData.class);
     private final static GeometryFactory gf = new GeometryFactory();
     private final static String SEP = ",";
     private final static String ID_VAR = "ID";
@@ -28,10 +28,9 @@ public class DestinationData {
     private final Map<String, List<Coord>> coords = new LinkedHashMap<>();
     private final Map<String, Double> weights = new LinkedHashMap<>();
 
-    public DestinationData(String filename, Geometry destinationBoundary) throws IOException {
+    public LocationData(String filename, Geometry boundary) throws IOException {
         String recString;
 
-        int lines = 0;
         int destinationsOutsideBoundary = 0;
         Counter counter = new Counter("Read "," destinations.");
 
@@ -55,7 +54,7 @@ public class DestinationData {
             double x = Double.parseDouble(lineElements[posX]);
             double y = Double.parseDouble(lineElements[posY]);
 
-            if(destinationBoundary.contains(gf.createPoint(new Coordinate(x,y)))) {
+            if(boundary.contains(gf.createPoint(new Coordinate(x,y)))) {
                 double wt = posWt == -1 ? 1. : Double.parseDouble(lineElements[posWt]);
                 if(coords.containsKey(id)) {
                     if(weights.get(id) == wt) {
@@ -73,10 +72,10 @@ public class DestinationData {
                 destinationsOutsideBoundary++;
             }
         }
-        log.info("Read " + lines + " lines.");
-        log.info("Loaded " + coords.size() + " unique destinations and " +
+        log.info("Read " + counter.getCounter() + " lines.");
+        log.info("Loaded " + coords.size() + " unique locations and " +
                 coords.values().stream().mapToInt(List::size).sum() + " access points.");
-        log.info(destinationsOutsideBoundary + " destinations ignored because their coordinates were outside the boundary.");
+        log.info(destinationsOutsideBoundary + " locations ignored because their coordinates were outside the boundary.");
     }
 
     public Map<String, List<Coord>> getCoords() {

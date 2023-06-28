@@ -78,7 +78,7 @@ public class PercentileCalculator {
         logger.info("Value at percentile " + percentile + " = " + percentileValue);
 
         // Calculate beta parameter
-        double beta = getHansenBetaParameter(percentileValue,percentile);
+        double beta = getExponentialBetaParameter(percentileValue,percentile);
         logger.info("Beta parameter = " + beta);
 
         return beta;
@@ -101,7 +101,7 @@ public class PercentileCalculator {
         }
     }
 
-    private static double getHansenBetaParameter(double value, double percentile) {
+    private static double getExponentialBetaParameter(double value, double percentile) {
         return -1 * Math.log(1-percentile) / value;
     }
 

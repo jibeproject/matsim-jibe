@@ -11,7 +11,7 @@ import java.util.Arrays;
  * <p>
  * In some limited tests, this resulted in a speed-up of at least a factor 2.5 compared to MATSim's default LeastCostPathTree.
  * <p>
- * The implementation does not allocate any memory in the {@link #calculate(int, double)} method. All required memory is pre-allocated in the constructor. This makes the
+ * The implementation does not allocate any memory in the {@link #calculate(int, double, boolean)} method. All required memory is pre-allocated in the constructor. This makes the
  * implementation NOT thread-safe.
  *
  * @author mrieser / Simunto, sponsored by SBB Swiss Federal Railways
@@ -34,11 +34,14 @@ public class LeastCostPathTree3 {
         this.inLI = graph.getInLinkIterator();
     }
 
-    public void calculate(int startNode, double startTime) {
-        this.calculate(startNode, startTime, (node, arrTime, cost, distance, depTime) -> false);
+    public void calculate(int startNode, double startTime, boolean fwd) {
+        this.calculate(startNode, startTime, (node, arrTime, cost, distance, depTime) -> false, fwd);
     }
 
-    public void calculate(int startNode, double startTime, StopCriterion stopCriterion) {
+    public void calculate(int startNode, double startTime, StopCriterion stopCriterion, boolean fwd) {
+
+        SpeedyGraph.LinkIterator LI = fwd ? this.outLI : this.inLI;
+
         Arrays.fill(this.data, Double.POSITIVE_INFINITY);
         Arrays.fill(this.comingFrom, -1);
 
@@ -58,26 +61,26 @@ public class LeastCostPathTree3 {
                 break;
             }
 
-            this.outLI.reset(nodeIdx);
-            while (this.outLI.next()) {
-                int linkIdx = this.outLI.getLinkIndex();
+            LI.reset(nodeIdx);
+            while (LI.next()) {
+                int linkIdx = LI.getLinkIndex();
                 Link link = this.graph.getLink(linkIdx);
-                int toNode = this.outLI.getToNodeIndex();
+                int nextNode = fwd ? LI.getToNodeIndex() : LI.getFromNodeIndex();
 
+                double oldCost = getCost(nextNode);
                 double newTime = currTime + this.graph.getLinkTime(linkIdx);
                 double newCost = currCost + this.graph.getLinkDisutility(linkIdx);
 
-                double oldCost = getCost(toNode);
                 if (Double.isFinite(oldCost)) {
                     if (newCost < oldCost) {
-                        this.pq.decreaseKey(toNode, newCost);
-                        setData(toNode, newCost, newTime, currDistance + link.getLength());
-                        this.comingFrom[toNode] = nodeIdx;
+                        this.pq.decreaseKey(nextNode, newCost);
+                        setData(nextNode, newCost, newTime, currDistance + link.getLength());
+                        this.comingFrom[nextNode] = nodeIdx;
                     }
                 } else {
-                    setData(toNode, newCost, newTime, currDistance + link.getLength());
-                    this.pq.insert(toNode);
-                    this.comingFrom[toNode] = nodeIdx;
+                    setData(nextNode, newCost, newTime, currDistance + link.getLength());
+                    this.pq.insert(nextNode);
+                    this.comingFrom[nextNode] = nodeIdx;
                 }
             }
         }

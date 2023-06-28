@@ -117,6 +117,8 @@ public class AccessibilityResources {
         return this.mode;
     }
 
+    public synchronized boolean fwdCalculation() { return Boolean.parseBoolean(AccessibilityProperties.FORWARD); }
+
     public synchronized Vehicle getVehicle() {
         return this.veh;
     }
