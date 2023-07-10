@@ -13,6 +13,7 @@ public class Properties {
     public static final String MATSIM_ROAD_NETWORK = "matsim.road.network";
     public static final String MATSIM_TRANSIT_NETWORK = "matsim.transit.network";
     public static final String MATSIM_TRANSIT_SCHEDULE = "matsim.transit.schedule";
+    public static final String MATSIM_TFGM_PLANS = "matsim.tgfm.plans";
     
     // Other properties
     public static final String NUMBER_OF_THREADS = "number.of.threads";

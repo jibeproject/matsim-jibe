@@ -57,6 +57,18 @@
 			<id>pt2matsim</id>
 			<url>https://repo.matsim.org/repository/matsim/</url>
 		</repository>
+		<repository>
+			<id>msmobility-msm</id>
+			<url>https://dl.cloudsmith.io/public/msmobility/msm/maven/</url>
+			<releases>
+				<enabled>true</enabled>
+				<updatePolicy>always</updatePolicy>
+			</releases>
+			<snapshots>
+				<enabled>true</enabled>
+				<updatePolicy>always</updatePolicy>
+			</snapshots>
+		</repository>
 	</repositories>
 
 	<dependencies>
@@ -122,6 +134,11 @@
 			<groupId>org.matsim</groupId>
 			<artifactId>pt2matsim</artifactId>
 			<version>21.10</version>
+		</dependency>
+		<dependency>
+			<groupId>omx</groupId>
+			<artifactId>omx</artifactId>
+			<version>2</version>
 		</dependency>
 	</dependencies>
 	<dependencyManagement>
