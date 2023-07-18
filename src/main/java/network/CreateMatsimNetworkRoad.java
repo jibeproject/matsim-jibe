@@ -43,6 +43,7 @@ public class CreateMatsimNetworkRoad {
         final File nodesFile = Resources.instance.getFile(Properties.NETWORK_NODES);
         final File edgesFile = Resources.instance.getFile(Properties.NETWORK_LINKS);
         final String networkFile = Resources.instance.getString(Properties.MATSIM_ROAD_NETWORK);
+        final String carNetworkFile = Resources.instance.getString(Properties.MATSIM_CAR_NETWORK);
 
         // Read nodes and edges
         Map<Integer,SimpleFeature> nodes = GpkgReader.readNodes(nodesFile);
@@ -70,6 +71,10 @@ public class CreateMatsimNetworkRoad {
 
         // Write network
         new NetworkWriter(net).write(networkFile);
+
+        // Write Car Network
+        Network carNetwork = NetworkUtils2.extractModeSpecificNetwork(net,"car");
+        new NetworkWriter(carNetwork).write(carNetworkFile);
     }
 
     private static void addNodeToNetwork(int nodeID, SimpleFeature point, Network net, NetworkFactory fac) {

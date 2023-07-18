@@ -15,7 +15,7 @@
 	<name>MATSim JIBE</name>
 	<description>All MATSim-related scripts for JIBE</description>
 	<properties>
-		<matsim.version>13.0</matsim.version>
+		<matsim.version>14.0</matsim.version>
 		<geotools.version>28-SNAPSHOT</geotools.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>

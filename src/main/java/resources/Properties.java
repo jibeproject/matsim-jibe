@@ -11,9 +11,10 @@ public class Properties {
 
     // MATSim data (must be in .xml format)
     public static final String MATSIM_ROAD_NETWORK = "matsim.road.network";
+    public static final String MATSIM_CAR_NETWORK = "matsim.car.network";
     public static final String MATSIM_TRANSIT_NETWORK = "matsim.transit.network";
     public static final String MATSIM_TRANSIT_SCHEDULE = "matsim.transit.schedule";
-    public static final String MATSIM_TFGM_PLANS = "matsim.tgfm.plans";
+    public static final String MATSIM_TFGM_PLANS = "matsim.tfgm.plans";
     
     // Other properties
     public static final String NUMBER_OF_THREADS = "number.of.threads";

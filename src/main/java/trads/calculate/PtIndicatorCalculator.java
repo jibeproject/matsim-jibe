@@ -62,7 +62,7 @@ public class PtIndicatorCalculator implements Runnable {
                 Facility fOrig = activityFacilitiesFactory.createActivityFacility(Id.create(1, ActivityFacility.class), cOrig);
                 Facility fDest = activityFacilitiesFactory.createActivityFacility(Id.create(1, ActivityFacility.class), cDest);
 
-                List<Leg> legs = raptor.calcRoute(fOrig, fDest, earliestDepartureTime, departureTime, latestDepartureTime, null);
+                List<Leg> legs = null;//raptor.calcRoute(fOrig, fDest, earliestDepartureTime, departureTime, latestDepartureTime, null); todo: adapt to MATSim 14.0
 
                 int ptLegs = 0;
                 int walkLegs = 0;
