@@ -28,8 +28,8 @@ public class DecayFunction {
         throw new RuntimeException("Must specify decay function!");
     }
 
-    public boolean withinCutoff(double distance, double time) {
-        return distance <= cutoffDist && time <= cutoffTime;
+    public boolean beyondCutoff(double distance, double time) {
+        return distance > cutoffDist || time > cutoffTime;
     }
 
     public LeastCostPathTree3.StopCriterion getTreeStopCriterion() {

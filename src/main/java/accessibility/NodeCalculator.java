@@ -114,7 +114,7 @@ public final class NodeCalculator {
                         int toNodeIndex = toNodeId.index();
                         double nodeDist = lcpTree.getDistance(toNodeIndex);
                         double nodeTime = lcpTree.getTime(toNodeIndex).orElse(Double.POSITIVE_INFINITY);
-                        if(!decayFunction.withinCutoff(nodeDist,nodeTime)) {
+                        if(decayFunction.beyondCutoff(nodeDist, nodeTime)) {
                             continue;
                         }
                         double nodeCost = lcpTree.getCost(toNodeIndex);

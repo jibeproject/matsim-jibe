@@ -19,7 +19,7 @@ import java.util.*;
 public class LocationData {
     private final static Logger log = Logger.getLogger(LocationData.class);
     private final static GeometryFactory gf = new GeometryFactory();
-    private final static String SEP = ",";
+    private final static String SEP = ";";
     private final static String ID_VAR = "ID";
     private final static String X_VAR = "X";
     private final static String Y_VAR = "Y";

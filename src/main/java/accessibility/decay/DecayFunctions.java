@@ -18,5 +18,4 @@ public class DecayFunctions {
 
     public static final DecayFunction WALK_CUGA1 = new CumulativeGaussian(200,57708);
 
-
 }

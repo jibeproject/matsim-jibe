@@ -80,7 +80,7 @@ public class AccessibilityResources {
     }
 
     private void setActiveDisutility() {
-        String type = properties.getProperty(AccessibilityProperties.DISUTILITY);
+        String type = properties.getProperty(AccessibilityProperties.IMPEDANCE);
         switch(type) {
             case "shortest":
             case "short":

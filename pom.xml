@@ -16,7 +16,7 @@
 	<description>All MATSim-related scripts for JIBE</description>
 	<properties>
 		<matsim.version>14.0</matsim.version>
-		<geotools.version>28-SNAPSHOT</geotools.version>
+		<geotools.version>24.2</geotools.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<maven.compiler.source>11</maven.compiler.source>
@@ -77,6 +77,12 @@
 			<groupId>org.matsim</groupId>
 			<artifactId>matsim</artifactId>
 			<version>${matsim.version}</version>
+<!--			<exclusions>-->
+<!--				<exclusion>-->
+<!--					<groupId>org.locationtech.jts</groupId>-->
+<!--					<artifactId>jts-core</artifactId>-->
+<!--				</exclusion>-->
+<!--			</exclusions>-->
 		</dependency>
 
 		<dependency>

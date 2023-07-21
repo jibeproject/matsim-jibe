@@ -1,8 +1,5 @@
-package gis.grid;
+package gis;
 
-import gis.GisUtils;
-import gis.GpkgReader;
-import gis.IntersectionGridBuilder;
 import org.apache.log4j.Logger;
 import org.geotools.data.simple.SimpleFeatureSource;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
