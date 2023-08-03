@@ -5,6 +5,8 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.IdMap;
 import org.matsim.api.core.v01.IdSet;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
@@ -96,6 +98,35 @@ public class LocationData {
             idNodeMap.put(e.getKey(), nodes);
         }
         return Collections.unmodifiableMap(idNodeMap);
+    }
+
+    public Map<String, Id<Node>> getIndividualNodes(Network xy2lNetwork) {
+        Map<String, Id<Node>> idNodeMap = new LinkedHashMap<>();
+        for (Map.Entry<String, List<Coord>> e : coords.entrySet()) {
+            Iterator<Coord> it = e.getValue().iterator();
+            Coord coord = it.next();
+            if(it.hasNext()) {
+                throw new RuntimeException("Node weight map possible only with one node per location!");
+            }
+            Id<Node> nodeId = NetworkUtils.getNearestLinkExactly(xy2lNetwork, coord).getToNode().getId();
+            idNodeMap.put(e.getKey(),nodeId);
+        }
+        return Collections.unmodifiableMap(idNodeMap);
+    }
+
+    public Map<Id<Node>,Double> getNodeWeightMap(Network xy2lNetwork) {
+        IdMap<Node,Double> nodeWeightMap = new IdMap<>(Node.class);
+        for(String id : coords.keySet()) {
+            Iterator<Coord> it = coords.get(id).iterator();
+
+            Coord coord = it.next();
+            if(it.hasNext()) {
+                throw new RuntimeException("Node weight map possible only with one node per location!");
+            }
+            Id<Node> nodeId = NetworkUtils.getNearestLinkExactly(xy2lNetwork, coord).getToNode().getId();
+            nodeWeightMap.put(nodeId,weights.get(id));
+        }
+        return Collections.unmodifiableMap(nodeWeightMap);
     }
 
     private static int findPositionInArray (String string, String[] array) {

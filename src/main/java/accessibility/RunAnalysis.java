@@ -25,9 +25,9 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 
-public class RunAccessibility {
+public class RunAnalysis {
 
-    public static final Logger log = Logger.getLogger(RunAccessibility.class);
+    public static final Logger log = Logger.getLogger(RunAnalysis.class);
     private static Network fullNetwork;
     private static Geometry regionBoundary;
     private static Geometry networkBoundary;
@@ -86,7 +86,7 @@ public class RunAccessibility {
         FeatureData features = new FeatureData(inputFilename);
 
         // Parameters
-        DecayFunction df = getDecayFunctionFromProperties();
+        DecayFunction df = DecayFunctions.getFromProperties(network,networkBoundary);
         boolean fwd = AccessibilityResources.instance.fwdCalculation();
 
         // Checks on whether to perform ANY calculations
@@ -139,76 +139,5 @@ public class RunAccessibility {
             log.info("Saving output features to " + outputFilename);
             GisUtils.writeFeaturesToGpkg(features.getCollection(), features.getDescription() + "_result", outputFilename);
         }
-    }
-
-    public static DecayFunction getDecayFunctionFromProperties() throws IOException {
-
-        // Decay function
-        String decayType = AccessibilityResources.instance.getString(AccessibilityProperties.DECAY_FUNCTION);
-        double cutoffTime = AccessibilityResources.instance.getDouble(AccessibilityProperties.CUTOFF_TIME);
-        double cutoffDist = AccessibilityResources.instance.getDouble(AccessibilityProperties.CUTOFF_DISTANCE);
-
-        if(decayType == null) {
-            log.warn("No decay function type specified.");
-            return null;
-        } else if (decayType.equalsIgnoreCase("exponential")) {
-            double beta = AccessibilityResources.instance.getDouble(AccessibilityProperties.BETA);
-            // Estimate from trads if beta not given
-            if(Double.isNaN(beta))  {
-                beta = estimateExpBetaFromTRADS();
-            }
-            log.info("Initialising exponential decay function with the following parameters:" +
-                    "\nBeta: " + beta +
-                    "\nTime cutoff (seconds): " + cutoffTime +
-                    "\nDistance cutoff (meters): " + cutoffDist);
-            return new Exponential(beta,cutoffTime,cutoffDist);
-        } else if (decayType.equalsIgnoreCase("power")) {
-            double a = AccessibilityResources.instance.getDouble(AccessibilityProperties.A);
-            log.info("Initialising power decay function with the following parameters:" +
-                    "\na: " + a +
-                    "\nTime cutoff (seconds): " + cutoffTime +
-                    "\nDistance cutoff (meters): " + cutoffDist);
-            return new Power(a,cutoffTime,cutoffDist);
-        } else if (decayType.equalsIgnoreCase("cumulative")) {
-            log.info("Initialising cumulative decay function with the following parameters:" +
-                    "\nTime cutoff (seconds): " + cutoffTime +
-                    "\nDistance cutoff (meters): " + cutoffDist);
-            return new Cumulative(cutoffTime, cutoffDist);
-        } else if (decayType.equalsIgnoreCase("gaussian")) {
-            double v = AccessibilityResources.instance.getDouble(AccessibilityProperties.V);
-            log.info("Initialising gaussian decay function with the following parameters:" +
-                    "\nv: " + v +
-                    "\nTime cutoff (seconds): " + cutoffTime +
-                    "\nDistance cutoff (meters): " + cutoffDist);
-            return new Gaussian(v,cutoffTime,cutoffDist);
-        } else if (decayType.equalsIgnoreCase("cumulative gaussian")) {
-            double a = AccessibilityResources.instance.getDouble(AccessibilityProperties.A);
-            double v = AccessibilityResources.instance.getDouble(AccessibilityProperties.V);
-            log.info("Initialising cumulative gaussian decay function with the following parameters:" +
-                    "\na: " + a +
-                    "\nv: " + v +
-                    "\nTime cutoff (seconds): " + cutoffTime +
-                    "\nDistance cutoff (meters): " + cutoffDist);
-            return new CumulativeGaussian(a,v,cutoffTime,cutoffDist);
-        } else {
-            log.warn("Do not recognise decay function type \"" + decayType + "\"");
-            return null;
-        }
-    }
-
-    public static double estimateExpBetaFromTRADS() throws IOException {
-
-        String mode = AccessibilityResources.instance.getMode();
-        TravelTime tt = AccessibilityResources.instance.getTravelTime();
-        Vehicle veh = AccessibilityResources.instance.getVehicle();
-        TravelDisutility td = AccessibilityResources.instance.getTravelDisutility();
-        Purpose.PairList includedPurposePairs = AccessibilityResources.instance.getPurposePairs();
-
-        Network network = NetworkUtils2.extractModeSpecificNetwork(fullNetwork,mode);
-
-        log.info("Estimating exponential decay function using TRADS survey");
-        String outputCsv = AccessibilityResources.instance.getString(AccessibilityProperties.TRADS_OUTPUT_CSV);
-        return PercentileCalculator.estimateBeta(mode,veh,tt,td,includedPurposePairs,
-                network,network,networkBoundary,outputCsv);
     }
 }

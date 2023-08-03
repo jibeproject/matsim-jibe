@@ -140,6 +140,11 @@ public class AccessibilityResources {
         return value != null ? Double.parseDouble(value) : Double.NaN;
     }
 
+    public synchronized int getInt(String key) {
+        String value = properties.getProperty(key);
+        return Integer.parseInt(value);
+    }
+
     public synchronized Purpose.PairList getPurposePairs() {
         int counter = 1;
         String nextPair = properties.getProperty(AccessibilityProperties.PURPOSE_PAIR + "." + counter);
