@@ -5,7 +5,7 @@ public class AccessibilityProperties {
     public static final String MODE = "mode";
     public static final String IMPEDANCE = "disutility";
     public static final String END_LOCATIONS = "end.coords";
-    public static final String FORWARD = "forward";
+    public static final String FORWARD = "forward"; // todo: check this works
 
     // Related to decay function
     public static final String DECAY_FUNCTION = "decay.function";

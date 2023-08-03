@@ -18,8 +18,6 @@ import org.matsim.vehicles.Vehicle;
 import resources.Resources;
 
 import org.apache.log4j.Logger;
-import trads.PercentileCalculator;
-import trip.Purpose;
 
 import java.io.IOException;
 import java.util.Map;
