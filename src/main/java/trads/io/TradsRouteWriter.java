@@ -58,8 +58,7 @@ public class TradsRouteWriter {
         final DefaultFeatureCollection nodeCollection = new DefaultFeatureCollection("Nodes",nodeTYPE);
 
         // Read in edges file
-        String inputEdgesGpkg = Resources.instance.getString(Properties.NETWORK_LINKS);
-        Map<Integer, SimpleFeature> networkFeatures = GpkgReader.readEdges(new File(inputEdgesGpkg));
+        Map<Integer, SimpleFeature> networkFeatures = GpkgReader.readEdges();
         int tripCounter = 0;
         int pathCounter = 0;
 

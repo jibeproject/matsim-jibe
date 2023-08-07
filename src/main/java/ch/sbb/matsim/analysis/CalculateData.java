@@ -168,7 +168,7 @@ public class CalculateData {
     }
 
     public final void calculateRouteGeometries(String networkFilename,Config config, String[] originZoneNames,
-                                               TravelTime tt, TravelDisutility td, String inputEdgesGpkg,
+                                               TravelTime tt, TravelDisutility td,
                                                String outputFilePath, String transportMode,
                                                Predicate<Link> xy2linksPredicate) throws IOException, FactoryException {
 
@@ -213,7 +213,7 @@ public class CalculateData {
             log.info("Batch " + counter + " calculation time: " + (endTime - startTime));
 
             startTime = System.currentTimeMillis();
-            GeometryWriter.writeGpkg(geometries, zoneNodeMap, inputEdgesGpkg, outputFilePath);
+            GeometryWriter.writeGpkg(geometries, zoneNodeMap, outputFilePath);
             endTime = System.currentTimeMillis();
             log.info("Batch " + counter + " writing time: " + (endTime - startTime));
 

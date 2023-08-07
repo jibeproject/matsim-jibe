@@ -11,6 +11,7 @@ import org.locationtech.jts.index.SpatialIndex;
 import org.locationtech.jts.index.quadtree.Quadtree;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.IdMap;
 import org.matsim.api.core.v01.IdSet;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -98,34 +99,36 @@ public class GisUtils {
         return nodes;
     }
 
-    public static IdSet<Node> getNodes(Geometry region, Set<SimpleFeature> zones, Network network) {
+    public static IdMap<Node,String> getCandidateNodes(Geometry region, Set<SimpleFeature> zones, Network network) {
 
         Set<Id<Node>> candidates = NetworkUtils2.getNodesInBoundary(network,region);
-        Set<SimpleFeature> hasNodesInside = new HashSet<>();
+        IdMap<Node,String> results = new IdMap<>(Node.class);
+        Map<SimpleFeature,Integer> nodesInside = new HashMap<>();
 
         log.info("Assigning nodeIds to polygon features...");
         SpatialIndex zonesQt = createZoneQuadtree(zones);
-        IdSet<Node> nodes = new IdSet<>(Node.class);
+
         Counter counter = new Counter("Processing node "," / " + candidates.size());
         for (Id<Node> nodeId : candidates) {
             counter.incCounter();
             SimpleFeature z = findZone(network.getNodes().get(nodeId).getCoord(),zonesQt);
             if (z != null) {
-                hasNodesInside.add(z);
-                nodes.add(nodeId);
+                nodesInside.put(z,nodesInside.getOrDefault(z,0) + 1);
+                results.put(nodeId,z.getID());
             }
         }
-        log.info("Identified " + nodes.size() + " candidates inside zones.");
+        log.info("Identified " + results.size() + " candidates within zones.");
 
         for(SimpleFeature z : zones) {
-            if(!hasNodesInside.contains(z)) {
+            if(!nodesInside.containsKey(z)) {
                 Point centroid = ((Geometry) z.getDefaultGeometry()).getCentroid();
-                nodes.add(NetworkUtils.getNearestNode(network,new Coord(centroid.getX(),centroid.getY())).getId());
+                results.put(NetworkUtils.getNearestNode(network,new Coord(centroid.getX(),centroid.getY())).getId(),z.getID());
+                nodesInside.put(z,1);
             }
         }
-        log.info("Identified " + nodes.size() + " candidates total");
+        log.info("Identified " + results.size() + " candidates total.");
 
-        return nodes;
+        return results;
     }
 
     public static Map<SimpleFeature, IdSet<Link>> assignLinksToZones(Set<SimpleFeature> zones, Network network) {

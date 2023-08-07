@@ -154,6 +154,8 @@ public class NetworkUtils2 {
                 xy2lLink.setFreespeed(link.getFreespeed());
                 xy2lLink.setLength(link.getLength());
                 xy2lLink.setNumberOfLanes(link.getNumberOfLanes());
+                xy2lLink.getAttributes().putAttribute("edgeID",link.getAttributes().getAttribute("edgeID"));
+                xy2lLink.getAttributes().putAttribute("fwd",link.getAttributes().getAttribute("fwd"));
                 xy2lNetwork.addLink(xy2lLink);
             }
         }

@@ -61,22 +61,16 @@ public class WriteNetworkGpkg {
 
         Resources.initializeResources(args[0]);
 
-        String matsimNetworkPath = Resources.instance.getString(Properties.MATSIM_ROAD_NETWORK);
-        File edgesFile = Resources.instance.getFile(Properties.NETWORK_LINKS);
-        File outputEdgesFile = new File(args[1]);
+        String outputEdgesFilePath = args[1];
 
         String modeFilter = null;
         if(args.length == 3) {
             modeFilter = args[2];
         }
 
-        // Read edges
-        Map<Integer,SimpleFeature> edges = GpkgReader.readEdges(edgesFile);
-
         // Read MATSim network
         log.info("Reading MATSim network...");
-        Network network = NetworkUtils.createNetwork();
-        new MatsimNetworkReader(network).readFile(matsimNetworkPath);
+        Network network = NetworkUtils2.readFullNetwork();
 
         // Filter network to a specific mode (if applicable)
         if(modeFilter != null) {
@@ -84,6 +78,85 @@ public class WriteNetworkGpkg {
             new TransportModeNetworkFilter(network).filter(modeSpecificNetwork, Collections.singleton(modeFilter));
             network = modeSpecificNetwork;
         }
+
+        write(network,outputEdgesFilePath);
+    }
+
+    private static SimpleFeatureType createFeatureType() throws FactoryException {
+
+        SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
+        builder.setName("links");
+        builder.setCRS(CRS.decode(Resources.instance.getString(Properties.COORDINATE_SYSTEM)));
+
+        // add attributes in order
+        builder.add("path", LineString.class);
+        builder.add("edgeID",Integer.class);
+        builder.add("osmID",Integer.class);
+        builder.add("linkID",String.class);
+        builder.add("fwd",Boolean.class);
+        builder.add("length",Double.class);
+        builder.add("cycleTime",Double.class);
+        builder.add("walkTime",Double.class);
+        builder.add("carSpeedLimitMPH",Double.class);
+        builder.add("car85PercSpeedKPH",Double.class);
+        builder.add("bikeJibeMarginalDisutility",Double.class);
+        builder.add("walkJibeMarginalDisutility",Double.class);
+        builder.add("mainNetwork",Boolean.class);
+        builder.add("width",Double.class);
+        builder.add("lanes",Integer.class);
+        builder.add("aadt",Double.class);
+        builder.add("aadtFwd",Double.class);
+        builder.add("car",Boolean.class);
+        builder.add("bike",Boolean.class);
+        builder.add("walk",Boolean.class);
+        builder.add("motorway",Boolean.class);
+        builder.add("trunk",Boolean.class);
+        builder.add("dismount",Boolean.class);
+        builder.add("stravaBikeSpeed",Double.class);
+        builder.add("stravaBikeVol",Double.class);
+        builder.add("stravaWalkSpeed",Double.class);
+        builder.add("stravaWalkVol",Double.class);
+        builder.add("disconnected_car",Boolean.class);
+        builder.add("disconnected_bike",Boolean.class);
+        builder.add("disconnected_walk",Boolean.class);
+        builder.add("gradient",Double.class);
+        builder.add("bikeProtectionType",String.class);
+        builder.add("endsAtJct",Boolean.class);
+        builder.add("crossesVehicles",Boolean.class);
+        builder.add("crossingTypeBike",String.class);
+        builder.add("crossingTypeWalk",String.class);
+        builder.add("crossingLanes",Double.class);
+        builder.add("crossingWidth",Double.class);
+        builder.add("crossingAADT",Double.class);
+        builder.add("crossingSpeedLimit",Double.class);
+        builder.add("crossing85PercSpeed",Double.class);
+        builder.add("vgvi",Double.class);
+        builder.add("shannon",Double.class);
+        builder.add("POIs",Double.class);
+        builder.add("negPOIs",Double.class);
+        builder.add("crime",Double.class);
+        builder.add("streetLights",Integer.class);
+        builder.add("f_vgvi",Double.class);
+        builder.add("f_lighting",Double.class);
+        builder.add("f_shannon",Double.class);
+        builder.add("f_crime",Double.class);
+        builder.add("f_POIs",Double.class);
+        builder.add("f_negPOIs",Double.class);
+        builder.add("f_freightPOIs",Double.class);
+        builder.add("f_ambience_day",Double.class);
+        builder.add("f_ambience_night",Double.class);
+        builder.add("f_bikeStress",Double.class);
+        builder.add("f_bikeStressJct",Double.class);
+        builder.add("f_walkStress",Double.class);
+        builder.add("f_walkStressJct",Double.class);
+
+        return builder.buildFeatureType();
+    }
+
+    public static void write(Network network, String outputEdgesFilePath) throws IOException, FactoryException {
+
+        // Read edges
+        Map<Integer,SimpleFeature> edges = GpkgReader.readEdges();
 
         // Set up bicycle data
         Bicycle bicycle = new Bicycle(null);
@@ -181,6 +254,8 @@ public class WriteNetworkGpkg {
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.car));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.bike));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.walk));
+            featureBuilder.add(link.getAttributes().getAttribute("motorway"));
+            featureBuilder.add(link.getAttributes().getAttribute("trunk"));
             featureBuilder.add(link.getAttributes().getAttribute("dismount"));
             featureBuilder.add(link.getAttributes().getAttribute("stravaBikeSpeed"));
             featureBuilder.add(link.getAttributes().getAttribute("stravaBikeVol"));
@@ -227,6 +302,7 @@ public class WriteNetworkGpkg {
         log.info(backwardLinks + " edges in wrong direction needed to be reversed");
 
         // Write Geopackage
+        File outputEdgesFile = new File(outputEdgesFilePath);
         if(outputEdgesFile.delete()) {
             log.warn("File " + outputEdgesFile.getAbsolutePath() + " already exists. Overwriting.");
         }
@@ -237,75 +313,6 @@ public class WriteNetworkGpkg {
         out.add(entry,collection);
         out.createSpatialIndex(entry);
         out.close();
-    }
-
-    private static SimpleFeatureType createFeatureType() throws FactoryException {
-
-        SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
-        builder.setName("links");
-        builder.setCRS(CRS.decode(Resources.instance.getString(Properties.COORDINATE_SYSTEM)));
-
-        // add attributes in order
-        builder.add("path", LineString.class);
-        builder.add("edgeID",Integer.class);
-        builder.add("osmID",Integer.class);
-        builder.add("linkID",String.class);
-        builder.add("fwd",Boolean.class);
-        builder.add("length",Double.class);
-        builder.add("cycleTime",Double.class);
-        builder.add("walkTime",Double.class);
-        builder.add("carSpeedLimitMPH",Double.class);
-        builder.add("car85PercSpeedKPH",Double.class);
-        builder.add("bikeJibeMarginalDisutility",Double.class);
-        builder.add("walkJibeMarginalDisutility",Double.class);
-        builder.add("mainNetwork",Boolean.class);
-        builder.add("width",Double.class);
-        builder.add("lanes",Integer.class);
-        builder.add("aadt",Double.class);
-        builder.add("aadtFwd",Double.class);
-        builder.add("car",Boolean.class);
-        builder.add("bike",Boolean.class);
-        builder.add("walk",Boolean.class);
-        builder.add("dismount",Boolean.class);
-        builder.add("stravaBikeSpeed",Double.class);
-        builder.add("stravaBikeVol",Double.class);
-        builder.add("stravaWalkSpeed",Double.class);
-        builder.add("stravaWalkVol",Double.class);
-        builder.add("disconnected_car",Boolean.class);
-        builder.add("disconnected_bike",Boolean.class);
-        builder.add("disconnected_walk",Boolean.class);
-        builder.add("gradient",Double.class);
-        builder.add("bikeProtectionType",String.class);
-        builder.add("endsAtJct",Boolean.class);
-        builder.add("crossesVehicles",Boolean.class);
-        builder.add("crossingTypeBike",String.class);
-        builder.add("crossingTypeWalk",String.class);
-        builder.add("crossingLanes",Double.class);
-        builder.add("crossingWidth",Double.class);
-        builder.add("crossingAADT",Double.class);
-        builder.add("crossingSpeedLimit",Double.class);
-        builder.add("crossing85PercSpeed",Double.class);
-        builder.add("vgvi",Double.class);
-        builder.add("shannon",Double.class);
-        builder.add("POIs",Double.class);
-        builder.add("negPOIs",Double.class);
-        builder.add("crime",Double.class);
-        builder.add("streetLights",Integer.class);
-        builder.add("f_vgvi",Double.class);
-        builder.add("f_lighting",Double.class);
-        builder.add("f_shannon",Double.class);
-        builder.add("f_crime",Double.class);
-        builder.add("f_POIs",Double.class);
-        builder.add("f_negPOIs",Double.class);
-        builder.add("f_freightPOIs",Double.class);
-        builder.add("f_ambience_day",Double.class);
-        builder.add("f_ambience_night",Double.class);
-        builder.add("f_bikeStress",Double.class);
-        builder.add("f_bikeStressJct",Double.class);
-        builder.add("f_walkStress",Double.class);
-        builder.add("f_walkStressJct",Double.class);
-
-        return builder.buildFeatureType();
     }
 
 }

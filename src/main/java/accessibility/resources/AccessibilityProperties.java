@@ -23,11 +23,16 @@ public class AccessibilityProperties {
     // For Intervention
     public static final String POPULATION = "population";
     public static final String CURRENT_DESTINATIONS = "current.destinations";
-    public static final String NEW_DESTINATIONS = "new.destinations";
     public static final String NEW_DESTINATION_WEIGHT = "new.destination.weight";
-    public static final String NEW_DESTINATION_COUNT = "new.destination.count";
 
-    public static final String NEW_ACCESSIBILITIES = "new.accessibilities";
+    // Termination Criteria todo: add others
+    public static final String MAX_DESTINATIONS = "max.destinations";
+
+
+    // Output files
+    public static final String DESTINATION_OUTPUT = "destination.output";
+    public static final String SUPPLY_OUTPUT = "supply.output";
+    public static final String DEMAND_OUTPUT = "demand.output";
 
     public static final String DEVELOPMENT_AREAS = "development.areas";
 

@@ -137,7 +137,7 @@ public class RunZoneRouter {
                         zoneNodeMap,tt,e.getValue(),attributes,veh,14);
                 geometries.put(e.getKey(),routeData);
             }
-            GeometryWriter.writeGpkg(geometries,zoneNodeMap,edgesFilePath,outputFile);
+            GeometryWriter.writeGpkg(geometries,zoneNodeMap,outputFile);
         } else {
             log.error("Unable to output results: please specify output file as .gpkg or .csv");
         }

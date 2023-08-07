@@ -16,7 +16,9 @@ import java.util.Map;
 
 public class GpkgReader {
 
-    public static Map<Integer, SimpleFeature> readNodes(File nodesFile) {
+    public static Map<Integer, SimpleFeature> readNodes() {
+
+        final File nodesFile = Resources.instance.getFile(Properties.NETWORK_NODES);
 
         Map<Integer,SimpleFeature> nodes = new HashMap<>();
 
@@ -37,7 +39,9 @@ public class GpkgReader {
 
     }
 
-    public static Map<Integer, SimpleFeature> readEdges(File edgesFile) {
+    public static Map<Integer, SimpleFeature> readEdges() {
+
+        File edgesFile = Resources.instance.getFile(Properties.NETWORK_LINKS);
 
         Map<Integer,SimpleFeature> edges = new HashMap<>();
 

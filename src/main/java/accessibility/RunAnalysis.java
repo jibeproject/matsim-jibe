@@ -101,7 +101,8 @@ public class RunAnalysis {
             return;
         }
         LocationData endData = new LocationData(endLocationsFilename,networkBoundary);
-        Map<String, IdSet<Node>> endNodes = endData.getNodes(network);
+        endData.estimateNetworkNodes(network);
+        Map<String, IdSet<Node>> endNodes = endData.getNodes();
         Map<String, Double> endWeights = endData.getWeights();
 
         // Accessibility calculation on NODES (if using polygons or node output requested)

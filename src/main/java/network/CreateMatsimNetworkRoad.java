@@ -12,6 +12,8 @@ import org.matsim.api.core.v01.network.NetworkFactory;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.network.NetworkUtils;
+import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
 import org.matsim.core.network.io.NetworkWriter;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.opengis.feature.simple.SimpleFeature;
@@ -40,14 +42,12 @@ public class CreateMatsimNetworkRoad {
 
         Resources.initializeResources(args[0]);
 
-        final File nodesFile = Resources.instance.getFile(Properties.NETWORK_NODES);
-        final File edgesFile = Resources.instance.getFile(Properties.NETWORK_LINKS);
         final String networkFile = Resources.instance.getString(Properties.MATSIM_ROAD_NETWORK);
         final String carNetworkFile = Resources.instance.getString(Properties.MATSIM_CAR_NETWORK);
 
         // Read nodes and edges
-        Map<Integer,SimpleFeature> nodes = GpkgReader.readNodes(nodesFile);
-        Map<Integer,SimpleFeature> edges = GpkgReader.readEdges(edgesFile);
+        Map<Integer,SimpleFeature> nodes = GpkgReader.readNodes();
+        Map<Integer,SimpleFeature> edges = GpkgReader.readEdges();
 
         // MATSim setup
         Config config = ConfigUtils.createConfig();
@@ -73,7 +73,9 @@ public class CreateMatsimNetworkRoad {
         new NetworkWriter(net).write(networkFile);
 
         // Write Car Network
-        Network carNetwork = NetworkUtils2.extractModeSpecificNetwork(net,"car");
+        Network carNetwork = NetworkUtils.createNetwork();
+        new TransportModeNetworkFilter(net).filter(carNetwork, Set.of(car,truck));
+        NetworkUtils.runNetworkCleaner(carNetwork);
         new NetworkWriter(carNetwork).write(carNetworkFile);
     }
 
@@ -165,11 +167,13 @@ public class CreateMatsimNetworkRoad {
                     allowedModesOut.add(walk);
                     allowedModesOut.add(bike);
                     allowedModesOut.add(car);
+                    allowedModesOut.add(truck);
                     break;
                 case "Special Road - Cycling Forbidden":
                 case "motorway_link - Cycling Forbidden":
                 case "motorway - Cycling Forbidden":
                     allowedModesOut.add(car);
+                    allowedModesOut.add(truck);
                     break;
                 default:
                     throw new RuntimeException("Road type " + roadType + " not recognised!");
@@ -178,6 +182,7 @@ public class CreateMatsimNetworkRoad {
             // Don't allow car if there's a modal filter
             if(!modalFilter.equals("all")) {
                 allowedModesOut.remove(car);
+                allowedModesOut.remove(truck);
             }
 
             // Set allowed modes out
@@ -190,6 +195,7 @@ public class CreateMatsimNetworkRoad {
                     allowedModesRtn.remove(bike);
                 case "One Way - Two Way Cycling":
                     allowedModesRtn.remove(car);
+                    allowedModesRtn.remove(truck);
                     break;
             }
             l2.setAllowedModes(allowedModesRtn);
@@ -334,6 +340,11 @@ public class CreateMatsimNetworkRoad {
             boolean motorway = roadType.contains("motorway");
             l1.getAttributes().putAttribute("motorway",motorway);
             l2.getAttributes().putAttribute("motorway",motorway);
+
+            // Is the road a trunk road?
+            boolean trunk = roadType.contains("Trunk") || roadType.contains("motorway");
+            l1.getAttributes().putAttribute("trunk",trunk);
+            l2.getAttributes().putAttribute("trunk",trunk);
 
             // Do cyclists have to dismount?
             boolean dismount = roadType.contains("Cycling Forbidden") || cycleosm.equals("dismount");
