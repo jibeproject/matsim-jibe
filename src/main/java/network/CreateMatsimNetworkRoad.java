@@ -36,18 +36,17 @@ public class CreateMatsimNetworkRoad {
 
     public static void main(String[] args) {
 
-        if(args.length != 1) {
+        if (args.length != 1) {
             throw new RuntimeException("Program requires 1 argument: Properties file");
         }
 
         Resources.initializeResources(args[0]);
 
         final String networkFile = Resources.instance.getString(Properties.MATSIM_ROAD_NETWORK);
-        final String carNetworkFile = Resources.instance.getString(Properties.MATSIM_CAR_NETWORK);
 
         // Read nodes and edges
-        Map<Integer,SimpleFeature> nodes = GpkgReader.readNodes();
-        Map<Integer,SimpleFeature> edges = GpkgReader.readEdges();
+        Map<Integer, SimpleFeature> nodes = GpkgReader.readNodes();
+        Map<Integer, SimpleFeature> edges = GpkgReader.readEdges();
 
         // MATSim setup
         Config config = ConfigUtils.createConfig();
@@ -71,12 +70,6 @@ public class CreateMatsimNetworkRoad {
 
         // Write network
         new NetworkWriter(net).write(networkFile);
-
-        // Write Car Network
-        Network carNetwork = NetworkUtils.createNetwork();
-        new TransportModeNetworkFilter(net).filter(carNetwork, Set.of(car,truck));
-        NetworkUtils.runNetworkCleaner(carNetwork);
-        new NetworkWriter(carNetwork).write(carNetworkFile);
     }
 
     private static void addNodeToNetwork(int nodeID, SimpleFeature point, Network net, NetworkFactory fac) {

@@ -1,5 +1,9 @@
 package demand;
+import gis.GpkgReader;
+import network.NetworkUtils2;
+import network.WriteNetworkGpkgSimple;
 import org.apache.log4j.Logger;
+import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -8,9 +12,21 @@ import org.locationtech.jts.io.WKTReader;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
+import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.network.Network;
+import org.matsim.api.core.v01.network.NetworkFactory;
+import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.*;
+import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.gbl.MatsimRandom;
+import org.matsim.core.network.NetworkUtils;
+import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
+import org.matsim.core.network.io.NetworkWriter;
+import org.matsim.core.router.FastDijkstraFactory;
+import org.matsim.core.router.costcalculators.FreespeedTravelTimeAndDisutility;
+import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.core.utils.gis.ShapeFileReader;
@@ -18,15 +34,32 @@ import org.matsim.core.utils.misc.Counter;
 import org.opengis.feature.simple.SimpleFeature;
 
 import omx.OmxFile;
-import resources.Properties;
+import org.opengis.referencing.FactoryException;
 import resources.Resources;
 
+import java.io.IOException;
 import java.util.*;
 
 public class GenerateTfGMPlans {
     private static final Logger logger = Logger.getLogger(GenerateTfGMPlans.class);
 
-    private final Counter totalTrips =  new Counter("trips");
+    private static final Set<String> ENTRY_LINKS = Set.of("79028rtn","224795out","349037out","293282rtn","298027out","468552out",
+            "431466rtn","314184rtn","59994out","216963rtn","783rtn","457702out","128831out","448839rtn","103583out",
+            "273137out","124103out","36650out","316205out","8582out","4083out","419out","74135out","205113out","292279rtn","31452out",
+            "308490out","8823out","13111out","119034out","409269out","38024out","58867out");
+
+    private static final Set<String> EXIT_LINKS = Set.of("79028out","227825out","349037rtn","293282out","164749out","175057out",
+            "431466out","314184out","59994rtn","216963out","783out","457702rtn","220563out","448839out","103583rtn",
+            "367168out","124102out","36650rtn","310600out","81480out","4084out","224706out","74136out","205113rtn","292279out",
+            "308490rtn","206836out","349287out","119034rtn","409267out","38024rtn","58003out");
+
+    private static final List<String> PAIRS_TO_CONNECT = List.of("227825out","224795out","164749out","298027out",
+            "220563out","128831out","367168out","273137out","124102out","124103out","81480out","8582out","4084out","4083out",
+            "224706out","419out","206836out","8823out","349287out","13111out","409267out","409269out","58003out","58867out");
+
+    private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
+
+    private final Counter totalTrips =  new Counter("trip_");
 
     private final Random rand;
 
@@ -38,11 +71,18 @@ public class GenerateTfGMPlans {
     private final String omxFolder;
     private Map<Integer, Geometry> shapeMap;
 
+    private Geometry networkBoundary;
+    private LeastCostPathCalculator lcpCalculator;
+
+    private Network entryNetwork;
+    private Network exitNetwork;
+    private Network internalNetwork;
+
     // Entering point of the class "Generate Random Demand"
-    public static void main(String[] args) {
+    public static void main(String[] args) throws FactoryException, IOException {
 
         if(args.length != 3) {
-            throw new RuntimeException("Program requires 2 arguments: \n" +
+            throw new RuntimeException("Program requires 3 arguments: \n" +
                     "(0) Properties file \n" +
                     "(1) Zones file path \n" +
                     "(2) Folder containing relevant OMX files");
@@ -65,10 +105,36 @@ public class GenerateTfGMPlans {
     }
 
     // Generate randomly sampling demand
-    private void run() {
+    private void run() throws FactoryException, IOException {
+
+        // READ NETWORK BOUNDARY
+        this.networkBoundary = GpkgReader.readNetworkBoundary();
 
         // READ ZONES SHAPEFILE
         this.shapeMap = readShapeFile(zonesFilepath, "HW1075");
+
+        // READ NETWORK
+        Network fullNetwork = NetworkUtils2.readFullNetwork();
+        Network carNetwork = NetworkUtils.createNetwork();
+        new TransportModeNetworkFilter(fullNetwork).filter(carNetwork, Set.of(TransportMode.car,TransportMode.truck));
+        createConnectors(carNetwork);
+        NetworkUtils.runNetworkCleaner(carNetwork);
+        new NetworkWriter(carNetwork).write(Resources.instance.getString(resources.Properties.MATSIM_ROAD_NETWORK));
+
+        // Create relevant networks
+        this.internalNetwork = NetworkUtils2.extractXy2LinksNetwork(carNetwork,l -> !((boolean) l.getAttributes().getAttribute("motorway")));
+        this.entryNetwork = NetworkUtils2.extractXy2LinksNetwork(carNetwork,l -> ENTRY_LINKS.contains(l.getId().toString()));
+        this.exitNetwork = NetworkUtils2.extractXy2LinksNetwork(carNetwork,l -> EXIT_LINKS.contains(l.getId().toString()));
+
+        // Create dijkstra for car network
+        Config config = ConfigUtils.createConfig();
+        FreespeedTravelTimeAndDisutility freespeed = new FreespeedTravelTimeAndDisutility(config.planCalcScore());
+        this.lcpCalculator = new FastDijkstraFactory(false).createPathCalculator(carNetwork, freespeed, freespeed);
+
+        // For debugging
+        WriteNetworkGpkgSimple.write(this.internalNetwork,"internalNetwork.gpkg");
+        WriteNetworkGpkgSimple.write(this.entryNetwork,"entryNetwork.gpkg");
+        WriteNetworkGpkgSimple.write(this.exitNetwork,"exitNetwork.gpkg");
 
         // READ ALL OMX FILES (Takes around 30s per matrix ~ 8min total)
         logger.info("Reading Morning File");
@@ -111,6 +177,7 @@ public class GenerateTfGMPlans {
                 createOD(morningUc3[i][j] * 2.58,"car",morningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
                 createOD(morningUc4[i][j] * 2.58,"car",morningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
                 createOD(morningUc5[i][j] * 2.58 / 2.5,"truck",morningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
+//                createOD(morningUc5[i][j] * 2.58,"car",morningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
 
                 TimeSampler ipTimeSampler = new InterpeakTimeSampler();
                 createOD(interpeakUc1[i][j] * 9.159,"car",ipTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
@@ -118,6 +185,7 @@ public class GenerateTfGMPlans {
                 createOD(interpeakUc3[i][j] * 9.159,"car",ipTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
                 createOD(interpeakUc4[i][j] * 9.159,"car",ipTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
                 createOD(interpeakUc5[i][j] * 9.159 / 2.5,"truck",ipTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
+//                createOD(interpeakUc5[i][j] * 9.159,"car",ipTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
 
                 TimeSampler eveningTimeSampler = new EveningTimeSampler();
                 createOD(eveningUc1[i][j] * 2.75,"car",eveningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
@@ -125,22 +193,23 @@ public class GenerateTfGMPlans {
                 createOD(eveningUc3[i][j] * 2.75,"car",eveningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
                 createOD(eveningUc4[i][j] * 2.75,"car",eveningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
                 createOD(eveningUc5[i][j] * 2.75 / 2.5,"truck",eveningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
+//                createOD(eveningUc5[i][j] * 2.75,"car",eveningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId
             }
         }
 
         // Write the population file to specified folder
         PopulationWriter pw = new PopulationWriter(scenario.getPopulation(), scenario.getNetwork());
-        pw.write(Resources.instance.getString(Properties.MATSIM_TFGM_PLANS));
+//        pw.write(Resources.instance.getString(Properties.MATSIM_TFGM_PLANS));
+        pw.write("demand/tfgmPlans_trucks.xml");
 
-        logger.info("Total commuter plans written: " + totalTrips);
+        logger.info("Total commuter plans written: " + totalTrips.getCounter());
     }
 
     // Read in shapefile
     public static Map<Integer, Geometry> readShapeFile(String filename, String attrString) {
         Map<Integer, Geometry> shapeMap = new HashMap<>();
         for (SimpleFeature ft : ShapeFileReader.getAllFeatures(filename)) {
-            GeometryFactory geometryFactory = new GeometryFactory();
-            WKTReader wktReader = new WKTReader(geometryFactory);
+            WKTReader wktReader = new WKTReader(GEOMETRY_FACTORY);
             Geometry geometry;
             try {
                 geometry = wktReader.read((ft.getAttribute("the_geom")).toString());
@@ -208,6 +277,31 @@ public class GenerateTfGMPlans {
         return new Coord(p.getX(), p.getY());
     }
 
+    private void createConnectors(Network net) {
+        NetworkFactory fac = net.getFactory();
+
+        for(int i = 0 ; i < PAIRS_TO_CONNECT.size() ; i += 2) {
+            Link linkOut = net.getLinks().get(Id.createLinkId(PAIRS_TO_CONNECT.get(i)));
+            Link linkIn = net.getLinks().get(Id.createLinkId(PAIRS_TO_CONNECT.get(i+1)));
+
+            Node fromNode = linkOut.getToNode();
+            Node toNode = linkIn.getFromNode();
+
+            Link connector = fac.createLink(Id.createLinkId(PAIRS_TO_CONNECT.get(i) + "_" + PAIRS_TO_CONNECT.get(i+1)),linkOut.getToNode(),linkIn.getFromNode());
+            connector.setLength(NetworkUtils.getEuclideanDistance(fromNode.getCoord(),toNode.getCoord()));
+            connector.setFreespeed(Math.max(linkIn.getFreespeed(),linkOut.getFreespeed()));
+            connector.setCapacity(Math.max(linkIn.getCapacity(),linkOut.getCapacity()));
+            connector.setNumberOfLanes(Math.max(linkIn.getNumberOfLanes(),linkOut.getNumberOfLanes()));
+            connector.getAttributes().putAttribute("motorway",true);
+            connector.getAttributes().putAttribute("trunk",true);
+            connector.getAttributes().putAttribute("fwd",true);
+            connector.getAttributes().putAttribute("edgeID","na");
+            connector.setAllowedModes(Set.of(TransportMode.car,TransportMode.truck));
+
+            net.addLink(connector);
+        }
+    }
+
     // Create od relations for each MSOA pair
     private void createOD(double pop,String mode,TimeSampler timeSampler,  int origin, int destination, String toFromPrefix) {
 
@@ -231,7 +325,7 @@ public class GenerateTfGMPlans {
     }
 
     // Create plan for each commuter
-    private void createOnePerson( String mode, double departureTime, Coord origCoord, Coord destCoord, String toFromPrefix) {
+    private void createOnePerson( String mode, double time, Coord origCoord, Coord destCoord, String toFromPrefix) {
 
         totalTrips.incCounter();
 
@@ -240,17 +334,47 @@ public class GenerateTfGMPlans {
 
         Plan plan = scenario.getPopulation().getFactory().createPlan();
 
+        // Create activities
         Activity origin = scenario.getPopulation().getFactory().createActivityFromCoord("loc", origCoord);
-        origin.setEndTime(departureTime);
-        plan.addActivity(origin);
-
-        Leg leg = scenario.getPopulation().getFactory().createLeg(mode);
-        plan.addLeg(leg);
-
         Activity destination = scenario.getPopulation().getFactory().createActivityFromCoord("loc", destCoord);
+
+        // Origin Link
+        Link originLink;
+        if (networkBoundary.contains(GEOMETRY_FACTORY.createPoint(new Coordinate(origCoord.getX(), origCoord.getY())))) {
+            originLink = NetworkUtils.getNearestLinkExactly(internalNetwork, origCoord);
+        } else {
+            originLink = NetworkUtils.getNearestLinkExactly(entryNetwork, origCoord);
+        }
+        origin.setLinkId(originLink.getId());
+
+        // Destination link
+        Link destinationLink;
+        if (networkBoundary.contains(GEOMETRY_FACTORY.createPoint(new Coordinate(destCoord.getX(), destCoord.getY())))) {
+            destinationLink = NetworkUtils.getNearestLinkExactly(internalNetwork, destCoord);
+        } else {
+            destinationLink = NetworkUtils.getNearestLinkExactly(exitNetwork, destCoord);
+        }
+        destination.setLinkId(destinationLink.getId());
+
+        // Calculate departure time
+        Node fromNode = originLink.getFromNode();
+        Node toNode = destinationLink.getToNode();
+        double adjustment = lcpCalculator.calcLeastCostPath(fromNode,toNode,0.,null,null).travelTime / 2;
+        origin.setEndTime(time - adjustment);
+
+        // Leg
+        Leg leg = scenario.getPopulation().getFactory().createLeg(mode);
+
+        // Compile plan
+        plan.addActivity(origin);
+        plan.addLeg(leg);
         plan.addActivity(destination);
 
+        // Add plan to person
         person.addPlan(plan);
+        person.getAttributes().putAttribute("adjustment",adjustment);
+
+        // Add person to population
         scenario.getPopulation().addPerson(person);
     }
 

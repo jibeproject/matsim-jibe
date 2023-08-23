@@ -1,23 +1,20 @@
 package demand;
 
-import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;
 import org.matsim.core.config.groups.QSimConfigGroup;
 import org.matsim.core.config.groups.StrategyConfigGroup;
-import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryHierarchy;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
-import org.matsim.core.scenario.ScenarioUtils;
 import resources.Properties;
 import resources.Resources;
 
 import java.util.Set;
 
-public class RunSimulation {
+public class CreateConfig {
     public static void main(String[] args) {
 
         if(args.length != 2) {
@@ -29,7 +26,7 @@ public class RunSimulation {
         Resources.initializeResources(args[0]);
         double scaleFactor = Double.parseDouble(args[1]);
 
-/*        Config config = ConfigUtils.createConfig();
+        Config config = ConfigUtils.createConfig();
         config.controler().setLastIteration(5);
         config.controler().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
 
@@ -57,7 +54,6 @@ public class RunSimulation {
         config.plansCalcRoute().setNetworkModes(Set.of("car","truck"));
 
         // Route
-
         PlanCalcScoreConfigGroup.ActivityParams activity = new PlanCalcScoreConfigGroup.ActivityParams("loc");
         activity.setTypicalDuration(23 * 60 * 60);
         config.planCalcScore().addActivityParams(activity);
@@ -85,12 +81,5 @@ public class RunSimulation {
 
 
         ConfigUtils.writeMinimalConfig(config,"/home/corin/IdeaProjects/matsim-jibe/src/main/java/demand/config.xml");
-        System.exit(0);*/
-
-        Config config = ConfigUtils.loadConfig("/home/corin/IdeaProjects/matsim-jibe/src/main/java/demand/config.xml");
-
-        Scenario scenario = ScenarioUtils.loadScenario(config);
-        Controler controler = new Controler(scenario);
-        controler.run();
     }
 }
