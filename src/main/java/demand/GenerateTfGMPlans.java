@@ -35,6 +35,7 @@ import org.opengis.feature.simple.SimpleFeature;
 
 import omx.OmxFile;
 import org.opengis.referencing.FactoryException;
+import resources.Properties;
 import resources.Resources;
 
 import java.io.IOException;
@@ -65,9 +66,8 @@ public class GenerateTfGMPlans {
 
     // Define objects and parameters
     private final Scenario scenario;
-
     private final String zonesFilepath;
-
+    private final TimeDistributions timeDistribution;
     private final String omxFolder;
     private Map<Integer, Geometry> shapeMap;
 
@@ -77,6 +77,7 @@ public class GenerateTfGMPlans {
     private Network entryNetwork;
     private Network exitNetwork;
     private Network internalNetwork;
+    private final double sampleSize;
 
     // Entering point of the class "Generate Random Demand"
     public static void main(String[] args) throws FactoryException, IOException {
@@ -85,7 +86,8 @@ public class GenerateTfGMPlans {
             throw new RuntimeException("Program requires 3 arguments: \n" +
                     "(0) Properties file \n" +
                     "(1) Zones file path \n" +
-                    "(2) Folder containing relevant OMX files");
+                    "(2) Folder containing relevant OMX files \n" +
+                    "(3) Output plans");
         }
 
         Resources.initializeResources(args[0]);
@@ -97,15 +99,17 @@ public class GenerateTfGMPlans {
     }
 
     // A constructor for this class, which is to set up the scenario container.
-    GenerateTfGMPlans(String zonesFilepath, String omxFolder) {
+    GenerateTfGMPlans(String zonesFilepath, String omxFolder) throws IOException {
         this.scenario = ScenarioUtils.createScenario(ConfigUtils.createConfig());
         this.zonesFilepath = zonesFilepath;
         this.omxFolder = omxFolder;
         this.rand = new Random();
+        this.timeDistribution = new TimeDistributions(omxFolder + "vehicleEnRouteTimes.txt");
+        this.sampleSize = Resources.instance.getDouble(Properties.MATSIM_TFGM_SCALE_FACTOR);
     }
 
     // Generate randomly sampling demand
-    private void run() throws FactoryException, IOException {
+    private void run() throws IOException {
 
         // READ NETWORK BOUNDARY
         this.networkBoundary = GpkgReader.readNetworkBoundary();
@@ -119,7 +123,7 @@ public class GenerateTfGMPlans {
         new TransportModeNetworkFilter(fullNetwork).filter(carNetwork, Set.of(TransportMode.car,TransportMode.truck));
         createConnectors(carNetwork);
         NetworkUtils.runNetworkCleaner(carNetwork);
-        new NetworkWriter(carNetwork).write(Resources.instance.getString(resources.Properties.MATSIM_ROAD_NETWORK));
+        new NetworkWriter(carNetwork).write(Resources.instance.getString(Properties.MATSIM_CAR_NETWORK));
 
         // Create relevant networks
         this.internalNetwork = NetworkUtils2.extractXy2LinksNetwork(carNetwork,l -> !((boolean) l.getAttributes().getAttribute("motorway")));
@@ -131,10 +135,10 @@ public class GenerateTfGMPlans {
         FreespeedTravelTimeAndDisutility freespeed = new FreespeedTravelTimeAndDisutility(config.planCalcScore());
         this.lcpCalculator = new FastDijkstraFactory(false).createPathCalculator(carNetwork, freespeed, freespeed);
 
-        // For debugging
-        WriteNetworkGpkgSimple.write(this.internalNetwork,"internalNetwork.gpkg");
-        WriteNetworkGpkgSimple.write(this.entryNetwork,"entryNetwork.gpkg");
-        WriteNetworkGpkgSimple.write(this.exitNetwork,"exitNetwork.gpkg");
+//        // For debugging
+//        WriteNetworkGpkgSimple.write(this.internalNetwork,"internalNetwork.gpkg");
+//        WriteNetworkGpkgSimple.write(this.entryNetwork,"entryNetwork.gpkg");
+//        WriteNetworkGpkgSimple.write(this.exitNetwork,"exitNetwork.gpkg");
 
         // READ ALL OMX FILES (Takes around 30s per matrix ~ 8min total)
         logger.info("Reading Morning File");
@@ -158,14 +162,14 @@ public class GenerateTfGMPlans {
         omx2.close();
 
         logger.info("Reading Evening File");
-        OmxFile omx = new OmxFile(omxFolder + "M65Airport_time3.OMX");
-        omx.openReadOnly();
-        double[][] eveningUc1 = (double[][]) omx.getMatrix("L01_M65Airport_time3_uc1").getData();
-        double[][] eveningUc2 = (double[][]) omx.getMatrix("L02_M65Airport_time3_uc2").getData();
-        double[][] eveningUc3 = (double[][]) omx.getMatrix("L03_M65Airport_time3_uc3").getData();
-        double[][] eveningUc4 = (double[][]) omx.getMatrix("L04_M65Airport_time3_uc4").getData();
-        double[][] eveningUc5 = (double[][]) omx.getMatrix("L05_M65Airport_time3_uc5").getData();
-        omx.close();        
+        OmxFile omx3 = new OmxFile(omxFolder + "M65Airport_time3.OMX");
+        omx3.openReadOnly();
+        double[][] eveningUc1 = (double[][]) omx3.getMatrix("L01_M65Airport_time3_uc1").getData();
+        double[][] eveningUc2 = (double[][]) omx3.getMatrix("L02_M65Airport_time3_uc2").getData();
+        double[][] eveningUc3 = (double[][]) omx3.getMatrix("L03_M65Airport_time3_uc3").getData();
+        double[][] eveningUc4 = (double[][]) omx3.getMatrix("L04_M65Airport_time3_uc4").getData();
+        double[][] eveningUc5 = (double[][]) omx3.getMatrix("L05_M65Airport_time3_uc5").getData();
+        omx3.close();
 
         for(int i = 0 ; i < 1075 ; i++) {
             for(int j = 0 ; j < 1075 ; j++) {
@@ -199,8 +203,7 @@ public class GenerateTfGMPlans {
 
         // Write the population file to specified folder
         PopulationWriter pw = new PopulationWriter(scenario.getPopulation(), scenario.getNetwork());
-//        pw.write(Resources.instance.getString(Properties.MATSIM_TFGM_PLANS));
-        pw.write("demand/tfgmPlans_trucks.xml");
+        pw.write(Resources.instance.getString(Properties.MATSIM_TFGM_PLANS));
 
         logger.info("Total commuter plans written: " + totalTrips.getCounter());
     }
@@ -229,11 +232,11 @@ public class GenerateTfGMPlans {
         public double sample() {
             double r = rand.nextDouble();
             if(r < 0.79/2.58) {
-                return (7 + rand.nextDouble()) * 3600;
+                return timeDistribution.sample(7);
             } else if (r < 1.58/2.58) {
-                return (9 + rand.nextDouble()) * 3600;
+                return timeDistribution.sample(9);
             } else {
-                return (8 + rand.nextDouble()) * 3600;
+                return timeDistribution.sample(8);
             }
         }
     }
@@ -242,11 +245,11 @@ public class GenerateTfGMPlans {
         public double sample() {
             double r = rand.nextDouble();
             if (r < 0.875/2.75) {
-                return (16 + rand.nextDouble()) * 3600;
+                return timeDistribution.sample(16);
             } else if (r < 1.75/2.75) {
-                return (18 + rand.nextDouble()) * 3600;
+                return timeDistribution.sample(18);
             } else {
-                return (17 + rand.nextDouble()) * 3600;
+                return timeDistribution.sample(17);
             }
         }
     }
@@ -255,9 +258,9 @@ public class GenerateTfGMPlans {
         public double sample() {
             double r = rand.nextDouble();
             if (r < 6/9.159) {
-                return (10 + rand.nextDouble() * 6) * 3600;
+                return timeDistribution.sample(10);
             } else {
-                return ((19 + rand.nextDouble() * 12) * 3600) % 86400;
+                return timeDistribution.sample(19);
             }
         }
     }
@@ -315,11 +318,15 @@ public class GenerateTfGMPlans {
         if(origGeom != null && destGeom != null) {
             int i = 0;
             while (i < popInt) {
-                createOnePerson(mode, timeSampler.sample(), drawRandomPointFromGeometry(origGeom), drawRandomPointFromGeometry(destGeom), toFromPrefix);
+                if(rand.nextDouble() < this.sampleSize) {
+                    createOnePerson(mode, timeSampler.sample(), drawRandomPointFromGeometry(origGeom), drawRandomPointFromGeometry(destGeom), toFromPrefix);
+                }
                 i++;
             }
             if(rand.nextDouble() <= remainder) {
-                createOnePerson(mode, timeSampler.sample(), drawRandomPointFromGeometry(origGeom), drawRandomPointFromGeometry(destGeom), toFromPrefix);
+                if(rand.nextDouble() < this.sampleSize) {
+                    createOnePerson(mode, timeSampler.sample(), drawRandomPointFromGeometry(origGeom), drawRandomPointFromGeometry(destGeom), toFromPrefix);
+                }
             }
         }
     }
@@ -360,7 +367,9 @@ public class GenerateTfGMPlans {
         Node fromNode = originLink.getFromNode();
         Node toNode = destinationLink.getToNode();
         double adjustment = lcpCalculator.calcLeastCostPath(fromNode,toNode,0.,null,null).travelTime / 2;
-        origin.setEndTime(time - adjustment);
+        double tripStartTime = time - adjustment;
+        while(tripStartTime < 0) tripStartTime += 86400;
+        origin.setEndTime(tripStartTime);
 
         // Leg
         Leg leg = scenario.getPopulation().getFactory().createLeg(mode);
@@ -377,5 +386,4 @@ public class GenerateTfGMPlans {
         // Add person to population
         scenario.getPopulation().addPerson(person);
     }
-
 }

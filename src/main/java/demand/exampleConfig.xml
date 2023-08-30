@@ -8,7 +8,7 @@
 		<param name="overwriteFiles" value="deleteDirectoryIfExists" />
 	</module>
 	<module name="network" >
-		<param name="inputNetworkFile" value="/home/corin/Documents/manchester/network/network_car.xml" />
+		<param name="inputNetworkFile" value="placeholder.xml" />
 	</module>
 	<module name="planCalcScore" >
 		<parameterset type="scoringParameters" >
@@ -45,7 +45,7 @@
 		</parameterset>
 	</module>
 	<module name="plans" >
-		<param name="inputPlansFile" value="/home/corin/Documents/manchester/temp.xml" />
+		<param name="inputPlansFile" value="placeholder.xml" />
 	</module>
 	<module name="planscalcroute" >
 		<!-- All the modes for which the router is supposed to generate network routes (like car) -->
@@ -76,7 +76,7 @@
 		</parameterset>
 	</module>
 	<module name="vehicles" >
-		<param name="vehiclesFile" value="/home/corin/IdeaProjects/matsim-jibe/src/main/java/demand/mode-vehicles.xml" />
+		<param name="vehiclesFile" value="placeholder.xml" />
 	</module>
 
 </config>

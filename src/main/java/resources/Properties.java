@@ -14,7 +14,12 @@ public class Properties {
     public static final String MATSIM_CAR_NETWORK = "matsim.car.network";
     public static final String MATSIM_TRANSIT_NETWORK = "matsim.transit.network";
     public static final String MATSIM_TRANSIT_SCHEDULE = "matsim.transit.schedule";
+
+    public static final String MATSIM_TFGM_CONFIG = "matsim.tfgm.config";
+    public static final String MATSIM_TFGM_SCALE_FACTOR = "matsim.tfgm.scale.factor";
+    public static final String MATSIM_TFGM_VEHICLES = "matsim.tfgm.vehicles";
     public static final String MATSIM_TFGM_PLANS = "matsim.tfgm.plans";
+    public static final String MATSIM_TFGM_EVENTS = "matsim.tfgm.events";
     
     // Other properties
     public static final String NUMBER_OF_THREADS = "number.of.threads";

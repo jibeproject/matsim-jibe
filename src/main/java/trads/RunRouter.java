@@ -1,5 +1,10 @@
 package trads;
 
+import org.matsim.core.api.experimental.events.EventsManager;
+import org.matsim.core.events.EventsUtils;
+import org.matsim.core.events.MatsimEventsReader;
+import org.matsim.core.router.util.TravelDisutility;
+import org.matsim.core.trafficmonitoring.TravelTimeCalculator;
 import resources.Properties;
 import resources.Resources;
 import routing.Bicycle;
@@ -44,6 +49,7 @@ public class RunRouter {
 
         String transitScheduleFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_SCHEDULE);
         String transitNetworkFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_NETWORK);
+        String tfgmDemandEvents = Resources.instance.getString(Properties.MATSIM_TFGM_EVENTS);
 
         // Read network
         Network network = NetworkUtils2.readFullNetwork();
@@ -77,6 +83,15 @@ public class RunRouter {
         TravelTime ttBike = bicycle.getTravelTime();
         TravelTime ttWalk = new WalkTravelTime();
 
+        // Congested travel times
+        TravelTimeCalculator.Builder builder = new TravelTimeCalculator.Builder(networkCar);
+        TravelTimeCalculator congested = builder.build();
+        EventsManager events = EventsUtils.createEventsManager();
+        events.addHandler(congested);
+        (new MatsimEventsReader(events)).readFile(tfgmDemandEvents);
+        TravelTime congestedTime = congested.getLinkTravelTimes();
+        TravelDisutility congestedDisutility = new OnlyTimeDependentTravelDisutility(congested.getLinkTravelTimes());
+
         // CALCULATOR
         RouteIndicatorCalculator calc = new RouteIndicatorCalculator(trips);
 
@@ -85,7 +100,8 @@ public class RunRouter {
         calc.beeline("beeline_home_dest", HOME, DESTINATION);
 
         // car (freespeed only)
-        calc.network("car", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,false);
+        calc.network("carFreespeed", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,false);
+        calc.network("carCongested", ORIGIN, DESTINATION, null, networkCar, carXy2l, congestedDisutility, congestedTime, null,false);
 
         // bike (shortest, fastest, and jibe)
         calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new DistanceDisutility(), ttBike, null,false);
