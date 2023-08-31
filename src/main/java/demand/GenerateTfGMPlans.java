@@ -86,8 +86,7 @@ public class GenerateTfGMPlans {
             throw new RuntimeException("Program requires 3 arguments: \n" +
                     "(0) Properties file \n" +
                     "(1) Zones file path \n" +
-                    "(2) Folder containing relevant OMX files \n" +
-                    "(3) Output plans");
+                    "(2) Folder containing relevant OMX files \n");
         }
 
         Resources.initializeResources(args[0]);

@@ -8,10 +8,8 @@ import org.matsim.core.scenario.ScenarioUtils;
 import resources.Properties;
 import resources.Resources;
 
-import java.net.URISyntaxException;
-
 public class RunSimulation {
-    public static void main(String[] args) throws URISyntaxException {
+    public static void main(String[] args) {
 
         Resources.initializeResources(args[0]);
 
@@ -21,6 +19,10 @@ public class RunSimulation {
         config.network().setInputFile(Resources.instance.getString(Properties.MATSIM_CAR_NETWORK));
         config.plans().setInputFile(Resources.instance.getString(Properties.MATSIM_TFGM_PLANS));
         config.vehicles().setVehiclesFile(Resources.instance.getString(Properties.MATSIM_TFGM_VEHICLES));
+
+        // Set threads
+        config.global().setNumberOfThreads(Resources.instance.getInt(Properties.NUMBER_OF_THREADS));
+        config.qsim().setNumberOfThreads(Resources.instance.getInt(Properties.NUMBER_OF_THREADS) / 2);
 
         // Set scale factor
         double scaleFactor = Resources.instance.getDouble(Properties.MATSIM_TFGM_SCALE_FACTOR);
