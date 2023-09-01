@@ -15,7 +15,7 @@ public class VolumeEventHandler implements LinkEnterEventHandler {
     @Override
     public void handleEvent(LinkEnterEvent event) {
         Id<Link> linkId = event.getLinkId();
-        linkVolumes.put(linkId, linkVolumes.getOrDefault(linkId,0));
+        linkVolumes.put(linkId, linkVolumes.getOrDefault(linkId,0) + 1);
     }
 
 }

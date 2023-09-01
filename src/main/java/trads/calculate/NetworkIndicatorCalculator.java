@@ -73,7 +73,7 @@ public class NetworkIndicatorCalculator implements Runnable {
                 Node nDest = routingNetwork.getNodes().get(NetworkUtils.getNearestLinkExactly(xy2lNetwork, cDest).getToNode().getId());
 
                 // Calculate least cost path
-                LeastCostPathCalculator.Path path = pathCalculator.calcLeastCostPath(nOrig, nDest, 28800, null, vehicle);
+                LeastCostPathCalculator.Path path = pathCalculator.calcLeastCostPath(nOrig, nDest, trip.getStartTime(), null, vehicle);
 
                 // If JibeDisutility, get marginal costs
                 if(travelDisutility instanceof JibeDisutility) {

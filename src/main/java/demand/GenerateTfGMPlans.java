@@ -297,7 +297,7 @@ public class GenerateTfGMPlans {
             connector.getAttributes().putAttribute("motorway",true);
             connector.getAttributes().putAttribute("trunk",true);
             connector.getAttributes().putAttribute("fwd",true);
-            connector.getAttributes().putAttribute("edgeID","na");
+            connector.getAttributes().putAttribute("edgeID","connector");
             connector.setAllowedModes(Set.of(TransportMode.car,TransportMode.truck));
 
             net.addLink(connector);
@@ -314,18 +314,16 @@ public class GenerateTfGMPlans {
         Geometry origGeom = this.shapeMap.get(origin);
         Geometry destGeom = this.shapeMap.get(destination);
 
-        if(origGeom != null && destGeom != null) {
-            int i = 0;
-            while (i < popInt) {
-                if(rand.nextDouble() < this.sampleSize) {
-                    createOnePerson(mode, timeSampler.sample(), drawRandomPointFromGeometry(origGeom), drawRandomPointFromGeometry(destGeom), toFromPrefix);
-                }
-                i++;
+        int i = 0;
+        while (i < popInt) {
+            if(rand.nextDouble() < this.sampleSize) {
+                createOnePerson(mode, timeSampler.sample(), drawRandomPointFromGeometry(origGeom), drawRandomPointFromGeometry(destGeom), toFromPrefix);
             }
-            if(rand.nextDouble() <= remainder) {
-                if(rand.nextDouble() < this.sampleSize) {
-                    createOnePerson(mode, timeSampler.sample(), drawRandomPointFromGeometry(origGeom), drawRandomPointFromGeometry(destGeom), toFromPrefix);
-                }
+            i++;
+        }
+        if(rand.nextDouble() <= remainder) {
+            if(rand.nextDouble() < this.sampleSize) {
+                createOnePerson(mode, timeSampler.sample(), drawRandomPointFromGeometry(origGeom), drawRandomPointFromGeometry(destGeom), toFromPrefix);
             }
         }
     }

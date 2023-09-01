@@ -100,8 +100,8 @@ public class RunRouter {
         calc.beeline("beeline_home_dest", HOME, DESTINATION);
 
         // car (freespeed only)
-        calc.network("carFreespeed", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,false);
-        calc.network("carCongested", ORIGIN, DESTINATION, null, networkCar, carXy2l, congestedDisutility, congestedTime, null,false);
+        calc.network("car_freespeed", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,false);
+        calc.network("car_congested", ORIGIN, DESTINATION, null, networkCar, carXy2l, congestedDisutility, congestedTime, null,false);
 
         // bike (shortest, fastest, and jibe)
         calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new DistanceDisutility(), ttBike, null,false);

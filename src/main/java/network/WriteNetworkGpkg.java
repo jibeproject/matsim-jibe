@@ -32,7 +32,6 @@ import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.network.NetworkUtils;
-import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 import org.opengis.feature.simple.SimpleFeature;
@@ -106,6 +105,7 @@ public class WriteNetworkGpkg {
         builder.add("lanes",Integer.class);
         builder.add("aadt",Double.class);
         builder.add("aadtFwd",Double.class);
+        builder.add("aadt_matsim",Double.class);
         builder.add("car",Boolean.class);
         builder.add("bike",Boolean.class);
         builder.add("walk",Boolean.class);
@@ -251,6 +251,7 @@ public class WriteNetworkGpkg {
             featureBuilder.add((int) link.getNumberOfLanes());
             featureBuilder.add(aadt);
             featureBuilder.add(aadtFwd);
+            featureBuilder.add(link.getAttributes().getAttribute("aadt_matsim"));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.car));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.bike));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.walk));

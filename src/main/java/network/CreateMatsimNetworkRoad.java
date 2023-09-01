@@ -1,5 +1,6 @@
 package network;
 
+import demand.volumes.VolumeEventHandler;
 import gis.GpkgReader;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Point;
@@ -10,17 +11,17 @@ import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.NetworkFactory;
 import org.matsim.api.core.v01.network.Node;
+import org.matsim.core.api.experimental.events.EventsManager;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.network.NetworkUtils;
-import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
+import org.matsim.core.events.EventsManagerImpl;
+import org.matsim.core.events.EventsUtils;
 import org.matsim.core.network.io.NetworkWriter;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.opengis.feature.simple.SimpleFeature;
 import resources.Properties;
 import resources.Resources;
 
-import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -59,6 +60,9 @@ public class CreateMatsimNetworkRoad {
 
         // Create network links
         edges.forEach((id,edge) -> addLinkToNetwork(id,edge,net,fac));
+
+        // Add volumes from event
+        addSimulationVolumes(net,"aadt_matsim");
 
         // Write crossing attributes
         addCrossingAttributes(net);
@@ -502,6 +506,16 @@ public class CreateMatsimNetworkRoad {
             link.getAttributes().putAttribute("crossSpeedLimitMPH",crossSpeedLimit);
             link.getAttributes().putAttribute("cross85PercSpeed",cross85PercSpeed);
         }
+    }
+
+    private static void addSimulationVolumes(Network network, String attributeName) {
+        log.info("Adding volumes from events...");
+        EventsManager eventsManager = new EventsManagerImpl();
+        VolumeEventHandler volumeEventHandler = new VolumeEventHandler();
+        eventsManager.addHandler(volumeEventHandler);
+        EventsUtils.readEvents(eventsManager,"output_old/output_events.xml");
+        double scaleFactor =  Resources.instance.getDouble(Properties.MATSIM_TFGM_SCALE_FACTOR);
+        network.getLinks().forEach((id,link) -> link.getAttributes().putAttribute(attributeName,volumeEventHandler.getLinkVolumes().getOrDefault(id,0) / scaleFactor));
     }
 
     private static void putDoubleAttribute(SimpleFeature edge, String name, Link link, String matsimName, double valueIfNull) {
