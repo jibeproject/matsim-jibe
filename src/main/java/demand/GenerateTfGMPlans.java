@@ -61,6 +61,7 @@ public class GenerateTfGMPlans {
     private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
 
     private final Counter totalTrips =  new Counter("trip_");
+    private double unassignedTrips = 0.;
 
     private final Random rand;
 
@@ -205,6 +206,7 @@ public class GenerateTfGMPlans {
         pw.write(Resources.instance.getString(Properties.MATSIM_TFGM_PLANS));
 
         logger.info("Total commuter plans written: " + totalTrips.getCounter());
+        logger.info("Total unassigned trips: " + this.unassignedTrips);
     }
 
     // Read in shapefile
@@ -307,23 +309,30 @@ public class GenerateTfGMPlans {
     // Create od relations for each MSOA pair
     private void createOD(double pop,String mode,TimeSampler timeSampler,  int origin, int destination, String toFromPrefix) {
 
-        int popInt = (int) pop;
-        double remainder = pop - popInt;
+        if(pop > 0.) {
+            int popInt = (int) pop;
+            double remainder = pop - popInt;
 
-        // Specify the ID of these two MSOAs
-        Geometry origGeom = this.shapeMap.get(origin);
-        Geometry destGeom = this.shapeMap.get(destination);
+            // Specify the ID of these two MSOAs
+            Geometry origGeom = this.shapeMap.get(origin);
+            Geometry destGeom = this.shapeMap.get(destination);
 
-        int i = 0;
-        while (i < popInt) {
-            if(rand.nextDouble() < this.sampleSize) {
-                createOnePerson(mode, timeSampler.sample(), drawRandomPointFromGeometry(origGeom), drawRandomPointFromGeometry(destGeom), toFromPrefix);
-            }
-            i++;
-        }
-        if(rand.nextDouble() <= remainder) {
-            if(rand.nextDouble() < this.sampleSize) {
-                createOnePerson(mode, timeSampler.sample(), drawRandomPointFromGeometry(origGeom), drawRandomPointFromGeometry(destGeom), toFromPrefix);
+            int i = 0;
+            if (origGeom != null && destGeom != null) {
+                while (i < popInt) {
+                    if (rand.nextDouble() < this.sampleSize) {
+                        createOnePerson(mode, timeSampler.sample(), drawRandomPointFromGeometry(origGeom), drawRandomPointFromGeometry(destGeom), toFromPrefix);
+                    }
+                    i++;
+                }
+                if (rand.nextDouble() <= remainder) {
+                    if (rand.nextDouble() < this.sampleSize) {
+                        createOnePerson(mode, timeSampler.sample(), drawRandomPointFromGeometry(origGeom), drawRandomPointFromGeometry(destGeom), toFromPrefix);
+                    }
+                }
+            } else {
+//                logger.warn("No shape found for origin " + origin + " and/or destination " + destination + ", with " + pop + " trips.");
+                this.unassignedTrips += pop;
             }
         }
     }
