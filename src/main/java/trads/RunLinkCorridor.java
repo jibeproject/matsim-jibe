@@ -5,6 +5,7 @@ import gis.GpkgReader;
 import io.ioUtils;
 import network.NetworkUtils2;
 import org.apache.log4j.Logger;
+import org.locationtech.jts.algorithm.Distance;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.IdMap;
@@ -19,6 +20,7 @@ import org.opengis.referencing.FactoryException;
 import resources.Properties;
 import resources.Resources;
 import routing.Bicycle;
+import routing.disutility.DistanceDisutility;
 import routing.travelTime.WalkTravelTime;
 import trads.calculate.LinkCorridorCalculator;
 import trads.io.TradsReader;
@@ -34,8 +36,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static trip.Place.DESTINATION;
-import static trip.Place.ORIGIN;
+import static trip.Place.*;
 
 // Code to calculate route-based corridors between origin-destination pairs.
 // NOTE: Feasible for detour factors up to 50%
@@ -68,10 +69,10 @@ public class RunLinkCorridor {
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
-        Set<Trip> trips = TradsReader.readTrips(boundary).stream()
-                .filter(t -> (t.getEndPurpose().isMandatory() && t.getStartPurpose().equals(Purpose.HOME)) ||
-                        (t.getStartPurpose().isMandatory() && t.getEndPurpose().equals(Purpose.HOME)))
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<Trip> trips = TradsReader.readTrips(boundary);//.stream()
+//                .filter(t -> !((t.getEndPurpose().isMandatory() && t.getStartPurpose().equals(Purpose.HOME)) ||
+//                        (t.getStartPurpose().isMandatory() && t.getEndPurpose().equals(Purpose.HOME))))
+//                .collect(Collectors.toCollection(LinkedHashSet::new));
         logger.info("Calculating for " + trips.size() + " trips.");
 
 
@@ -92,11 +93,11 @@ public class RunLinkCorridor {
         writeHeader(outputCsv);
 
         // Use time disutility
-        TravelDisutility td = new OnlyTimeDependentTravelDisutility(tt);
+        TravelDisutility td = new DistanceDisutility();
 
         // Calculate shortest, fastest, and jibe route
         for(List<Trip> partition : Iterables.partition(trips,1000)) {
-            Map<Trip, IdMap<Link,Double>> results = LinkCorridorCalculator.calculate(partition,ORIGIN, DESTINATION, td, veh, modeNetwork, modeNetwork, 1.5);
+            Map<Trip, IdMap<Link,Double>> results = LinkCorridorCalculator.calculate(partition,HOME, DESTINATION, td, veh, modeNetwork, modeNetwork, 1.5);
             writeResults(results,outputCsv);
         }
     }

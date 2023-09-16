@@ -92,9 +92,9 @@ public class TradsReader {
 
             // Zones
             Map<Place,String> zones = new HashMap<>(3);
-            zones.put(Place.HOME,lineElements[posHomeZone]);
-            zones.put(Place.ORIGIN,lineElements[posOriginZone]);
-            zones.put(Place.DESTINATION,lineElements[posDestinationZone]);
+            if(posHomeZone != -1) zones.put(Place.HOME,lineElements[posHomeZone]);
+            if(posOriginZone != -1) zones.put(Place.ORIGIN,lineElements[posOriginZone]);
+            if(posDestinationZone != -1) zones.put(Place.DESTINATION,lineElements[posDestinationZone]);
 
             // COORDS
             Map<Place, Coord> coords = new HashMap<>(3);
