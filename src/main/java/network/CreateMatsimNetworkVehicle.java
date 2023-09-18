@@ -18,10 +18,10 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 
-public class CreateMatsimCarNetwork {
-    private final static double URBAN_NONPRIMARY_CAPACITY_REDUCTION_FACTOR = 0.25;
-    private final static double URBAN_NONPRIMARY_FREESPEED_REDUCTION_FACTOR = 0.;
-    private final static Logger log = Logger.getLogger(CreateMatsimCarNetwork.class);
+public class CreateMatsimNetworkVehicle {
+    private final static double URBAN_NONPRIMARY_CAPACITY_REDUCTION_FACTOR = 0.;
+    private final static double URBAN_NONPRIMARY_FREESPEED_REDUCTION_FACTOR = 0.25;
+    private final static Logger log = Logger.getLogger(CreateMatsimNetworkVehicle.class);
     private static final List<String> PAIRS_TO_CONNECT = List.of("227825out","224795out","164749out","298027out",
             "220563out","128831out","367168out","273137out","124102out","124103out","81480out","8582out","4084out","4083out",
             "224706out","419out","206836out","8823out","349287out","13111out","409267out","409269out","58003out","58867out");
