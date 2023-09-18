@@ -30,8 +30,7 @@ public class LinkStress {
                 } else {
                     double speedLimit = ((Integer) link.getAttributes().getAttribute("speedLimitMPH")).doubleValue();
                     double speed85perc = (double) link.getAttributes().getAttribute("veh85percSpeedKPH") * 0.621371;
-                    Double aadt = (double) link.getAttributes().getAttribute("aadt") * 0.865;
-                    if(aadt.isNaN()) aadt = 1400.;
+                    double aadt = ((int) link.getAttributes().getAttribute("aadt")) * 0.865;
                     CycleProtection protection = CycleProtection.getType(link);
 
                     if(speed85perc >= speedLimit*1.1) {
@@ -86,9 +85,7 @@ public class LinkStress {
             if ((boolean) link.getAttributes().getAttribute("allowsCar")) {
                 double speedLimit = ((Integer) link.getAttributes().getAttribute("speedLimitMPH")).doubleValue();
                 double speed85perc = (double) link.getAttributes().getAttribute("veh85percSpeedKPH") * 0.621371;
-                Double aadt = (double) link.getAttributes().getAttribute("aadt") * 0.865;
-                if (aadt.isNaN()) aadt = 1400.;
-
+                double aadt = ((int) link.getAttributes().getAttribute("aadt")) * 0.865;
                 if (speed85perc >= speedLimit * 1.1) {
                     speedLimit = speed85perc;
                 }
@@ -108,7 +105,7 @@ public class LinkStress {
     }
 
     public static double getFreightPoiFactor (Link link){
-        double hgvPois = (double) link.getAttributes().getAttribute("hgvPOIs");
+        int hgvPois = (int) link.getAttributes().getAttribute("hgvPOIs");
         return Math.min(1., 24 * hgvPois / link.getLength());
     }
 

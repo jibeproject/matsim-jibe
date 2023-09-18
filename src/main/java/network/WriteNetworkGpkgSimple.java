@@ -40,7 +40,7 @@ public class WriteNetworkGpkgSimple {
     public static void main(String[] args) throws FactoryException, IOException {
 
         if(args.length < 2 || args.length > 3) {
-            throw new RuntimeException("Program requires 3 or 4 arguments:\n" +
+            throw new RuntimeException("Program requires 2 or 3 arguments:\n" +
                     "(0) Properties file (.properties)" +
                     "(1) Output edges (.gpkg)\n" +
                     "(2) OPTIONAL: mode (for printing a mode-specific network)");
@@ -79,10 +79,15 @@ public class WriteNetworkGpkgSimple {
         builder.add("path", LineString.class);
         builder.add("linkID",String.class);
         builder.add("length",Double.class);
-        builder.add("lanes",Integer.class);
+        builder.add("freespeed",Double.class);
+        builder.add("lanes",Double.class);
+        builder.add("capacity",Double.class);
         builder.add("car",Boolean.class);
         builder.add("bike",Boolean.class);
         builder.add("walk",Boolean.class);
+        builder.add("disconnected_car",Boolean.class);
+        builder.add("disconnected_bike",Boolean.class);
+        builder.add("disconnected_walk",Boolean.class);
         builder.add("motorway",Boolean.class);
         builder.add("trunk",Boolean.class);
 
@@ -110,55 +115,64 @@ public class WriteNetworkGpkgSimple {
                 log.info("Processing link " + counter + " / " + network.getLinks().size());
             }
             int edgeID = (int) link.getAttributes().getAttribute("edgeID");
-            boolean fwd = (boolean) link.getAttributes().getAttribute("fwd");
-            Coord fromNode = link.getFromNode().getCoord();
-            Coord toNode = link.getToNode().getCoord();
-            SimpleFeature edge = edges.get(edgeID);
-            Coordinate[] coords = new Coordinate[0];
-            try {
-                coords = ((LineString) edge.getDefaultGeometry()).getCoordinates().clone();
-            } catch (Exception e) {
-                e.printStackTrace();
+
+            // EdgeID of -1 indicates an artificial edge (e.g., connector at edge of network)
+            if (edgeID != -1) {
+                boolean fwd = (boolean) link.getAttributes().getAttribute("fwd");
+                Coord fromNode = link.getFromNode().getCoord();
+                Coord toNode = link.getToNode().getCoord();
+                SimpleFeature edge = edges.get(edgeID);
+                Coordinate[] coords = new Coordinate[0];
+                try {
+                    coords = ((LineString) edge.getDefaultGeometry()).getCoordinates().clone();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                // Check direction matches from/to node and reverse if necessary
+                Coordinate fromCoord = coords[0];
+                Coordinate toCoord = coords[coords.length - 1];
+                Coordinate fromNodeCoord = new Coordinate(fromNode.getX(), fromNode.getY());
+                Coordinate toNodeCoord = new Coordinate(toNode.getX(), toNode.getY());
+                if ((fwd && fromCoord.equals2D(fromNodeCoord) && toCoord.equals2D(toNodeCoord)) ||
+                        (!fwd && fromCoord.equals2D(toNodeCoord) && toCoord.equals2D(fromNodeCoord))) {
+                    forwardLinks++;
+                } else if ((fwd && fromCoord.equals2D(toNodeCoord) && toCoord.equals2D(fromNodeCoord)) ||
+                        (!fwd && fromCoord.equals2D(fromNodeCoord) && toCoord.equals2D(toNodeCoord))) {
+                    backwardLinks++;
+                    ArrayUtils.reverse(coords);
+                } else {
+                    throw new RuntimeException("Edge " + edgeID + " doesn't match its from and to nodes!");
+                }
+
+                double length = link.getLength();
+
+
+                // Reverse if not in forward direction
+                if (!fwd) {
+                    ArrayUtils.reverse(coords);
+                }
+
+                // Geometry
+                featureBuilder.add(geometryFactory.createLineString(coords));
+
+                // Other attributes
+                featureBuilder.add(link.getId().toString());
+                featureBuilder.add(length);
+                featureBuilder.add(link.getFreespeed());
+                featureBuilder.add(link.getNumberOfLanes());
+                featureBuilder.add(link.getCapacity());
+                featureBuilder.add(link.getAllowedModes().contains(TransportMode.car));
+                featureBuilder.add(link.getAllowedModes().contains(TransportMode.bike));
+                featureBuilder.add(link.getAllowedModes().contains(TransportMode.walk));
+                featureBuilder.add(link.getAttributes().getAttribute("disconnected_" + TransportMode.car));
+                featureBuilder.add(link.getAttributes().getAttribute("disconnected_" + TransportMode.bike));
+                featureBuilder.add(link.getAttributes().getAttribute("disconnected_" + TransportMode.walk));
+                featureBuilder.add(link.getAttributes().getAttribute("motorway"));
+                featureBuilder.add(link.getAttributes().getAttribute("trunk"));
+                SimpleFeature feature = featureBuilder.buildFeature(null);
+                collection.add(feature);
             }
-
-            // Check direction matches from/to node and reverse if necessary
-            Coordinate fromCoord = coords[0];
-            Coordinate toCoord = coords[coords.length - 1];
-            Coordinate fromNodeCoord = new Coordinate(fromNode.getX(),fromNode.getY());
-            Coordinate toNodeCoord = new Coordinate(toNode.getX(),toNode.getY());
-            if ((fwd && fromCoord.equals2D(fromNodeCoord) && toCoord.equals2D(toNodeCoord)) ||
-                    (!fwd && fromCoord.equals2D(toNodeCoord) && toCoord.equals2D(fromNodeCoord))) {
-                forwardLinks++;
-            } else if ((fwd && fromCoord.equals2D(toNodeCoord) && toCoord.equals2D(fromNodeCoord)) ||
-                    (!fwd && fromCoord.equals2D(fromNodeCoord) && toCoord.equals2D(toNodeCoord))) {
-                backwardLinks++;
-                ArrayUtils.reverse(coords);
-            } else {
-                throw new RuntimeException("Edge " + edgeID + " doesn't match its from and to nodes!");
-            }
-
-            double length = link.getLength();
-
-
-            // Reverse if not in forward direction
-            if(!fwd) {
-                ArrayUtils.reverse(coords);
-            }
-
-            // Geometry
-            featureBuilder.add(geometryFactory.createLineString(coords));
-
-            // Other attributes
-            featureBuilder.add(link.getId().toString());
-            featureBuilder.add(length);
-            featureBuilder.add((int) link.getNumberOfLanes());
-            featureBuilder.add(link.getAllowedModes().contains(TransportMode.car));
-            featureBuilder.add(link.getAllowedModes().contains(TransportMode.bike));
-            featureBuilder.add(link.getAllowedModes().contains(TransportMode.walk));
-            featureBuilder.add(link.getAttributes().getAttribute("motorway"));
-            featureBuilder.add(link.getAttributes().getAttribute("trunk"));
-            SimpleFeature feature = featureBuilder.buildFeature(null);
-            collection.add(feature);
         }
 
         log.info(forwardLinks + " edges in the correct direction");

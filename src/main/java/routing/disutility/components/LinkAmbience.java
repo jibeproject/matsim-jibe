@@ -21,17 +21,17 @@ public class LinkAmbience {
     }
 
     public static double getPoiFactor (Link link){
-        double pois = (double) link.getAttributes().getAttribute("POIs");
+        int pois = (int) link.getAttributes().getAttribute("POIs");
         return 1 - Math.min(1., 5 * pois / link.getLength());
     }
 
     public static double getNegativePoiFactor (Link link){
-        double negPois = (double) link.getAttributes().getAttribute("negPOIs");
+        int negPois = (int) link.getAttributes().getAttribute("negPOIs");
         return Math.min(1., 5 * negPois / link.getLength());
     }
 
     public static double getCrimeFactor (Link link){
-        double crime = (double) link.getAttributes().getAttribute("crime");
+        int crime = (int) link.getAttributes().getAttribute("crime");
         return Math.min(1., 4 * crime / link.getLength());
     }
 
