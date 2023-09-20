@@ -38,7 +38,7 @@ public class BeelineCalculator implements Runnable {
             Coord cDest = trip.getCoord(destination);
             if(cOrig != null && cDest != null) {
                 double dist = CoordUtils.calcEuclideanDistance(cOrig,cDest);
-                trip.setAttributes(route,Map.of("", dist));
+                trip.setAttributes(route,Map.of("dist", dist));
             }
         }
     }

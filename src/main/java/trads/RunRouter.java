@@ -5,6 +5,7 @@ import org.matsim.core.events.EventsUtils;
 import org.matsim.core.events.MatsimEventsReader;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.trafficmonitoring.TravelTimeCalculator;
+import org.opengis.referencing.FactoryException;
 import resources.Properties;
 import resources.Resources;
 import routing.Bicycle;
@@ -25,6 +26,7 @@ import org.matsim.vehicles.Vehicle;
 import trads.calculate.RouteIndicatorCalculator;
 import trads.io.TradsCsvWriter;
 import trads.io.TradsReader;
+import trads.io.TradsRouteWriter;
 import trip.Trip;
 
 import java.io.*;
@@ -36,7 +38,7 @@ public class RunRouter {
 
     private final static Logger logger = Logger.getLogger(RunRouter.class);
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, FactoryException {
 
         if(args.length != 2) {
             throw new RuntimeException("Program requires 2 arguments: \n" +
@@ -46,6 +48,15 @@ public class RunRouter {
 
         Resources.initializeResources(args[0]);
         String outputFile = args[1];
+
+        boolean savePath;
+        if (outputFile.endsWith(".csv")) {
+            savePath = false;
+        } else if (outputFile.endsWith(".gpkg")) {
+            savePath = true;
+        } else {
+            throw new RuntimeException("Unrecognised file output suffix. Please use csv or gpkg.");
+        }
 
         String transitScheduleFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_SCHEDULE);
         String transitNetworkFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_NETWORK);
@@ -74,8 +85,7 @@ public class RunRouter {
         logger.info("Reading person micro data from ascii file...");
         Set<Trip> trips = TradsReader.readTrips(boundary);
 //                .stream()
-//                .filter(t -> (t.getEndPurpose().isMandatory() && t.getStartPurpose().equals(TradsPurpose.HOME)) ||
-//                        (t.getStartPurpose().isMandatory() && t.getEndPurpose().equals(TradsPurpose.HOME)))
+//                .filter(t -> (t.getMainMode().equals("Car or van passenger") || t.getMainMode().equals("Car or van driver")))
 //                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         // Travel time
@@ -100,22 +110,34 @@ public class RunRouter {
         calc.beeline("beeline_home_dest", HOME, DESTINATION);
 
         // car (freespeed only)
-        calc.network("car_freespeed", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,false);
-        calc.network("car_congested", ORIGIN, DESTINATION, null, networkCar, carXy2l, congestedDisutility, congestedTime, null,false);
+        calc.network("car_freespeed", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,savePath);
+        calc.network("car_congested", ORIGIN, DESTINATION, null, networkCar, carXy2l, congestedDisutility, congestedTime, null,savePath);
 
         // bike (shortest, fastest, and jibe)
-        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new DistanceDisutility(), ttBike, null,false);
-        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new OnlyTimeDependentTravelDisutility(ttBike), ttBike, null,false);
+        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new DistanceDisutility(), ttBike, null,savePath);
+        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new OnlyTimeDependentTravelDisutility(ttBike), ttBike, null,savePath);
 
-        calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new DistanceDisutility(), ttWalk, null,false);
-        calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, null,false);
+        calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new DistanceDisutility(), ttWalk, null,savePath);
+        calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, null,savePath);
 
         // public transport
         calc.pt("pt", ORIGIN, DESTINATION, config, transitScheduleFilePath, transitNetworkFilePath);
 
-        // Write results
-        logger.info("Writing results to csv file...");
-        TradsCsvWriter.write(trips, outputFile, calc.getAllAttributeNames());
-    }
+//        // Activity-based modelling calculations (not relevant for JIBE)
+//        calc.beeline("beeline_hs", HOME, DESTINATION);
+//        calc.beeline("beeline_sm", DESTINATION, MAIN);
+//        calc.beeline("beeline_hm", HOME,MAIN);
+//        calc.network("car_hs", HOME, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,false);
+//        calc.network("car_sm",DESTINATION,MAIN,null, networkCar, carXy2l, freeSpeed, freeSpeed, null,false);
+//        calc.network("car_hm",HOME,MAIN,null, networkCar, carXy2l, freeSpeed, freeSpeed, null,false);
 
+        // Write results
+        if (outputFile.endsWith(".csv")) {
+            logger.info("Writing results to csv file...");
+            TradsCsvWriter.write(trips, outputFile, calc.getAllAttributeNames());
+        } else {
+            logger.info("Writing results to gpkg file...");
+            TradsRouteWriter.write(trips,outputFile,calc.getAllAttributeNames());
+        }
+    }
 }

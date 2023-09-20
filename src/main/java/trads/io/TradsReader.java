@@ -53,10 +53,13 @@ public class TradsReader {
         int posStartPurpose = findPositionInArray(START_PURPOSE, header);
         int posEndPurpose = findPositionInArray(END_PURPOSE, header);
         int posHomeZone = findPositionInArray(HOME_ZONE,header);
+        int posMainZone = findPositionInArray(MAIN_ZONE,header);
         int posOriginZone = findPositionInArray(ORIGIN_ZONE,header);
         int posDestinationZone = findPositionInArray(DESTINATION_ZONE,header);
         int posHomeX = findPositionInArray(X_HOME_COORD, header);
         int posHomeY = findPositionInArray(Y_HOME_COORD, header);
+        int posMainX = findPositionInArray(X_MAIN_COORD, header);
+        int posMainY = findPositionInArray(Y_MAIN_COORD, header);
         int posOrigX = findPositionInArray(X_ORIGIN_COORD, header);
         int posOrigY = findPositionInArray(Y_ORIGIN_COORD, header);
         int posDestX = findPositionInArray(X_DESTINATION_COORD, header);
@@ -95,6 +98,7 @@ public class TradsReader {
             if(posHomeZone != -1) zones.put(Place.HOME,lineElements[posHomeZone]);
             if(posOriginZone != -1) zones.put(Place.ORIGIN,lineElements[posOriginZone]);
             if(posDestinationZone != -1) zones.put(Place.DESTINATION,lineElements[posDestinationZone]);
+            if(posMainZone != -1) zones.put(Place.MAIN,lineElements[posMainZone]);
 
             // COORDS
             Map<Place, Coord> coords = new HashMap<>(3);
@@ -108,6 +112,17 @@ public class TradsReader {
                 coordsInBoundary.put(Place.HOME,geometry.contains(gf.createPoint(new Coordinate(x,y))));
             } catch (NumberFormatException e) {
                 logger.warn("Unreadable HOME coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
+                badCoords++;
+            }
+
+            // Read main coord
+            try {
+                double x = Double.parseDouble(lineElements[posMainX]);
+                double y = Double.parseDouble(lineElements[posMainY]);
+                coords.put(Place.MAIN, CoordUtils.createCoord(x,y));
+                coordsInBoundary.put(Place.MAIN,geometry.contains(gf.createPoint(new Coordinate(x,y))));
+            } catch (NumberFormatException e) {
+                logger.warn("Unreadable MAIN coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
                 badCoords++;
             }
 

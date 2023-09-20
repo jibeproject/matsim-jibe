@@ -144,7 +144,7 @@ public class RouteIndicatorCalculator {
         logger.info("Calculating beeline distances for route " + route);
 
         // Specify attribute names
-        allAttributeNames.put(route, List.of(""));
+        allAttributeNames.put(route, List.of("dist"));
 
         // do calculation
         ConcurrentLinkedQueue<Trip> odPairsQueue = new ConcurrentLinkedQueue<>(trips);

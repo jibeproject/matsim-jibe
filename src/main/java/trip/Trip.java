@@ -125,9 +125,9 @@ public class Trip {
     private static Integer findPathKey(List<Route> routes, int[] newPath, Coord startCoord, double distance, double time) {
         for(int i = 0 ; i < routes.size() ; i++) {
             Route route = routes.get(i);
-            if (Arrays.equals(route.getLinks(),newPath)) {
-                if(!(startCoord.equals(route.getStartCoord()) && distance == route.getDistance() && time == route.getTime())) {
-                    throw new RuntimeException("Matching route but mismatching startCoord/distance/time.\n" +
+            if (Arrays.equals(route.getLinks(),newPath) && time == route.getTime()) {
+                if(!(startCoord.equals(route.getStartCoord()) && distance == route.getDistance())) {
+                    throw new RuntimeException("Matching route & travel time, but mismatching startCoord or distance.\n" +
                             "This should not happen! You need to debug!");
                 }
                 return i;

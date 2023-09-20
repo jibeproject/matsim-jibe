@@ -67,6 +67,7 @@ public class TradsRouteWriter {
             // Increment counter
             tripCounter++;
 
+            // todo: adapt to visualise routes between other locations (e.g., HOME & MAIN). Only relevant for activity-based modelling.
             if (trip.routable(ORIGIN, DESTINATION)) {
 
                 // Get origin/destination
@@ -76,16 +77,20 @@ public class TradsRouteWriter {
                 // Origin coordinate
                 Point origPoint = geometryFactory.createPoint(new Coordinate(origCoord.getX(), origCoord.getY()));
                 nodeFeatureBuilder.add(origPoint);
-                nodeFeatureBuilder.add(true);
+                nodeFeatureBuilder.add(trip.getHouseholdId());
+                nodeFeatureBuilder.add(trip.getPersonId());
                 nodeFeatureBuilder.add(trip.getTripId());
+                nodeFeatureBuilder.add(true);
                 SimpleFeature origFeature = nodeFeatureBuilder.buildFeature(null);
                 nodeCollection.add(origFeature);
 
                 // Destination coordinate
                 Point destPoint = geometryFactory.createPoint(new Coordinate(destCoord.getX(), destCoord.getY()));
                 nodeFeatureBuilder.add(destPoint);
-                nodeFeatureBuilder.add(false);
+                nodeFeatureBuilder.add(trip.getHouseholdId());
+                nodeFeatureBuilder.add(trip.getPersonId());
                 nodeFeatureBuilder.add(trip.getTripId());
+                nodeFeatureBuilder.add(false);
                 SimpleFeature destFeature = nodeFeatureBuilder.buildFeature(null);
                 nodeCollection.add(destFeature);
 
@@ -96,13 +101,7 @@ public class TradsRouteWriter {
                         String route = e.getKey();
                         if (e.getValue().length > 0) {
                             LineString path = drawFromEdgeIDs(trip.getStartCoord(route), e.getValue(), geometryFactory, networkFeatures);
-                            routeFeatureBuilder.add(path);
-                            routeFeatureBuilder.add(route);
-                            for (String attribute : allAttributes) {
-                                routeFeatureBuilder.add(trip.getAttribute(route, attribute));
-                            }
-                            SimpleFeature feature = routeFeatureBuilder.buildFeature(null);
-                            routeCollection.add(feature);
+                            addRouteToCollection(routeCollection, routeFeatureBuilder, allAttributes, trip, route, path);
                         }
                     }
                 } else {
@@ -111,13 +110,7 @@ public class TradsRouteWriter {
                         pathCounter++;
                         String name = String.valueOf(pathCounter);
                         LineString path = drawFromPathNode(p, geometryFactory, networkFeatures);
-                        routeFeatureBuilder.add(path);
-                        routeFeatureBuilder.add(name);
-                        for (String attribute : allAttributes) {
-                            routeFeatureBuilder.add(trip.getAttribute(name, attribute));
-                        }
-                        SimpleFeature feature = routeFeatureBuilder.buildFeature(null);
-                        routeCollection.add(feature);
+                        addRouteToCollection(routeCollection, routeFeatureBuilder, allAttributes, trip, name, path);
                     }
                 }
             }
@@ -143,6 +136,20 @@ public class TradsRouteWriter {
 
     }
 
+    private static void addRouteToCollection(DefaultFeatureCollection routeCollection, SimpleFeatureBuilder routeFeatureBuilder, Set<String> allAttributes, Trip trip, String route, LineString path) {
+        routeFeatureBuilder.add(path);
+        routeFeatureBuilder.add(trip.getHouseholdId());
+        routeFeatureBuilder.add(trip.getPersonId());
+        routeFeatureBuilder.add(trip.getTripId());
+        routeFeatureBuilder.add(trip.getMainMode());
+        routeFeatureBuilder.add(route);
+        for (String attribute : allAttributes) {
+            routeFeatureBuilder.add(trip.getAttribute(route, attribute));
+        }
+        SimpleFeature feature = routeFeatureBuilder.buildFeature(null);
+        routeCollection.add(feature);
+    }
+
     private static SimpleFeatureType createRouteFeatureType(Set<String> attributes) throws FactoryException {
 
         SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
@@ -151,6 +158,10 @@ public class TradsRouteWriter {
 
         // add attributes in order
         builder.add("Path", LineString.class);
+        builder.add("IDNumber",String.class);
+        builder.add("PersonNumber",Integer.class);
+        builder.add("TripNumber",Integer.class);
+        builder.add("MainMode",String.class);
         builder.length(20).add("Route", String.class);
         for(String attribute : attributes) {
             builder.add(attribute, Double.class);
@@ -167,9 +178,11 @@ public class TradsRouteWriter {
         builder.setCRS(CRS.decode(Resources.instance.getString(Properties.COORDINATE_SYSTEM)));
 
         // add attributes in order
-        builder.add("Path", Point.class);
+        builder.add("Node", Point.class);
+        builder.add("IDNumber",String.class);
+        builder.add("PersonNumber",Integer.class);
+        builder.add("TripNumber",Integer.class);
         builder.add("Origin", Boolean.class);
-        builder.add("TripID", Integer.class);
 
         // build the type
         return builder.buildFeatureType();
