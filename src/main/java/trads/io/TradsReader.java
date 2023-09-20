@@ -96,34 +96,38 @@ public class TradsReader {
             // Zones
             Map<Place,String> zones = new HashMap<>(3);
             if(posHomeZone != -1) zones.put(Place.HOME,lineElements[posHomeZone]);
+            if(posMainZone != -1) zones.put(Place.MAIN,lineElements[posMainZone]);
             if(posOriginZone != -1) zones.put(Place.ORIGIN,lineElements[posOriginZone]);
             if(posDestinationZone != -1) zones.put(Place.DESTINATION,lineElements[posDestinationZone]);
-            if(posMainZone != -1) zones.put(Place.MAIN,lineElements[posMainZone]);
 
             // COORDS
             Map<Place, Coord> coords = new HashMap<>(3);
             Map<Place, Boolean> coordsInBoundary = new HashMap<>(3);
 
             // Read household coord
-            try {
-                double x = Double.parseDouble(lineElements[posHomeX]);
-                double y = Double.parseDouble(lineElements[posHomeY]);
-                coords.put(Place.HOME, CoordUtils.createCoord(x,y));
-                coordsInBoundary.put(Place.HOME,geometry.contains(gf.createPoint(new Coordinate(x,y))));
-            } catch (NumberFormatException e) {
-                logger.warn("Unreadable HOME coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
-                badCoords++;
+            if(posHomeX != -1 && posHomeY != -1) {
+                try {
+                    double x = Double.parseDouble(lineElements[posHomeX]);
+                    double y = Double.parseDouble(lineElements[posHomeY]);
+                    coords.put(Place.HOME, CoordUtils.createCoord(x, y));
+                    coordsInBoundary.put(Place.HOME, geometry.contains(gf.createPoint(new Coordinate(x, y))));
+                } catch (NumberFormatException e) {
+                    logger.warn("Unreadable HOME coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
+                    badCoords++;
+                }
             }
 
             // Read main coord
-            try {
-                double x = Double.parseDouble(lineElements[posMainX]);
-                double y = Double.parseDouble(lineElements[posMainY]);
-                coords.put(Place.MAIN, CoordUtils.createCoord(x,y));
-                coordsInBoundary.put(Place.MAIN,geometry.contains(gf.createPoint(new Coordinate(x,y))));
-            } catch (NumberFormatException e) {
-                logger.warn("Unreadable MAIN coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
-                badCoords++;
+            if(posMainX != -1 && posMainY != -1) {
+                try {
+                    double x = Double.parseDouble(lineElements[posMainX]);
+                    double y = Double.parseDouble(lineElements[posMainY]);
+                    coords.put(Place.MAIN, CoordUtils.createCoord(x,y));
+                    coordsInBoundary.put(Place.MAIN,geometry.contains(gf.createPoint(new Coordinate(x,y))));
+                } catch (NumberFormatException e) {
+                    logger.warn("Unreadable MAIN coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
+                    badCoords++;
+                }
             }
 
             // Read origin coord
@@ -140,14 +144,16 @@ public class TradsReader {
             }
 
             // Read destination coord
-            try {
-                double x = Double.parseDouble(lineElements[posDestX]);
-                double y = Double.parseDouble(lineElements[posDestY]);
-                coords.put(Place.DESTINATION, CoordUtils.createCoord(x,y));
-                coordsInBoundary.put(Place.DESTINATION,geometry.contains(gf.createPoint(new Coordinate(x,y))));
-            } catch (NumberFormatException e) {
-                logger.warn("Unreadable DESTINATION coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
-                badCoords++;
+            if(posDestX != -1 && posDestY != -1) {
+                try {
+                    double x = Double.parseDouble(lineElements[posDestX]);
+                    double y = Double.parseDouble(lineElements[posDestY]);
+                    coords.put(Place.DESTINATION, CoordUtils.createCoord(x, y));
+                    coordsInBoundary.put(Place.DESTINATION, geometry.contains(gf.createPoint(new Coordinate(x, y))));
+                } catch (NumberFormatException e) {
+                    logger.warn("Unreadable DESTINATION coordinates for household " + householdId + ", person " + personId + ", trip " + tripId);
+                    badCoords++;
+                }
             }
 
             trips.add(new Trip(householdId, personId, tripId, startTime, mainMode, startPurpose, endPurpose, zones, coords, coordsInBoundary));

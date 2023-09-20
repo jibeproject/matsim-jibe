@@ -31,6 +31,7 @@ import trip.Trip;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static trip.Place.*;
 
@@ -58,8 +59,8 @@ public class RunRouter {
             throw new RuntimeException("Unrecognised file output suffix. Please use csv or gpkg.");
         }
 
-        String transitScheduleFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_SCHEDULE);
-        String transitNetworkFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_NETWORK);
+//        String transitScheduleFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_SCHEDULE);
+//        String transitNetworkFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_NETWORK);
         String tfgmDemandEvents = Resources.instance.getString(Properties.MATSIM_TFGM_EVENTS);
 
         // Read network
@@ -67,15 +68,15 @@ public class RunRouter {
 
         // Set up scenario and config
         Config config = ConfigUtils.createConfig();
-        Bicycle bicycle = new Bicycle(config);
-        Vehicle bike = bicycle.getVehicle();
+//        Bicycle bicycle = new Bicycle(config);
+//        Vehicle bike = bicycle.getVehicle();
 
         // Create mode-specific networks
         logger.info("Creating mode-specific networks...");
         Network networkCar = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.car);
         Network carXy2l = NetworkUtils2.extractXy2LinksNetwork(networkCar, l -> !((boolean) l.getAttributes().getAttribute("motorway")));
-        Network networkBike = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.bike);
-        Network networkWalk = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.walk);
+//        Network networkBike = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.bike);
+//        Network networkWalk = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.walk);
 
         // Read Boundary Shapefile
         logger.info("Reading boundary shapefile...");
@@ -83,15 +84,15 @@ public class RunRouter {
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
-        Set<Trip> trips = TradsReader.readTrips(boundary);
-//                .stream()
-//                .filter(t -> (t.getMainMode().equals("Car or van passenger") || t.getMainMode().equals("Car or van driver")))
-//                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<Trip> trips = TradsReader.readTrips(boundary)
+                .stream()
+                .filter(t -> (t.getMainMode().equals("Car or van passenger") || t.getMainMode().equals("Car or van driver")))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         // Travel time
         FreespeedTravelTimeAndDisutility freeSpeed = new FreespeedTravelTimeAndDisutility(config.planCalcScore());
-        TravelTime ttBike = bicycle.getTravelTime();
-        TravelTime ttWalk = new WalkTravelTime();
+//        TravelTime ttBike = bicycle.getTravelTime();
+//        TravelTime ttWalk = new WalkTravelTime();
 
         // Congested travel times
         TravelTimeCalculator.Builder builder = new TravelTimeCalculator.Builder(networkCar);
@@ -105,23 +106,23 @@ public class RunRouter {
         // CALCULATOR
         RouteIndicatorCalculator calc = new RouteIndicatorCalculator(trips);
 
-        // beeline
-        calc.beeline("beeline_orig_dest", ORIGIN, DESTINATION);
-        calc.beeline("beeline_home_dest", HOME, DESTINATION);
+//        // beeline
+//        calc.beeline("beeline_orig_dest", ORIGIN, DESTINATION);
+//        calc.beeline("beeline_home_dest", HOME, DESTINATION);
 
         // car (freespeed only)
         calc.network("car_freespeed", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,savePath);
         calc.network("car_congested", ORIGIN, DESTINATION, null, networkCar, carXy2l, congestedDisutility, congestedTime, null,savePath);
 
-        // bike (shortest, fastest, and jibe)
-        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new DistanceDisutility(), ttBike, null,savePath);
-        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new OnlyTimeDependentTravelDisutility(ttBike), ttBike, null,savePath);
-
-        calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new DistanceDisutility(), ttWalk, null,savePath);
-        calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, null,savePath);
-
-        // public transport
-        calc.pt("pt", ORIGIN, DESTINATION, config, transitScheduleFilePath, transitNetworkFilePath);
+//        // bike (shortest, fastest, and jibe)
+//        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new DistanceDisutility(), ttBike, null,savePath);
+//        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new OnlyTimeDependentTravelDisutility(ttBike), ttBike, null,savePath);
+//
+//        calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new DistanceDisutility(), ttWalk, null,savePath);
+//        calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, null,savePath);
+//
+//        // public transport
+//        calc.pt("pt", ORIGIN, DESTINATION, config, transitScheduleFilePath, transitNetworkFilePath);
 
 //        // Activity-based modelling calculations (not relevant for JIBE)
 //        calc.beeline("beeline_hs", HOME, DESTINATION);
