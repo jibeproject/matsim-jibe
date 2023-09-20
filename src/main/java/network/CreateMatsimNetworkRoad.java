@@ -31,7 +31,7 @@ import java.util.stream.Stream;
 import static org.matsim.api.core.v01.TransportMode.*;
 
 // Script to create a MATSim Road network .xml file using the Edges and Nodes from JIBE WP2
-// Compatible with JIBE Network v3.13
+// Compatible with JIBE Manchester Network v3.13 and Melbourne Network
 
 public class CreateMatsimNetworkRoad {
 
@@ -64,10 +64,10 @@ public class CreateMatsimNetworkRoad {
         edges.forEach((id,edge) -> addLinkToNetwork(id,edge,net,fac));
 
         // Add volumes from events file
-        addSimulationVolumes(net);
+//        addSimulationVolumes(net);
 
         // Write crossing attributes
-        addCrossingAttributes(net);
+//        addCrossingAttributes(net);
 
         // Identify disconnected links
         NetworkUtils2.identifyDisconnectedLinks(net,walk);
@@ -143,8 +143,9 @@ public class CreateMatsimNetworkRoad {
             l1.setFreespeed(freespeed);
             l2.setFreespeed(freespeed);
 
-            // Urban or rural
-            boolean urban = (boolean) edge.getAttribute("urban");
+            // Urban or rural todo: make primitive once Alan adds this attribute to the Melbourne network
+            Boolean urban = (Boolean) edge.getAttribute("urban");
+            if(urban == null) urban = false;
             l1.getAttributes().putAttribute("urban",urban);
             l2.getAttributes().putAttribute("urban",urban);
 
@@ -195,7 +196,7 @@ public class CreateMatsimNetworkRoad {
             l1.getAttributes().putAttribute("allowsCarFwd", allowsCarOut);
             l2.getAttributes().putAttribute("allowsCarFwd", allowsCarRtn);
 
-            // Add AADT, width, and number of lanes attribute todo: eliminate this once we've validated MATSim results
+            // Add AADT, width, and number of lanes attribute todo: eliminate these once we've calibrated MATSim runs
             Double aadt = (Double) edge.getAttribute("aadt_hgv_im");
             if(aadt != null) {
                 double aadtOut = 0.;
@@ -229,7 +230,7 @@ public class CreateMatsimNetworkRoad {
             l2.getAttributes().putAttribute("width",widthRtn);
 
             // Width and number of lanes
-            double lanes = Math.min((double) edge.getAttribute("permlanes"),8);
+            double lanes = Math.min((int) edge.getAttribute("permlanes"),8);
             double lanesOut = allowsCarOut ? lanes : 1.;
             double lanesRtn = allowsCarRtn ? lanes : 1.;
             l1.setNumberOfLanes(lanesOut);
@@ -329,7 +330,7 @@ public class CreateMatsimNetworkRoad {
             putIntegerAttribute(l2,edge,"quitnss","quietness",10);
 
             // Junction
-            String junction = (String) edge.getAttribute("junctin");
+            String junction = (String) edge.getAttribute("junctn");
             l1.getAttributes().putAttribute("junction",junction);
             l2.getAttributes().putAttribute("junction",junction);
 
