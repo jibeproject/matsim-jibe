@@ -1,6 +1,8 @@
 package trip;
 
 import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.network.Node;
 import routing.graph.TreeNode;
 
 import java.util.*;
@@ -16,10 +18,15 @@ public class Trip {
     private final Purpose endPurpose;
     private final Map<Place,String> zones;
     private final Map<Place,Coord> coords;
+
+    private Node origNode;
+
+    private Node destNode;
     private final Map<Place,Boolean> coordsInsideBoundary;
     private final Map<String, Map<String,Object>> routeAttributes = new LinkedHashMap<>();
     private final Map<String,Integer> routePathIndices = new LinkedHashMap<>();
     private final List<Route> routes = new ArrayList<>();
+    private final List<List<Link>> routes2 = new ArrayList<>();
     private Set<TreeNode> paths;
 
     public Trip(String householdId, int personId, int tripId, int startTime,
@@ -34,6 +41,11 @@ public class Trip {
         this.zones = zones;
         this.coords = coords;
         this.coordsInsideBoundary = coordsInsideBoundary;
+    }
+
+    public void setNodes(Node origNode, Node destNode) {
+        this.origNode = origNode;
+        this.destNode = destNode;
     }
 
    public Boolean isWithinBoundary(Place place) { return coordsInsideBoundary.get(place); }
@@ -60,6 +72,8 @@ public class Trip {
 
     public Coord getCoord(Place place) { return coords.get(place); }
 
+
+
     public void setAttributes(String route, Map<String,Object> attributes) {
         routeAttributes.put(route,attributes);
     }
@@ -72,6 +86,18 @@ public class Trip {
             routes.add(new Route(startCoord, edgeIDs,distance,time));
         }
         routePathIndices.put(route,pathKey);
+    }
+
+    public void addRoute(List<Link> newRoute) {
+
+        for(List<Link> route : routes2) {
+            if(route.equals(newRoute)) {
+                return;
+            }
+        }
+
+        // Add new route if none found
+        routes2.add(newRoute);
     }
 
     public String getHouseholdId() {
@@ -142,5 +168,13 @@ public class Trip {
 
     public void setPaths(Set<TreeNode> paths) {
         this.paths = paths;
+    }
+
+    public Node getDestNode() {
+        return destNode;
+    }
+
+    public Node getOrigNode() {
+        return origNode;
     }
 }
