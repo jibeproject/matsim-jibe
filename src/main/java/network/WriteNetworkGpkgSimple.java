@@ -90,6 +90,8 @@ public class WriteNetworkGpkgSimple {
         builder.add("disconnected_walk",Boolean.class);
         builder.add("motorway",Boolean.class);
         builder.add("trunk",Boolean.class);
+        builder.add("primary",Boolean.class);
+        builder.add("urban",Boolean.class);
 
         return builder.buildFeatureType();
     }
@@ -170,6 +172,8 @@ public class WriteNetworkGpkgSimple {
                 featureBuilder.add(link.getAttributes().getAttribute("disconnected_" + TransportMode.walk));
                 featureBuilder.add(link.getAttributes().getAttribute("motorway"));
                 featureBuilder.add(link.getAttributes().getAttribute("trunk"));
+                featureBuilder.add(link.getAttributes().getAttribute("primary"));
+                featureBuilder.add(link.getAttributes().getAttribute("urban"));
                 SimpleFeature feature = featureBuilder.buildFeature(null);
                 collection.add(feature);
             }

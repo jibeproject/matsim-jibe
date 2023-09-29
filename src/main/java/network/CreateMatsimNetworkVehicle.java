@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Set;
 
 public class CreateMatsimNetworkVehicle {
-    private final static double URBAN_NONPRIMARY_CAPACITY_REDUCTION_FACTOR = 0.;
+    private final static double URBAN_NONPRIMARY_CAPACITY_REDUCTION_FACTOR = 0.25;
     private final static double URBAN_NONPRIMARY_FREESPEED_REDUCTION_FACTOR = 0.25;
     private final static Logger log = Logger.getLogger(CreateMatsimNetworkVehicle.class);
     private static final List<String> PAIRS_TO_CONNECT = List.of("227825out","224795out","164749out","298027out",
@@ -28,13 +28,12 @@ public class CreateMatsimNetworkVehicle {
 
     public static void main(String[] args) throws FactoryException, IOException {
         if(args.length > 2) {
-            throw new RuntimeException("Program requires 3 arguments:\n" +
+            throw new RuntimeException("Program requires 2 arguments:\n" +
                     "(0) Properties file \n" +
                     "(1) Output gpkg [optional] \n");
         }
 
         Resources.initializeResources(args[0]);
-        String outputGpkg = args[1];
 
         // Read MATSim network
         log.info("Reading MATSim network...");
@@ -65,8 +64,8 @@ public class CreateMatsimNetworkVehicle {
         new NetworkWriter(vehicleNetwork).write(Resources.instance.getString(Properties.MATSIM_CAR_NETWORK));
 
         // Write as gpkg
-        if(outputGpkg != null) {
-            WriteNetworkGpkgSimple.write(vehicleNetwork,outputGpkg);
+        if(args.length == 2) {
+            WriteNetworkGpkgSimple.write(vehicleNetwork,args[1]);
         }
     }
 
@@ -87,6 +86,8 @@ public class CreateMatsimNetworkVehicle {
             connector.setNumberOfLanes(Math.max(linkIn.getNumberOfLanes(),linkOut.getNumberOfLanes()));
             connector.getAttributes().putAttribute("motorway",true);
             connector.getAttributes().putAttribute("trunk",true);
+            connector.getAttributes().putAttribute("primary",true);
+            connector.getAttributes().putAttribute("urban",false);
             connector.getAttributes().putAttribute("fwd",true);
             connector.getAttributes().putAttribute("edgeID",-1);
             connector.setAllowedModes(Set.of(TransportMode.car,TransportMode.truck));
