@@ -6,19 +6,18 @@ import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
+import org.matsim.api.core.v01.network.Node;
+import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 import org.opengis.referencing.FactoryException;
 import resources.Resources;
-import routing.ActiveAttributes;
 import routing.Bicycle;
-import routing.TravelAttribute;
-import routing.disutility.JibeDisutility;
+import routing.disutility.JibeDisutility2;
 import routing.travelTime.WalkTravelTime;
-import trads.calculate.RouteIndicatorCalculator;
+import trads.calculate.LogitDataCalculator;
 import trads.io.TradsCsvWriter;
 import trads.io.TradsReader;
-import trads.io.TradsUniqueRouteWriter;
 import trip.Trip;
 
 import java.io.IOException;
@@ -33,23 +32,20 @@ public class RunMultiRouter {
     private final static Logger logger = Logger.getLogger(RunMultiRouter.class);
 
     // Parameters for MC Simulation
-    private final static double MAX_MC = 0.002;
     public static void main(String[] args) throws IOException, FactoryException {
-        if (args.length != 4) {
+        if (args.length != 3) {
             throw new RuntimeException("Program requires 4 arguments: \n" +
                     "(0) Properties file \n" +
-                    "(1) Output gpkg prefix\n" +
-                    "(2) Output csv file path\n" +
-                    "(3) Mode");
+                    "(1) Output csv file path\n" +
+                    "(2) Mode");
         }
 
         Resources.initializeResources(args[0]);
-        String outputPrefix = args[1];
-        String outputCsv = args[2];
-        String mode = args[3];
+        String outputCsv = args[1];
+        String mode = args[2];
 
         // Read network
-        Network modeSpecificNetwork = NetworkUtils2.readModeSpecificNetwork(mode);
+        Network network = NetworkUtils2.readModeSpecificNetwork(mode);
 
         // Read Boundary Shapefile
         logger.info("Reading boundary shapefile...");
@@ -61,7 +57,7 @@ public class RunMultiRouter {
 
         // Filter to only routable trips with chosen mode
         Set<Trip> selectedTrips = trips.stream()
-                .filter(t -> t.routable(ORIGIN, DESTINATION) && t.getMainMode().equals(mode))
+                .filter(t -> t.routable(ORIGIN, DESTINATION))
                 .collect(Collectors.toSet());
 
         // Travel time and vehicle
@@ -77,52 +73,25 @@ public class RunMultiRouter {
             veh = null;
         } else throw new RuntimeException("Modes other than walk and bike are not supported!");
 
-        // CALCULATOR
-        RouteIndicatorCalculator calc = new RouteIndicatorCalculator(selectedTrips);
-
-        // JIBE Attributes
-        LinkedHashMap<String, TravelAttribute> jibeAttr = ActiveAttributes.getJibe(mode,veh);
-
-        // Run short and fast routing (for reference)
-        JibeDisutility tdShort = new JibeDisutility(mode,tt,0.,1.,0.,0.,0.,0.);
-        JibeDisutility tdFast = new JibeDisutility(mode,tt,0.0067,0.,0.,0.,0.,0.);
-
-        calc.network("short", ORIGIN, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, tdShort, tt, jibeAttr, true);
-        calc.network("fast", ORIGIN, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, tdFast, tt, jibeAttr, true);
-//        calc.network("jibeAmb", ORIGIN, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new JibeDisutility(mode,tt, MAX_MC,0.), tt, jibeAttr, true);
-//        calc.network("jibeStr", ORIGIN, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new JibeDisutility(mode,tt,0.,MAX_MC), tt, jibeAttr, true);
-
-        // Test different Ambience/stress values
-        double mcAmbience;
-        double mcStress;
-        for (int i = 0; i <= 10; i++) {
-            mcAmbience = MAX_MC * i / 10;
-            for (int j = 0 ; j <= 10 ; j++) {
-                mcStress = MAX_MC * j / 10;
-                JibeDisutility disutilty = new JibeDisutility(mode,tt,mcAmbience,mcStress);
-                calc.network("jibe_" + i + "_" + j,ORIGIN,DESTINATION,veh,modeSpecificNetwork,modeSpecificNetwork,disutilty,tt,jibeAttr,true);
-
-            }
-        }
-
-        // Write results to CSV
-        TradsCsvWriter.write(selectedTrips,outputCsv,calc.getAllAttributeNames());
-
-        // Write results to one GPKG
-        logger.info("Writing results to gpkg file...");
-        TradsUniqueRouteWriter.write(selectedTrips, outputPrefix + ".gpkg");
-
-/*        // Also split into multiple GPKG files
-        HashMap<String, Set<Trip>> seperatedTrips = new HashMap<>();
+        // Precalculate origin/destination nodes for each trip
+        logger.info("Precalculating origin.destination nnoes");
         for(Trip trip : selectedTrips) {
-            String od = Stream.of(trip.getZone(ORIGIN),trip.getZone(DESTINATION)).sorted().reduce("_",String::concat);
-            seperatedTrips.computeIfAbsent(od,k -> new LinkedHashSet<>()).add(trip);
+            Node origNode = network.getNodes().get(NetworkUtils.getNearestLinkExactly(network, trip.getCoord(ORIGIN)).getToNode().getId());
+            Node destNode = network.getNodes().get(NetworkUtils.getNearestLinkExactly(network, trip.getCoord(DESTINATION)).getToNode().getId());
+            trip.setNodes(origNode,destNode);
         }
-        int j = 0;
-        for(Set<Trip> tripSet : seperatedTrips.values()) {
-            j++;
-            TradsUniqueRouteWriter.write(tripSet,inputEdgesGpkg,outputPrefix + "_" + j + ".gpkg");
+
+        // CALCULATOR
+        LogitDataCalculator calc = new LogitDataCalculator(selectedTrips);
+
+        // Test different combinations of values for gradient, vgvi/lighting, shannon, stress, jctStress (up to 10x distance each)
+        for(int mcStressLink = 0 ; mcStressLink <= 0.05 ; mcStressLink += 0.0005) {
+            JibeDisutility2 disutilty = new JibeDisutility2(mode,tt,0.067,0,mcStressLink,
+                    0,0,0,0);
+            calc.calculate(veh,network,disutilty,tt);
         }
-        logger.info("Wrote " + j + " route geopackages.");*/
+
+        // Aggregate to double arrays todo: this path
+
     }
 }
