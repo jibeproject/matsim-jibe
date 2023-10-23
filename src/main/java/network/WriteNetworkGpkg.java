@@ -214,7 +214,8 @@ public class WriteNetworkGpkg {
                 backwardLinks++;
                 ArrayUtils.reverse(coords);
             } else {
-                throw new RuntimeException("Edge " + edgeID + " doesn't match its from and to nodes!");
+                log.warn("ERROR! Edge " + edgeID + " doesn't match its from and to nodes! Skipping this link...");
+                continue;
             }
 
             // Length, travelTime, travelDisutility
@@ -223,8 +224,8 @@ public class WriteNetworkGpkg {
             double walkTime = ttWalk.getLinkTravelTime(link,0,null,null);
 
             // AADT
-            Double aadt = (Double) link.getAttributes().getAttribute("aadt");
-            Double aadtFwd = (Double) link.getAttributes().getAttribute("aadtFwd");
+            int aadt = (int) link.getAttributes().getAttribute("aadt");
+            int aadtFwd = (int) link.getAttributes().getAttribute("aadtFwd");
 
             // Reverse if not in forward direction
             if(!fwd) {

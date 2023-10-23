@@ -1,6 +1,7 @@
 package trip;
 
 import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Node;
 import routing.graph.TreeNode;
@@ -26,8 +27,8 @@ public class Trip {
     private final Map<String, Map<String,Object>> routeAttributes = new LinkedHashMap<>();
     private final Map<String,Integer> routePathIndices = new LinkedHashMap<>();
     private final List<Route> routes = new ArrayList<>();
-    private final List<List<Link>> routes2 = new ArrayList<>();
-    private Set<TreeNode> paths;
+    private final List<List<Id<Link>>> paths = new ArrayList<>();
+    private Set<TreeNode> pathTree;
 
     public Trip(String householdId, int personId, int tripId, int startTime,
                 String mainMode, Purpose startPurpose, Purpose endPurpose, Map<Place, String> zones, Map<Place,Coord> coords, Map<Place,Boolean> coordsInsideBoundary) {
@@ -88,16 +89,21 @@ public class Trip {
         routePathIndices.put(route,pathKey);
     }
 
-    public void addRoute(List<Link> newRoute) {
+    public void addPath(List<Id<Link>> newPath) {
 
-        for(List<Link> route : routes2) {
-            if(route.equals(newRoute)) {
+        for(List<Id<Link>> path : paths) {
+            if(path.equals(newPath)) {
                 return;
             }
         }
 
-        // Add new route if none found
-        routes2.add(newRoute);
+        // Add new path if none found
+        paths.add(newPath);
+    }
+
+    // Skips search for existing path
+    public void addPathFast(List<Id<Link>> newPath) {
+        paths.add(newPath);
     }
 
     public String getHouseholdId() {
@@ -162,14 +168,17 @@ public class Trip {
         return null;
     }
 
-    public Set<TreeNode> getPaths() {
-        return paths;
+    public Set<TreeNode> getPathTree() {
+        return pathTree;
     }
 
-    public void setPaths(Set<TreeNode> paths) {
-        this.paths = paths;
+    public void setPathTree(Set<TreeNode> paths) {
+        this.pathTree = paths;
     }
 
+    public List<List<Id<Link>>> getPaths() {
+        return this.paths;
+    }
     public Node getDestNode() {
         return destNode;
     }

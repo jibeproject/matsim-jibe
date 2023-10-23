@@ -105,7 +105,7 @@ public class TradsRouteWriter {
                         }
                     }
                 } else {
-                    Set<TreeNode> paths = trip.getPaths();
+                    Set<TreeNode> paths = trip.getPathTree();
                     for (TreeNode p : paths) {
                         pathCounter++;
                         String name = String.valueOf(pathCounter);

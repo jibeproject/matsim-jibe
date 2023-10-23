@@ -6,5 +6,6 @@
     <vehicleType id="truck">
         <length meter="15.0"/>
         <passengerCarEquivalents pce="2.5"/>
+        <networkMode networkMode="truck"/>
     </vehicleType>
 </vehicleDefinitions>

@@ -64,10 +64,10 @@ public class CreateMatsimNetworkRoad {
         edges.forEach((id,edge) -> addLinkToNetwork(id,edge,net,fac));
 
         // Add volumes from events file
-//        addSimulationVolumes(net);
+        addSimulationVolumes(net);
 
         // Write crossing attributes
-//        addCrossingAttributes(net);
+        addCrossingAttributes(net);
 
         // Identify disconnected links
         NetworkUtils2.identifyDisconnectedLinks(net,walk);
@@ -108,7 +108,6 @@ public class CreateMatsimNetworkRoad {
 
         if(origNodeId != destNodeId && !linkModes.equals("pt")) {
             String roadType = (String) edge.getAttribute("roadtyp");
-            String modalFilter = (String) edge.getAttribute("modalfl");
 
             Node origNode = net.getNodes().get(Id.createNodeId(origNodeId));
             Node destNode = net.getNodes().get(Id.createNodeId(destNodeId));
@@ -143,22 +142,13 @@ public class CreateMatsimNetworkRoad {
             l1.setFreespeed(freespeed);
             l2.setFreespeed(freespeed);
 
-            // Urban or rural todo: make primitive once Alan adds this attribute to the Melbourne network
-            Boolean urban = (Boolean) edge.getAttribute("urban");
-            if(urban == null) urban = false;
+            // Urban or rural
+            boolean urban = (boolean) edge.getAttribute("urban");
             l1.getAttributes().putAttribute("urban",urban);
             l2.getAttributes().putAttribute("urban",urban);
 
             // ALLOWED MODES
             Set<String> allowedModesOut = Sets.newHashSet(linkModes.split(","));
-
-            // Don't allow cars or trucks if there's a modal filter
-            if(!"all".equals(modalFilter)) {
-                allowedModesOut.remove(car);
-                allowedModesOut.remove(truck);
-            }
-
-            // Set allowed modes out
             l1.setAllowedModes(allowedModesOut);
 
             // Allowed modes return
@@ -196,7 +186,7 @@ public class CreateMatsimNetworkRoad {
             l1.getAttributes().putAttribute("allowsCarFwd", allowsCarOut);
             l2.getAttributes().putAttribute("allowsCarFwd", allowsCarRtn);
 
-            // Add AADT, width, and number of lanes attribute todo: eliminate these once we've calibrated MATSim runs
+            // Add old AADT from John Gulliver's model (Manchester only)
             Double aadt = (Double) edge.getAttribute("aadt_hgv_im");
             if(aadt != null) {
                 double aadtOut = 0.;
@@ -438,20 +428,31 @@ public class CreateMatsimNetworkRoad {
 
     private static void addSimulationVolumes(Network network) {
         log.info("Adding volumes from events...");
+        int scaleFactor = (int) (1 / Resources.instance.getDouble(Properties.MATSIM_TFGM_OUTPUT_SCALE_FACTOR));
+        log.info("Multiplying all volumes from events file by a factor of " + scaleFactor);
+
         EventsManager eventsManager = new EventsManagerImpl();
-        VolumeEventHandler volumeEventHandler = new VolumeEventHandler();
+        VolumeEventHandler volumeEventHandler = new VolumeEventHandler(Resources.instance.getString(Properties.MATSIM_TFGM_OUTPUT_VEHICLES));
         eventsManager.addHandler(volumeEventHandler);
-        EventsUtils.readEvents(eventsManager,"output_old/output_events.xml");
-        double scaleFactor =  Resources.instance.getDouble(Properties.MATSIM_TFGM_SCALE_FACTOR);
+        EventsUtils.readEvents(eventsManager,Resources.instance.getString(Properties.MATSIM_TFGM_OUTPUT_EVENTS));
+
+        // Print diagonstics
+        int carEvents = volumeEventHandler.getCarVolumes().values().stream().mapToInt(e -> e).sum();
+        int truckEvents = volumeEventHandler.getTruckVolumes().values().stream().mapToInt(e -> e).sum();
+        log.info("Identified " + carEvents + " car link enter events.");
+        log.info("Identified " + truckEvents + " truck link enter events.");
 
         // Add forward AADT
-        network.getLinks().forEach((id,link) -> link.getAttributes().putAttribute("aadtFwd",volumeEventHandler.getLinkVolumes().getOrDefault(id,0) / scaleFactor));
+        network.getLinks().forEach((id,link) -> link.getAttributes().putAttribute("aadtFwd",volumeEventHandler.getAdjVolumes().getOrDefault(id,0) * scaleFactor));
 
         // Add forward + opposing AADT
         for(Link link : network.getLinks().values()) {
-            Link oppositeLink = NetworkUtils.findLinkInOppositeDirection(link);
             int aadtFwd = (int) link.getAttributes().getAttribute("aadtFwd");
-            int aadtOpp = (int) oppositeLink.getAttributes().getAttribute("aadtFwd");
+            int aadtOpp = 0;
+            Link oppositeLink = NetworkUtils.findLinkInOppositeDirection(link);
+            if(oppositeLink != null) {
+                aadtOpp = (int) oppositeLink.getAttributes().getAttribute("aadtFwd");
+            }
             link.getAttributes().putAttribute("aadt",aadtFwd + aadtOpp);
         }
     }

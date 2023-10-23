@@ -216,7 +216,7 @@ public final class RouteCorridorCalculator {
                         String name = String.valueOf(i);
                         trip.setAttributes(name,results);
                     }
-                    trip.setPaths(paths);
+                    trip.setPathTree(paths);
                 }
             }
         }

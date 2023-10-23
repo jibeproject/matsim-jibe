@@ -1,6 +1,7 @@
 package trads.calculate;
 
 import org.apache.log4j.Logger;
+import org.matsim.api.core.v01.Identifiable;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.router.FastDijkstraFactory;
 import org.matsim.core.router.util.LeastCostPathCalculator;
@@ -14,6 +15,7 @@ import trip.Trip;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.stream.Collectors;
 
 public class LogitDataCalculator {
 
@@ -82,7 +84,7 @@ public class LogitDataCalculator {
 
                 this.counter.incCounter();
                 LeastCostPathCalculator.Path path = pathCalculator.calcLeastCostPath(trip.getOrigNode(), trip.getDestNode(), trip.getStartTime(), null, vehicle);
-                trip.addRoute(path.links);
+                trip.addPath(path.links.stream().map(Identifiable::getId).collect(Collectors.toList()));
             }
         }
     }

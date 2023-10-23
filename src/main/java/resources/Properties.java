@@ -19,8 +19,10 @@ public class Properties {
     public static final String MATSIM_TFGM_SCALE_FACTOR = "matsim.tfgm.scale.factor";
     public static final String MATSIM_TFGM_VEHICLES = "matsim.tfgm.vehicles";
     public static final String MATSIM_TFGM_PLANS = "matsim.tfgm.plans";
-    public static final String MATSIM_TFGM_EVENTS = "matsim.tfgm.events";
-    
+    public static final String MATSIM_TFGM_OUTPUT_EVENTS = "matsim.tfgm.output.events";
+    public static final String MATSIM_TFGM_OUTPUT_VEHICLES = "matsim.tfgm.output.vehicles";
+    public static final String MATSIM_TFGM_OUTPUT_SCALE_FACTOR = "matsim.tfgm.output.scale.factor";
+
     // Other properties
     public static final String NUMBER_OF_THREADS = "number.of.threads";
     public static final String MAX_BIKE_SPEED = "max.bike.speed";

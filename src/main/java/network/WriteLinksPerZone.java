@@ -9,6 +9,10 @@ import org.matsim.api.core.v01.network.Network;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.referencing.FactoryException;
 import resources.Resources;
+import routing.Gradient;
+import routing.disutility.components.JctStress;
+import routing.disutility.components.LinkAmbience;
+import routing.disutility.components.LinkStress;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,20 +46,28 @@ public class WriteLinksPerZone {
         Network network = NetworkUtils2.readModeSpecificNetwork(mode);
 
         // Get links per zone
-        Map<SimpleFeature, IdSet<Link>> linksPerZone = GisUtils.assignLinksToZones(features,network);
+        Map<SimpleFeature, IdSet<Link>> linksPerZone = GisUtils.calculateLinksIntersectingZones(features,network);
 
         // Create CSV
         PrintWriter out = ioUtils.openFileForSequentialWriting(new File(outputCsv), false);
         assert out != null;
 
         // Write header
-        out.println(idAttribute + SEP + "linkID");
+        out.println(idAttribute + SEP + "linkID" + SEP + "length" + SEP + "gradient" + SEP +
+                "vgvi" + SEP + "lighting" + SEP + "mStressLink" + SEP + "mStressJct");
 
         // Write rows
         for (Map.Entry<SimpleFeature, IdSet<Link>> entry : linksPerZone.entrySet()) {
             String zoneId = (String) entry.getKey().getAttribute(idAttribute);
             for(Id<Link> linkId : entry.getValue()) {
-                out.println(zoneId + SEP + linkId.toString());
+                Link link = network.getLinks().get(linkId);
+                out.println(zoneId + SEP + linkId.toString() + SEP +
+                        link.getLength() + SEP +
+                        Math.max(Gradient.getGradient(link),0.) + SEP +
+                        LinkAmbience.getVgviFactor(link) + SEP +
+                        LinkAmbience.getLightingFactor(link) + SEP +
+                        LinkStress.getStress(link,mode) + SEP +
+                        JctStress.getStress(link,mode));
             }
         }
         out.close();

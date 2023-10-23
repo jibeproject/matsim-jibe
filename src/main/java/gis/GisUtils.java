@@ -65,7 +65,7 @@ public class GisUtils {
 
     public static Map<SimpleFeature, IdSet<Node>> assignNodesToZones(Set<SimpleFeature> zones, Set<Id<Node>> nodeIds, Network network) {
         log.info("Assigning nodeIds to polygon features...");
-        SpatialIndex zonesQt = createZoneQuadtree(zones);
+        SpatialIndex zonesQt = createQuadtree(zones);
         Map<SimpleFeature, IdSet<Node>> nodesPerZone = new HashMap<>(zones.size());
         Counter counter = new Counter("Processing node "," / " + nodeIds.size());
         for (Id<Node> nodeId : nodeIds) {
@@ -85,7 +85,7 @@ public class GisUtils {
         Set<Id<Node>> candidates = NetworkUtils2.getNodesInBoundary(network,region);
 
         log.info("Assigning nodeIds to polygon features...");
-        SpatialIndex zonesQt = createZoneQuadtree(zones);
+        SpatialIndex zonesQt = createQuadtree(zones);
         IdSet<Node> nodes = new IdSet<>(Node.class);
         Counter counter = new Counter("Processing node "," / " + candidates.size());
         for (Id<Node> nodeId : candidates) {
@@ -106,7 +106,7 @@ public class GisUtils {
         Map<SimpleFeature,Integer> nodesInside = new HashMap<>();
 
         log.info("Assigning nodeIds to polygon features...");
-        SpatialIndex zonesQt = createZoneQuadtree(zones);
+        SpatialIndex zonesQt = createQuadtree(zones);
 
         Counter counter = new Counter("Processing node "," / " + candidates.size());
         for (Id<Node> nodeId : candidates) {
@@ -131,38 +131,40 @@ public class GisUtils {
         return results;
     }
 
-    public static Map<SimpleFeature, IdSet<Link>> assignLinksToZones(Set<SimpleFeature> zones, Network network) {
+    public static Map<SimpleFeature, IdSet<Link>> calculateLinksIntersectingZones(Set<SimpleFeature> zones, Network network) {
+        Map<Integer,SimpleFeature> edges = GpkgReader.readEdges();
         log.info("Assigning linkIds to polygon features...");
-        SpatialIndex zonesQt = createZoneQuadtree(zones);
+        SpatialIndex zonesQt = createQuadtree(new HashSet<>(zones));
         Map<SimpleFeature, IdSet<Link>> linksPerZone = new HashMap<>(zones.size());
-        Counter counter = new Counter("Processing link "," / " + network.getLinks().size());
+        Counter counter = new Counter("Processing link "," / " + network.getLinks().values().size());
+
         for (Link link : network.getLinks().values()) {
-            counter.incCounter();
-            Node fromNode = link.getFromNode();
-            Node toNode = link.getToNode();
-            SimpleFeature fromZone = findZone(fromNode.getCoord(),zonesQt);
-            SimpleFeature toZone = findZone(toNode.getCoord(),zonesQt);
-            if(fromZone != null) {
-                if(fromZone.equals(toZone)) {
-                    linksPerZone.computeIfAbsent(fromZone, k -> new IdSet<>(Link.class)).add(link.getId());
+            SimpleFeature edge = edges.get((int) link.getAttributes().getAttribute("edgeID"));
+            LineString line = (LineString) edge.getDefaultGeometry();
+            List elements = zonesQt.query(line.getEnvelopeInternal());
+            for(Object o : elements) {
+                SimpleFeature z = (SimpleFeature) o;
+                if(((Geometry) z.getDefaultGeometry()).intersects(line)) {
+                    linksPerZone.computeIfAbsent(z, k -> new IdSet<>(Link.class)).add(link.getId());
                 }
             }
+            counter.incCounter();
         }
         return Collections.unmodifiableMap(linksPerZone);
     }
 
-    private static SpatialIndex createZoneQuadtree(Set<SimpleFeature> zones) {
+    private static SpatialIndex createQuadtree(Set<SimpleFeature> features) {
         log.info("Creating spatial index");
         SpatialIndex zonesQt = new Quadtree();
-        Counter counter = new Counter("Indexing zone "," / " + zones.size());
-        for (SimpleFeature zone : zones) {
+        Counter counter = new Counter("Indexing zone "," / " + features.size());
+        for (SimpleFeature feature : features) {
             counter.incCounter();
-            Geometry geom = (Geometry) (zone.getDefaultGeometry());
+            Geometry geom = (Geometry) (feature.getDefaultGeometry());
             if(!geom.isEmpty()) {
-                Envelope envelope = ((Geometry) (zone.getDefaultGeometry())).getEnvelopeInternal();
-                zonesQt.insert(envelope, zone);
+                Envelope envelope = ((Geometry) (feature.getDefaultGeometry())).getEnvelopeInternal();
+                zonesQt.insert(envelope, feature);
             } else {
-                throw new RuntimeException("Null geometry for zone " + zone.getID());
+                throw new RuntimeException("Null geometry for zone " + feature.getID());
             }
         }
         return zonesQt;
