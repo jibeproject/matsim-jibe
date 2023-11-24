@@ -25,7 +25,6 @@ import routing.disutility.components.LinkStress;
 import routing.travelTime.WalkTravelTime;
 import trads.calculate.LogitDataCalculator;
 import trads.io.TradsReader;
-import trip.Purpose;
 import trip.Trip;
 
 import java.io.*;
@@ -168,7 +167,7 @@ public class RunMultiRouter {
                 "distance" + SEP + "travelTime" + SEP + "gradient" + SEP + "vgviLight" + SEP +
                 "stressLink" + SEP + "stressJct" + SEP + "links");
 
-        // Write routes
+        // Write routes todo: make part of disutility, otherwise we'll have problems...
         for(Trip trip : selectedTrips) {
             boolean day = trip.getStartTime() >= 21600 && trip.getStartTime() < 72000;
             int pathId = 0;
@@ -187,14 +186,14 @@ public class RunMultiRouter {
                     double linkTime = tt.getLinkTravelTime(link,trip.getStartTime(),null,veh);
                     distance += linkLength;
                     travelTime += linkTime;
-                    gradient += Math.max(Gradient.getGradient(link),0.) * linkLength;
+                    gradient += Math.max(Math.min(Gradient.getGradient(link),0.5),0.) * linkLength;
                     if(day) {
                         vgviLight += LinkAmbience.getVgviFactor(link) * linkLength;
                     } else {
                         vgviLight += LinkAmbience.getLightingFactor(link) * linkLength;
                     }
                     stressLink += LinkStress.getStress(link,mode) * linkLength;
-                    stressJct += JctStress.getStress(link,mode);
+                    stressJct += JctStress.getStress(link,mode) * (double) link.getAttributes().getAttribute("crossWidth");
                 }
                 links.deleteCharAt(links.length() - 1);
                 out.println(trip.getHouseholdId() + SEP + trip.getPersonId() + SEP + trip.getTripId() + SEP + pathId + SEP +

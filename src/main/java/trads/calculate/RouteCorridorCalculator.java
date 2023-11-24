@@ -197,7 +197,7 @@ public final class RouteCorridorCalculator {
                             negPOIs += (double) l.getAttributes().getAttribute("negPOIs");
                             crime += (double) l.getAttributes().getAttribute("crime");
                             linkStress += dist * LinkStress.getStress(l,trip.getMainMode());
-                            jctStress += JctStress.getStress(l,trip.getMainMode());
+                            jctStress += (double) l.getAttributes().getAttribute("crossWidth") * JctStress.getStress(l,trip.getMainMode());
                             curr = curr.parent;
                         }
 

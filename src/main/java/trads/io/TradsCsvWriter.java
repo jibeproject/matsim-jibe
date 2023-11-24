@@ -78,6 +78,7 @@ public class TradsCsvWriter {
                 append(SEP).append("DestinationWithinBoundary").
                 append(SEP).append("SameHomeAndDest").
                 append(SEP).append("SameOrigAndDest").
+//                append(SEP).append("SameMainAndDest").
                 append(SEP).append("OriginZone").
                 append(SEP).append("DestinationZone").
                 append(SEP).append("Route").
@@ -103,6 +104,7 @@ public class TradsCsvWriter {
                     append(SEP).append(trip.isWithinBoundary(DESTINATION)).
                     append(SEP).append(trip.match(HOME, DESTINATION)).
                     append(SEP).append(trip.match(ORIGIN, DESTINATION)).
+//                    append(SEP).append(trip.match(MAIN, DESTINATION)).
                     append(SEP).append(trip.getZone(ORIGIN)).
                     append(SEP).append(trip.getZone(DESTINATION)).
                     append(SEP).append(route).

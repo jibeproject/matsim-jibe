@@ -116,7 +116,8 @@ public class JibeDisutility2 implements TravelDisutility {
 
             // Junction stress factor
             double junctionStress = JctStress.getStress(link,mode);
-            disutility += mcStressJct * junctionStress;
+            double crossingWidth = (double) link.getAttributes().getAttribute("crossWidth");
+            disutility += mcStressJct * junctionStress * crossingWidth;
 
             // Check it's not NAN
             if(Double.isNaN(disutility)) {

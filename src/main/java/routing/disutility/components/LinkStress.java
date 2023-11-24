@@ -61,7 +61,7 @@ public class LinkStress {
 
                     double freightPoiFactor = getFreightPoiFactor(link);
 
-                    stress = intercept + speedFactor * speedLimit + aadtFactor * aadt + 0.1 * freightPoiFactor;
+                    stress = intercept + speedFactor * speedLimit + aadtFactor * aadt + 0.2 * freightPoiFactor;
 
                     if(stress < 0.) {
                         stress = 0;
