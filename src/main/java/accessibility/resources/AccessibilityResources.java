@@ -105,7 +105,7 @@ public class AccessibilityResources {
     }
 
     private synchronized double getMarginalCostOrDefault(String mode, String type) {
-        String value = properties.getProperty("mc." + "." + type);
+        String value = properties.getProperty("mc." + type);
         if(value != null) {
             return Double.parseDouble(value);
         } else {

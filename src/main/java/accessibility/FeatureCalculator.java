@@ -174,56 +174,51 @@ public class FeatureCalculator {
             double connectorMarginalCost = marginalDisutilities.get(linkId);
             double connectorMarginalTime = marginalTravelTimes.get(linkId);
 
-            Id<Node> finalConnectorNodeId = null;
-            Double finalConnectorLength = null;
-            Double finalConnectorCost = null;
-            Double finalConnectorTime = null;
-            double finalAccessibility = 0.;
+            Node nodeA = link.getFromNode();
+            Node nodeB = link.getToNode();
 
-            IdSet<Node> nodeIds = new IdSet<>(Node.class);
-            nodeIds.add(link.getFromNode().getId());
-            nodeIds.add(link.getToNode().getId());
+            double connectorLengthA = Math.max(0.,CoordUtils.calcProjectedEuclideanDistance(coord,nodeA.getCoord()) - zoneRadius);
+            double connectorLengthB = Math.max(0.,CoordUtils.calcProjectedEuclideanDistance(coord,nodeB.getCoord()) - zoneRadius);
 
-            for (Id<Node> nodeId : nodeIds) {
-                lcpTree.calculate(nodeId.index(),0.,stopCriterion,fwd);
-                double accessibility = 0.;
-                double connectorLength = Math.max(0.,CoordUtils.calcProjectedEuclideanDistance(coord,network.getNodes().get(nodeId).getCoord()) - zoneRadius);
-                double connectorCost = connectorMarginalCost * connectorLength;
-                double connectorTime = connectorMarginalTime * connectorLength;
+            double costA = connectorMarginalCost * connectorLengthA;
+            double costB = connectorMarginalCost * connectorLengthB;
 
-                for (Map.Entry<String, Double> destination : this.endWeights.entrySet()) {
-                    double cost = Double.MAX_VALUE;
-                    for (Id<Node> toNodeId : this.endNodes.get(destination.getKey())) {
-                        int toNodeIndex = toNodeId.index();
-                        double nodeDist = lcpTree.getDistance(toNodeIndex) + connectorLength;
-                        double nodeTime = lcpTree.getTime(toNodeIndex).orElse(Double.POSITIVE_INFINITY) + connectorTime;
-                        if(decayFunction.beyondCutoff(nodeDist, nodeTime)) {
-                            continue;
-                        }
-                        double nodeCost = lcpTree.getCost(toNodeIndex) + connectorCost;
-                        if (nodeCost < cost) {
-                            cost = nodeCost;
-                        }
+            double timeA = connectorMarginalTime * connectorLengthA;
+            double timeB = connectorMarginalTime * connectorLengthB;
+
+            lcpTree.calculate(
+                    nodeA.getId().index(),costA,timeA,connectorLengthA,
+                    nodeB.getId().index(),costB,timeB,connectorLengthB,
+                    0.,stopCriterion,fwd);
+
+            double accessibility = 0.;
+
+            for (Map.Entry<String, Double> endWeight : this.endWeights.entrySet()) {
+
+                double cost = Double.MAX_VALUE;
+
+                for (Id<Node> toNodeId : this.endNodes.get(endWeight.getKey())) {
+                    int toNodeIndex = toNodeId.index();
+                    double nodeDist = lcpTree.getDistance(toNodeIndex);
+                    double nodeTime = lcpTree.getTime(toNodeIndex).orElse(Double.POSITIVE_INFINITY);
+                    if(decayFunction.beyondCutoff(nodeDist, nodeTime)) {
+                        continue;
                     }
-                    if(cost != Double.MAX_VALUE) {
-                        double wt = destination.getValue();
-                        accessibility += decayFunction.getDecay(cost) * wt;
+                    double nodeCost = lcpTree.getCost(toNodeIndex);
+                    if (nodeCost < cost) {
+                        cost = nodeCost;
                     }
                 }
-                if (accessibility > finalAccessibility) {
-                    finalAccessibility = accessibility;
-                    finalConnectorNodeId = nodeId;
-                    finalConnectorLength = connectorLength;
-                    finalConnectorCost = connectorCost;
-                    finalConnectorTime = connectorTime;
+                if(cost != Double.MAX_VALUE) {
+                    accessibility += decayFunction.getDecay(cost) * endWeight.getValue();
                 }
             }
 
-            feature.setAttribute("accessibility", finalAccessibility);
-            feature.setAttribute("connector_node", finalConnectorNodeId != null ? Integer.parseInt(finalConnectorNodeId.toString()) : null);
-            feature.setAttribute("connector_dist", finalConnectorLength);
-            feature.setAttribute("connector_cost", finalConnectorCost);
-            feature.setAttribute("connector_time", finalConnectorTime);
+            feature.setAttribute("accessibility",accessibility);
+            feature.setAttribute("nodeA",nodeA.getId().toString());
+            feature.setAttribute("costA",costA);
+            feature.setAttribute("nodeB",nodeB.getId().toString());
+            feature.setAttribute("costB",costB);
         }
     }
 }

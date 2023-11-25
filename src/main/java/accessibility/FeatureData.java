@@ -62,10 +62,10 @@ public class FeatureData {
         if(polygons) {
             builder.add("nodes_within",Integer.class);
         }
-        builder.add("connector_node",Integer.class);
-        builder.add("connector_dist",Double.class);
-        builder.add("connector_cost",Double.class);
-        builder.add("connector_time",Double.class);
+        builder.add("nodeA",String.class);
+        builder.add("nodeB",String.class);
+        builder.add("costA",Double.class);
+        builder.add("costB",Double.class);
         builder.add("accessibility",Double.class);
         builder.add("normalised",Double.class);
         SimpleFeatureType newSchema = builder.buildFeatureType();

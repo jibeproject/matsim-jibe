@@ -40,8 +40,6 @@ public class LeastCostPathTree3 {
 
     public void calculate(int startNode, double startTime, StopCriterion stopCriterion, boolean fwd) {
 
-        SpeedyGraph.LinkIterator LI = fwd ? this.outLI : this.inLI;
-
         Arrays.fill(this.data, Double.POSITIVE_INFINITY);
         Arrays.fill(this.comingFrom, -1);
 
@@ -50,6 +48,33 @@ public class LeastCostPathTree3 {
         this.pq.clear();
         this.pq.insert(startNode);
 
+        fillTree(startTime, stopCriterion, fwd);
+    }
+
+    public void calculate(int startNode1, double cost1, double time1, double dist1,
+                           int startNode2, double cost2, double time2, double dist2,
+                           double startTime, StopCriterion stopCriterion, boolean fwd) {
+
+        Arrays.fill(this.data, Double.POSITIVE_INFINITY);
+        Arrays.fill(this.comingFrom, -1);
+
+        setData(startNode1,cost1,time1,dist1);
+        setData(startNode2,cost2,time2,dist2);
+
+        this.pq.clear();
+        if (cost1 < cost2) {
+            this.pq.insert(startNode1);
+            this.pq.insert(startNode2);
+        } else {
+            this.pq.insert(startNode2);
+            this.pq.insert(startNode1);
+        }
+
+        fillTree(startTime, stopCriterion, fwd);
+    }
+
+    private void fillTree(double startTime, StopCriterion stopCriterion, boolean fwd) {
+        SpeedyGraph.LinkIterator LI = fwd ? this.outLI : this.inLI;
         while (!this.pq.isEmpty()) {
             final int nodeIdx = this.pq.poll();
             OptionalTime currOptionalTime = getTime(nodeIdx);
@@ -62,6 +87,7 @@ public class LeastCostPathTree3 {
             }
 
             LI.reset(nodeIdx);
+
             while (LI.next()) {
                 int linkIdx = LI.getLinkIndex();
                 Link link = this.graph.getLink(linkIdx);

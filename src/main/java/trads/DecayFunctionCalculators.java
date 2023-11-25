@@ -1,5 +1,6 @@
 package trads;
 
+import org.apache.commons.math3.stat.regression.SimpleRegression;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.network.Network;
@@ -22,9 +23,9 @@ import java.util.stream.Stream;
 import static trip.Place.DESTINATION;
 import static trip.Place.ORIGIN;
 
-public class PercentileCalculator {
+public class DecayFunctionCalculators {
 
-    private final static Logger logger = Logger.getLogger(PercentileCalculator.class);
+    private final static Logger logger = Logger.getLogger(DecayFunctionCalculators.class);
     private static Set<Trip> trips;
 
     public static double estimateBeta(String mode, Vehicle vehicle, TravelTime travelTime, TravelDisutility travelDisutility,
@@ -34,9 +35,50 @@ public class PercentileCalculator {
         double percentile = Resources.instance.getDouble(Properties.DECAY_PERCENTILE);
         logger.info("Calculating " + percentile + " percentile cost based on TRADS trips");
 
-        // Read trips
+        Set<Trip> validTrips = getAndRouteTrips(mode, vehicle, travelTime, travelDisutility, purposePairs, network, xy2lNetwork, boundary, outputCsvPath);
+
+        // Get sorted array of costs
+        double[] costs = validTrips.stream().mapToDouble(t -> (double) t.getAttribute("pc", "cost")).sorted().toArray();
+
+        // Calculate percentile
+        double percentileValue = getPercentile(costs,percentile);
+        logger.info("Value at percentile " + percentile + " = " + percentileValue);
+
+        // Calculate beta parameter
+        double beta = getExponentialBetaParameter(percentileValue,percentile);
+        logger.info("Beta parameter = " + beta);
+
+        return beta;
+    }
+
+    public static double estimateLinReg(String mode, Vehicle vehicle, TravelTime travelTime, TravelDisutility travelDisutility,
+                                        Purpose.PairList purposePairs, Network network, Network xy2lNetwork,
+                                        Geometry boundary, String outputCsvPath) throws IOException {
+
+        logger.info("Calculating cost-distance regression based on TRADS trips");
+        Set<Trip> validTrips = getAndRouteTrips(mode, vehicle, travelTime, travelDisutility, purposePairs, network, xy2lNetwork, boundary, outputCsvPath);
+
+        SimpleRegression r = new SimpleRegression(false);
+
+        validTrips.forEach(t -> r.addData((double) t.getAttribute("pc", "dist"), (double) t.getAttribute("pc", "cost")));
+
+        double intercept = r.getIntercept();
+        double slope = r.getSlope();
+        logger.info("Intercept = " + intercept); // should always be 0...
+        logger.info("Slope = " + slope);
+
+        return slope;
+    }
+
+    private static Set<Trip> getAndRouteTrips(String mode, Vehicle vehicle, TravelTime travelTime, TravelDisutility travelDisutility,
+                                               Purpose.PairList purposePairs, Network network, Network xy2lNetwork,
+                                               Geometry boundary, String outputCsvPath) throws IOException {
+        // Read non-commute trips
         if(trips == null) {
-            trips = TradsReader.readTrips(boundary);
+            trips = TradsReader.readTrips(boundary).stream()
+                    .filter(t -> !((t.getEndPurpose().isMandatory() && t.getStartPurpose().equals(Purpose.HOME)) ||
+                            (t.getStartPurpose().isMandatory() && t.getEndPurpose().equals(Purpose.HOME))))
+                    .collect(Collectors.toSet());
         }
 
         // Filter to trips meeting criteria
@@ -57,7 +99,7 @@ public class PercentileCalculator {
                 builder.append("\n").append("  END: ").append(pair.getEndPurpose().toString());
             }
         } else {
-            builder.append("(ALL)");
+            builder.append("(ALL NON-COMMUTE ").append(mode.toUpperCase()).append(" TRIPS)");
         }
         logger.info(builder.toString());
 
@@ -65,23 +107,12 @@ public class PercentileCalculator {
         RouteIndicatorCalculator calc = new RouteIndicatorCalculator(validTrips);
         calc.network("pc",ORIGIN,DESTINATION,vehicle,network,xy2lNetwork,travelDisutility,travelTime,null,false);
 
-        // Get sorted array of costs
-        double[] costs = validTrips.stream().mapToDouble(t -> (double) t.getAttribute("pc", "cost")).sorted().toArray();
-
         // Write outputs
         if(outputCsvPath != null) {
             TradsCsvWriter.write(validTrips,outputCsvPath,calc.getAllAttributeNames());
         }
 
-        // Calculate percentile
-        double percentileValue = getPercentile(costs,percentile);
-        logger.info("Value at percentile " + percentile + " = " + percentileValue);
-
-        // Calculate beta parameter
-        double beta = getExponentialBetaParameter(percentileValue,percentile);
-        logger.info("Beta parameter = " + beta);
-
-        return beta;
+        return validTrips;
     }
 
     private static double getPercentile(double[] x, double percentile) {

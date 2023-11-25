@@ -405,7 +405,7 @@ public class CreateMatsimNetworkRoad {
                             .mapToDouble(Link::getNumberOfLanes)
                             .sum();
                     crossAadt = crossingLinks.stream()
-                            .mapToDouble(l -> (double) l.getAttributes().getAttribute("aadtFwd"))
+                            .mapToInt(l -> (int) l.getAttributes().getAttribute("aadtFwd"))
                             .sum();
                     crossSpeedLimit = crossingLinks.stream()
                             .mapToInt(l -> (int) l.getAttributes().getAttribute("speedLimitMPH"))

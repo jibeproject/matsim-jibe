@@ -38,7 +38,7 @@ public class RunMultiRouter {
 
     private final static Logger logger = Logger.getLogger(RunMultiRouter.class);
 
-    private final static int SAMPLES = 500;
+    private final static int SAMPLES = 2000;
 
     private final static String SEP = ",";
 
@@ -122,9 +122,9 @@ public class RunMultiRouter {
         // GENERATE RANDOM NUMBERS AND WRITE SAMPLES
         logger.info("Randomly sampling " + SAMPLES + " sets of marginal cost values.");
         double[] mcGradient = random.doubles(SAMPLES,0,0.1).toArray();
-        double[] mcVgviLight = random.doubles(SAMPLES,0,0.02).toArray();
-        double[] mcStressLink = random.doubles(SAMPLES,0,0.02).toArray();
-        double[] mcStressJct = random.doubles(SAMPLES,0,0.02).toArray();
+        double[] mcVgviLight = random.doubles(SAMPLES,0,0.05).toArray();
+        double[] mcStressLink = random.doubles(SAMPLES,0,0.05).toArray();
+        double[] mcStressJct = random.doubles(SAMPLES,0,0.05).toArray();
         int[] newPathCount = new int[SAMPLES];
 
         // ESTIMATE PATHS

@@ -1,16 +1,15 @@
 package accessibility.decay;
 
-import accessibility.RunIntervention;
 import accessibility.resources.AccessibilityProperties;
 import accessibility.resources.AccessibilityResources;
-import network.NetworkUtils2;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
-import trads.PercentileCalculator;
+import routing.disutility.DistanceDisutility;
+import trads.DecayFunctionCalculators;
 import trip.Purpose;
 
 import java.io.IOException;
@@ -78,6 +77,19 @@ public class DecayFunctions {
         } else if (decayType.equalsIgnoreCase("cumulative gaussian")) {
             double a = AccessibilityResources.instance.getDouble(AccessibilityProperties.A);
             double v = AccessibilityResources.instance.getDouble(AccessibilityProperties.V);
+            double acceptableDist = AccessibilityResources.instance.getDouble(AccessibilityProperties.ACCEPTABLE_DIST);
+            double decayDist = AccessibilityResources.instance.getDouble(AccessibilityProperties.DECAY_DIST);
+            double decayValue = AccessibilityResources.instance.getDouble(AccessibilityProperties.DECAY_VALUE);
+            if(Double.isNaN(a) || Double.isNaN(v)) {
+                log.info("No a and v parameters given for cumulative gaussian decay. Estimating using given parameters...");
+                if(Double.isNaN(acceptableDist) || Double.isNaN(decayDist) || Double.isNaN(decayValue)) {
+                    throw new RuntimeException("Parameters acceptable.dist, decay.dist, and decay.value must all be specified!");
+                } else {
+                    double[] params = estimateCumGaussFromTRADS(network, networkBoundary, acceptableDist,decayDist, decayValue);
+                    a = params[0];
+                    v = params[1];
+                }
+            }
             log.info("Initialising cumulative gaussian decay function with the following parameters:" +
                     "\na: " + a +
                     "\nv: " + v +
@@ -100,8 +112,30 @@ public class DecayFunctions {
 
         log.info("Estimating exponential decay function using TRADS survey");
         String outputCsv = AccessibilityResources.instance.getString(AccessibilityProperties.TRADS_OUTPUT_CSV);
-        return PercentileCalculator.estimateBeta(mode,veh,tt,td,includedPurposePairs,
+        return DecayFunctionCalculators.estimateBeta(mode,veh,tt,td,includedPurposePairs,
                 network,network,networkBoundary,outputCsv);
+    }
+
+    // todo: (1) test with distance to make sure values match the paper. (2) Test with cost & run...
+    public static double[] estimateCumGaussFromTRADS(Network network, Geometry networkBoundary, double dist0, double dist1, double val1) throws IOException {
+
+        String mode = AccessibilityResources.instance.getMode();
+        TravelTime tt = AccessibilityResources.instance.getTravelTime();
+        Vehicle veh = AccessibilityResources.instance.getVehicle();
+        TravelDisutility td = AccessibilityResources.instance.getTravelDisutility();
+        Purpose.PairList includedPurposePairs = AccessibilityResources.instance.getPurposePairs();
+        String outputCsv = AccessibilityResources.instance.getString(AccessibilityProperties.TRADS_OUTPUT_CSV);
+
+        double m = 1;
+        if(!(td instanceof DistanceDisutility)) {
+            log.info("Non-distance disutility specified. Estimating distutility to distance using records in TRADS survey");
+            m = DecayFunctionCalculators.estimateLinReg(mode,veh,tt,td,includedPurposePairs,network,network,networkBoundary,outputCsv);
+        }
+
+        double a = dist0*m;
+        double v = -1 * Math.pow((dist1 - dist0) * m,2) / Math.log(val1);
+
+        return new double[] {a,v};
     }
 
 }

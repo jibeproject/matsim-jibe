@@ -11,9 +11,16 @@ public class AccessibilityProperties {
     public static final String DECAY_FUNCTION = "decay.function";
     public static final String CUTOFF_DISTANCE = "cutoff.distance";
     public static final String CUTOFF_TIME = "cutoff.time";
+
+    // Exponential
     public static final String BETA = "beta";
+
+    // Cumulative gaussian
     public static final String V = "v";
     public static final String A = "a";
+    public static final String ACCEPTABLE_DIST = "acceptable.dist";
+    public static final String DECAY_DIST = "decay.dist";
+    public static final String DECAY_VALUE = "decay.value";
 
     // For accessibility analysis
     public static final String INPUT = "input";

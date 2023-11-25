@@ -123,8 +123,7 @@ public final class NodeCalculator {
                         }
                     }
                     if(cost != Double.MAX_VALUE) {
-                        double wt = endWeight.getValue();
-                        accessibility += decayFunction.getDecay(cost) * wt;
+                        accessibility += decayFunction.getDecay(cost) * endWeight.getValue();
                     }
                 }
                 this.accessibilityData.put(fromNodeId,accessibility);
