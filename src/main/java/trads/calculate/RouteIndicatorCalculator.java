@@ -75,7 +75,7 @@ public class RouteIndicatorCalculator {
             LeastCostPathCalculator dijkstra = new FastDijkstraFactory(false).
                     createPathCalculator(network, travelDisutility, travelTime);
             NetworkIndicatorCalculator worker = new NetworkIndicatorCalculator(odPairsQueue, counter, route,
-                    origin, destination, vehicle, network, xy2lNetwork, dijkstra, travelDisutility, additionalAttributes, savePath);
+                    origin, destination, vehicle, network, xy2lNetwork, dijkstra, travelDisutility, travelTime, additionalAttributes, savePath);
             threads[i] = new Thread(worker, "NetworkCalculator-" + route + "-" + i);
             threads[i].start();
         }

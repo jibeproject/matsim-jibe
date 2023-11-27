@@ -1,5 +1,6 @@
 package trads.calculate;
 
+import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.utils.misc.Counter;
 import routing.TravelAttribute;
 import trip.Place;
@@ -31,6 +32,8 @@ public class NetworkIndicatorCalculator implements Runnable {
     private final LeastCostPathCalculator pathCalculator;
 
     private final TravelDisutility travelDisutility;
+    private final TravelTime travelTime;
+
     private final Network routingNetwork;
     private final Network xy2lNetwork;
     private final LinkedHashMap<String, TravelAttribute> additionalAttributes;
@@ -39,7 +42,7 @@ public class NetworkIndicatorCalculator implements Runnable {
     public NetworkIndicatorCalculator(ConcurrentLinkedQueue<Trip> trips, Counter counter, String route,
                                       Place origin, Place destination, Vehicle vehicle,
                                       Network routingNetwork, Network xy2lNetwork,
-                                      LeastCostPathCalculator pathCalculator, TravelDisutility travelDisutility,
+                                      LeastCostPathCalculator pathCalculator, TravelDisutility travelDisutility, TravelTime travelTime,
                                       LinkedHashMap<String, TravelAttribute> additionalAttributes, boolean savePath) {
         this.trips = trips;
         this.counter = counter;
@@ -51,6 +54,7 @@ public class NetworkIndicatorCalculator implements Runnable {
         this.xy2lNetwork = xy2lNetwork;
         this.pathCalculator = pathCalculator;
         this.travelDisutility = travelDisutility;
+        this.travelTime = travelTime;
         this.additionalAttributes = additionalAttributes;
         this.savePath = savePath;
     }
@@ -101,7 +105,7 @@ public class NetworkIndicatorCalculator implements Runnable {
                         String name = e.getKey();
                         Double result;
                         try {
-                            result = path.links.stream().mapToDouble(l -> e.getValue().getTravelAttribute(l,travelDisutility)).sum();
+                            result = path.links.stream().mapToDouble(l -> e.getValue().getTravelAttribute(l,travelDisutility,travelTime)).sum();
                         } catch (ClassCastException exception) {
                             result = null;
                         }

@@ -80,7 +80,7 @@ public class JibeDisutility2 implements TravelDisutility {
         }
     }
 
-    public double calculateDisutility(Link link, boolean day, Person person, Vehicle vehicle) {
+    private double calculateDisutility(Link link, boolean day, Person person, Vehicle vehicle) {
 
         if(link.getAllowedModes().contains(this.mode)) {
 

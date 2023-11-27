@@ -18,6 +18,7 @@ import org.matsim.vehicles.Vehicle;
 import resources.Resources;
 
 import org.apache.log4j.Logger;
+import routing.disutility.JibeDisutility4;
 
 import java.io.IOException;
 import java.util.Map;
@@ -73,6 +74,12 @@ public class RunAnalysis {
         TravelTime tt = AccessibilityResources.instance.getTravelTime();
         Vehicle veh = AccessibilityResources.instance.getVehicle();
         TravelDisutility td = AccessibilityResources.instance.getTravelDisutility();
+
+        if(td instanceof JibeDisutility4) {
+            ((JibeDisutility4) td).setNetwork(network);
+            ((JibeDisutility4) td).setVehicle(veh);
+            ((JibeDisutility4) td).precalculateDisutility();
+        }
 
         // Inputs/outputs
         String endLocationsFilename = AccessibilityResources.instance.getString(AccessibilityProperties.END_LOCATIONS);

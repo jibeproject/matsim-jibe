@@ -1,7 +1,7 @@
 package network;
 
 import com.google.common.collect.Sets;
-import demand.volumes.VolumeEventHandler;
+import demand.volumes.DailyVolumeEventHandler;
 import gis.GpkgReader;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Point;
@@ -432,18 +432,18 @@ public class CreateMatsimNetworkRoad {
         log.info("Multiplying all volumes from events file by a factor of " + scaleFactor);
 
         EventsManager eventsManager = new EventsManagerImpl();
-        VolumeEventHandler volumeEventHandler = new VolumeEventHandler(Resources.instance.getString(Properties.MATSIM_TFGM_OUTPUT_VEHICLES));
-        eventsManager.addHandler(volumeEventHandler);
+        DailyVolumeEventHandler dailyVolumeEventHandler = new DailyVolumeEventHandler(Resources.instance.getString(Properties.MATSIM_TFGM_OUTPUT_VEHICLES));
+        eventsManager.addHandler(dailyVolumeEventHandler);
         EventsUtils.readEvents(eventsManager,Resources.instance.getString(Properties.MATSIM_TFGM_OUTPUT_EVENTS));
 
         // Print diagonstics
-        int carEvents = volumeEventHandler.getCarVolumes().values().stream().mapToInt(e -> e).sum();
-        int truckEvents = volumeEventHandler.getTruckVolumes().values().stream().mapToInt(e -> e).sum();
+        int carEvents = dailyVolumeEventHandler.getCarVolumes().values().stream().mapToInt(e -> e).sum();
+        int truckEvents = dailyVolumeEventHandler.getTruckVolumes().values().stream().mapToInt(e -> e).sum();
         log.info("Identified " + carEvents + " car link enter events.");
         log.info("Identified " + truckEvents + " truck link enter events.");
 
         // Add forward AADT
-        network.getLinks().forEach((id,link) -> link.getAttributes().putAttribute("aadtFwd",volumeEventHandler.getAdjVolumes().getOrDefault(id,0) * scaleFactor));
+        network.getLinks().forEach((id,link) -> link.getAttributes().putAttribute("aadtFwd", dailyVolumeEventHandler.getAdjVolumes().getOrDefault(id,0) * scaleFactor));
 
         // Add forward + opposing AADT
         for(Link link : network.getLinks().values()) {

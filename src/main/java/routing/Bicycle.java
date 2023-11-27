@@ -1,6 +1,7 @@
 package routing;
 
 import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.network.Network;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
@@ -11,10 +12,11 @@ import org.matsim.vehicles.VehicleUtils;
 import resources.Properties;
 import resources.Resources;
 import routing.travelTime.BicycleTravelTime;
+import routing.travelTime.BicycleTravelTimeFast;
 import routing.travelTime.speed.BicycleLinkSpeedCalculatorDefaultImpl;
 
 public class Bicycle {
-
+    private final BicycleLinkSpeedCalculatorDefaultImpl linkSpeedCalculator;
     private final TravelTime travelTime;
     private final Vehicle vehicle;
 
@@ -35,8 +37,8 @@ public class Bicycle {
         type.setMaximumVelocity(maxBikeSpeed);
         vehicle = VehicleUtils.createVehicle(Id.createVehicleId(1), type);
 
-        // Setup travel time
-        BicycleLinkSpeedCalculatorDefaultImpl linkSpeedCalculator = new BicycleLinkSpeedCalculatorDefaultImpl((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME));
+        // Setup link speed calculator
+        this.linkSpeedCalculator = new BicycleLinkSpeedCalculatorDefaultImpl((BicycleConfigGroup) config.getModules().get(BicycleConfigGroup.GROUP_NAME));
         travelTime = new BicycleTravelTime(linkSpeedCalculator);
     }
 
@@ -46,6 +48,10 @@ public class Bicycle {
 
     public TravelTime getTravelTime() {
         return this.travelTime;
+    }
+
+    public TravelTime getTravelTimeFast(Network network, Vehicle vehicle) {
+        return new BicycleTravelTimeFast(linkSpeedCalculator, network, vehicle);
     }
 
 }

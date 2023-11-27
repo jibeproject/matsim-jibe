@@ -10,7 +10,7 @@ import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 import routing.Bicycle;
 import routing.disutility.DistanceDisutility;
-import routing.disutility.JibeDisutility;
+import routing.disutility.JibeDisutility4;
 import routing.travelTime.WalkTravelTime;
 import trip.Purpose;
 
@@ -25,14 +25,12 @@ public class AccessibilityResources {
     public static AccessibilityResources instance;
     private final Properties properties;
     private final Path baseDirectory;
-
     private Config config;
     private String mode;
     private Vehicle veh;
     private TravelTime tt;
     private TravelDisutility td;
-
-
+    private Boolean fwd;
 
     public AccessibilityResources(Properties properties, String baseDirectory) {
         this.properties = properties;
@@ -74,6 +72,10 @@ public class AccessibilityResources {
                 default:
                     throw new RuntimeException("Mode " + instance.mode + " not supported for accessibility calculations!");
             }
+
+            // Direction
+            instance.fwd = Boolean.parseBoolean(properties.getProperty(AccessibilityProperties.FORWARD));
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -81,6 +83,7 @@ public class AccessibilityResources {
 
     private void setActiveDisutility() {
         String type = properties.getProperty(AccessibilityProperties.IMPEDANCE);
+        boolean dayOverride = false;
         switch(type) {
             case "shortest":
             case "short":
@@ -90,14 +93,14 @@ public class AccessibilityResources {
             case "fast":
                 td = new OnlyTimeDependentTravelDisutility(tt);
                 break;
-            case "jibe":
-                double mcTime = getMarginalCostOrDefault(mode, resources.Properties.TIME);
-                double mcDist = getMarginalCostOrDefault(mode, resources.Properties.DISTANCE);
+            case "jibe_day":
+                dayOverride = true;
+            case "jibe_night":
                 double mcGrad = getMarginalCostOrDefault(mode, resources.Properties.GRADIENT);
                 double mcComfort = getMarginalCostOrDefault(mode, resources.Properties.COMFORT);
                 double mcAmbience = getMarginalCostOrDefault(mode, resources.Properties.AMBIENCE);
                 double mcStress = getMarginalCostOrDefault(mode, resources.Properties.STRESS);
-                td = new JibeDisutility(mode,tt,mcTime,mcDist,mcGrad,mcComfort,mcAmbience,mcStress);
+                td = new JibeDisutility4(mode,tt,dayOverride,mcGrad,mcComfort,mcAmbience,mcStress);
                 break;
             default:
                 throw new RuntimeException("Disutility type " + type + " not recognised for mode " + mode);
@@ -117,7 +120,7 @@ public class AccessibilityResources {
         return this.mode;
     }
 
-    public synchronized boolean fwdCalculation() { return Boolean.parseBoolean(AccessibilityProperties.FORWARD); }
+    public synchronized boolean fwdCalculation() { return this.fwd; }
 
     public synchronized Vehicle getVehicle() {
         return this.veh;

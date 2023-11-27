@@ -101,7 +101,7 @@ public class LeastCostPathTree2 {
                         pq.decreaseKey(toNode, newCost);
                         setData(toNode, newCost, newTime, currDistance + link.getLength(), newLinksUsed);
                         for(int i = 0 ; i < attributeCount ; i++) {
-                            double newAttr = currAttr[i] + this.ta[i].getTravelAttribute(link,td);
+                            double newAttr = currAttr[i] + this.ta[i].getTravelAttribute(link,td,tt);
                             setAttribute(toNode, i, newAttr);
                         }
                         this.comingFromNode[toNode] = nodeIdx;
@@ -110,7 +110,7 @@ public class LeastCostPathTree2 {
                 } else {
                     setData(toNode, newCost, newTime, currDistance + link.getLength(), newLinksUsed);
                     for(int i = 0 ; i < attributeCount ; i++) {
-                        double newAttr = currAttr[i] + this.ta[i].getTravelAttribute(link,td);
+                        double newAttr = currAttr[i] + this.ta[i].getTravelAttribute(link,td,tt);
                         setAttribute(toNode, i, newAttr);
                     }
                     pq.insert(toNode);
