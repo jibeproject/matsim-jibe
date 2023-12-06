@@ -5,6 +5,8 @@ public class AccessibilityProperties {
     public static final String MODE = "mode";
     public static final String IMPEDANCE = "disutility";
     public static final String END_LOCATIONS = "end.coords";
+    public static final String END_DESCRIPTION = "end.description";
+    public static final String END_ALPHA = "end.alpha";
     public static final String FORWARD = "forward"; // todo: check this works
 
     // Related to decay function
@@ -24,7 +26,7 @@ public class AccessibilityProperties {
 
     // For accessibility analysis
     public static final String INPUT = "input";
-    public static final String OUTPUT = "output";
+    public static final String OUTPUT_FEATURES = "output";
     public static final String OUTPUT_NODES = "output.nodes";
 
     // For Intervention

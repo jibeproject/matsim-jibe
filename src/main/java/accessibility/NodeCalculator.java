@@ -17,8 +17,7 @@ import org.matsim.core.utils.misc.Counter;
 import org.matsim.vehicles.Vehicle;
 import resources.Properties;
 import resources.Resources;
-import routing.graph.LeastCostPathTree3;
-import routing.graph.SpeedyGraph;
+import routing.graph.*;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,16 +32,16 @@ public final class NodeCalculator {
 
     private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
 
-    public static Map<Id<Node>,Double> calculate(Network routingNetwork, Set<Id<Node>> startNodes,
-                                                 Map<String, IdSet<Node>> endNodes, Map<String, Double> endWeights,
-                                                 boolean fwd, TravelTime travelTime, TravelDisutility travelDisutility,
+    public static Map<Id<Node>,double[]> calculate(Network routingNetwork, Set<Id<Node>> startNodes,
+                                                 List<LocationData> endData,
+                                                 Boolean fwd, TravelTime travelTime, TravelDisutility travelDisutility,
                                                  Vehicle vehicle, DecayFunction decayFunction) {
 
         int numberOfThreads = Resources.instance.getInt(Properties.NUMBER_OF_THREADS);
         SpeedyGraph routingGraph = new SpeedyGraph(routingNetwork,travelTime,travelDisutility,PERSON,vehicle);
 
         // prepare calculation
-        ConcurrentHashMap<Id<Node>,Double> accessibilityResults = new ConcurrentHashMap<>(startNodes.size());
+        ConcurrentHashMap<Id<Node>,double[]> accessibilityResults = new ConcurrentHashMap<>(startNodes.size());
 
         // do calculation
         ConcurrentLinkedQueue<Id<Node>> startNodesQueue = new ConcurrentLinkedQueue<>(startNodes);
@@ -50,7 +49,7 @@ public final class NodeCalculator {
         Counter counter = new Counter("Calculating accessibility node ", " / " + startNodes.size());
         Thread[] threads = new Thread[numberOfThreads];
         for (int i = 0; i < numberOfThreads; i++) {
-            NodeWorker worker = new NodeWorker(startNodesQueue, endNodes, endWeights, fwd,
+            NodeWorker worker = new NodeWorker(startNodesQueue, endData, fwd,
                     routingGraph, accessibilityResults, decayFunction, counter);
             threads[i] = new Thread(worker, "Accessibility-" + i);
             threads[i].start();
@@ -70,20 +69,18 @@ public final class NodeCalculator {
 
     private static class NodeWorker implements Runnable {
         private final ConcurrentLinkedQueue<Id<Node>> startNodes;
-        private final Map<String, IdSet<Node>> endNodes;
-        private final Map<String, Double> endWeights;
-        private final boolean fwd;
+        private final List<LocationData> endDataList;
+        private final Boolean fwd;
         private final SpeedyGraph graph;
-        private final ConcurrentHashMap<Id<Node>,Double> accessibilityData;
+        private final ConcurrentHashMap<Id<Node>,double[]> accessibilityData;
         private final DecayFunction decayFunction;
         private final Counter counter;
 
-        NodeWorker(ConcurrentLinkedQueue<Id<Node>> startNodes, Map<String, IdSet<Node>> endNodes, Map<String, Double> endWeights,
-                   boolean fwd, SpeedyGraph graph, ConcurrentHashMap<Id<Node>,Double> results,
+        NodeWorker(ConcurrentLinkedQueue<Id<Node>> startNodes, List<LocationData> endDataList,
+                   Boolean fwd, SpeedyGraph graph, ConcurrentHashMap<Id<Node>,double[]> results,
                    DecayFunction decayFunction, Counter counter) {
             this.startNodes = startNodes;
-            this.endNodes = endNodes;
-            this.endWeights = endWeights;
+            this.endDataList = endDataList;
             this.fwd = fwd;
             this.graph = graph;
             this.accessibilityData = results;
@@ -92,8 +89,13 @@ public final class NodeCalculator {
         }
 
         public void run() {
-            LeastCostPathTree3 lcpTree = new LeastCostPathTree3(this.graph);
-            LeastCostPathTree3.StopCriterion stopCriterion = decayFunction.getTreeStopCriterion();
+            PathTree lcpTree;
+            if(fwd != null) {
+                lcpTree = new LcpTree1Way(this.graph,fwd);
+            } else {
+                lcpTree = new LcpTree2Way(this.graph);
+            }
+            StopCriterion stopCriterion = decayFunction.getTreeStopCriterion();
 
             while (true) {
                 Id<Node> fromNodeId = this.startNodes.poll();
@@ -102,31 +104,38 @@ public final class NodeCalculator {
                 }
 
                 this.counter.incCounter();
-                lcpTree.calculate(fromNodeId.index(),0.,stopCriterion,fwd);
+                lcpTree.calculate(fromNodeId.index(), 0., stopCriterion);
 
-                double accessibility = 0.;
 
-                for (Map.Entry<String, Double> endWeight : this.endWeights.entrySet()) {
+                double[] accessibilities = new double[endDataList.size()];
+                int i = 0;
+                for (LocationData endData : endDataList) {
+                    Map<String, IdSet<Node>> endNodes = endData.getNodes();
+                    Map<String, Double> endWeights = endData.getWeights();
 
-                    double cost = Double.MAX_VALUE;
-
-                    for (Id<Node> toNodeId : this.endNodes.get(endWeight.getKey())) {
-                        int toNodeIndex = toNodeId.index();
-                        double nodeDist = lcpTree.getDistance(toNodeIndex);
-                        double nodeTime = lcpTree.getTime(toNodeIndex).orElse(Double.POSITIVE_INFINITY);
-                        if(decayFunction.beyondCutoff(nodeDist, nodeTime)) {
-                            continue;
+                    double accessibility = 0.;
+                    for (Map.Entry<String, Double> endWeight : endWeights.entrySet()) {
+                        double cost = Double.MAX_VALUE;
+                        for (Id<Node> toNodeId : endNodes.get(endWeight.getKey())) {
+                            int toNodeIndex = toNodeId.index();
+                            double nodeDist = lcpTree.getDistance(toNodeIndex);
+                            double nodeTime = lcpTree.getTime(toNodeIndex).orElse(Double.POSITIVE_INFINITY);
+                            if (decayFunction.beyondCutoff(nodeDist, nodeTime)) {
+                                continue;
+                            }
+                            double nodeCost = lcpTree.getCost(toNodeIndex);
+                            if (nodeCost < cost) {
+                                cost = nodeCost;
+                            }
                         }
-                        double nodeCost = lcpTree.getCost(toNodeIndex);
-                        if (nodeCost < cost) {
-                            cost = nodeCost;
+                        if (cost != Double.MAX_VALUE) {
+                            accessibility += decayFunction.getDecay(cost) * endWeight.getValue();
                         }
                     }
-                    if(cost != Double.MAX_VALUE) {
-                        accessibility += decayFunction.getDecay(cost) * endWeight.getValue();
-                    }
+                    accessibilities[i] = accessibility;
+                    i++;
                 }
-                this.accessibilityData.put(fromNodeId,accessibility);
+                this.accessibilityData.put(fromNodeId, accessibilities);
             }
         }
     }

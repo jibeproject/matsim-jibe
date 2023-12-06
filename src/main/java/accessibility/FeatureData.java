@@ -14,6 +14,7 @@ import org.opengis.feature.simple.SimpleFeatureType;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 // Tools for reading zone system for accessibility analysis
 
@@ -25,7 +26,7 @@ public class FeatureData {
     private final Geometries geometryType;
     private final Integer radius;
 
-    public FeatureData(String filePath) throws IOException {
+    public FeatureData(String filePath, List<String> endLocationDescriptions) throws IOException {
         GeoPackage geopkg = new GeoPackage(openFile(filePath));
         FeatureEntry entry = geopkg.features().get(0);
         this.geometryType = entry.getGeometryType();
@@ -66,8 +67,11 @@ public class FeatureData {
         builder.add("nodeB",String.class);
         builder.add("costA",Double.class);
         builder.add("costB",Double.class);
-        builder.add("accessibility",Double.class);
-        builder.add("normalised",Double.class);
+        for(String description : endLocationDescriptions) {
+            builder.add("accessibility_" + description,Double.class);
+            builder.add("normalised_" + description,Double.class);
+        }
+
         SimpleFeatureType newSchema = builder.buildFeatureType();
 
         // Create set of zones with updated feature types

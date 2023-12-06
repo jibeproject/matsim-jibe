@@ -10,7 +10,7 @@ import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 import routing.Bicycle;
 import routing.disutility.DistanceDisutility;
-import routing.disutility.JibeDisutility4;
+import routing.disutility.JibeDisutility3;
 import routing.travelTime.WalkTravelTime;
 import trip.Purpose;
 
@@ -18,6 +18,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 public class AccessibilityResources {
@@ -74,7 +76,17 @@ public class AccessibilityResources {
             }
 
             // Direction
-            instance.fwd = Boolean.parseBoolean(properties.getProperty(AccessibilityProperties.FORWARD));
+            String input = properties.getProperty(AccessibilityProperties.FORWARD);
+            if(input == null) {
+                instance.fwd = null;
+            } else if(input.equalsIgnoreCase("true")) {
+                instance.fwd = true;
+            }
+            else if (input.equalsIgnoreCase("false")) {
+                instance.fwd = false;
+            } else {
+                throw new RuntimeException("Unknown value " + input + " given for forward property. Must be \"true\", \"false\", or left out for a two-way analysis.");
+            }
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -100,7 +112,7 @@ public class AccessibilityResources {
                 double mcComfort = getMarginalCostOrDefault(mode, resources.Properties.COMFORT);
                 double mcAmbience = getMarginalCostOrDefault(mode, resources.Properties.AMBIENCE);
                 double mcStress = getMarginalCostOrDefault(mode, resources.Properties.STRESS);
-                td = new JibeDisutility4(mode,tt,dayOverride,mcGrad,mcComfort,mcAmbience,mcStress);
+                td = new JibeDisutility3(mode,tt,dayOverride,mcGrad,mcComfort,mcAmbience,mcStress);
                 break;
             default:
                 throw new RuntimeException("Disutility type " + type + " not recognised for mode " + mode);
@@ -120,7 +132,7 @@ public class AccessibilityResources {
         return this.mode;
     }
 
-    public synchronized boolean fwdCalculation() { return this.fwd; }
+    public synchronized Boolean fwdCalculation() { return this.fwd; }
 
     public synchronized Vehicle getVehicle() {
         return this.veh;
@@ -168,4 +180,25 @@ public class AccessibilityResources {
         }
         return list;
     }
+
+    public synchronized List<String> getStringList(String key) {
+        ArrayList<String> strings = new ArrayList<>();
+
+        String onlyString = properties.getProperty(key);
+        if(onlyString != null) {
+            // Case 1: only single item (i.e., non-numbered)
+            strings.add(onlyString);
+        } else {
+            // Case 2: multiple numbered items (starting from 0)
+            int counter = 0;
+            String nextString = properties.getProperty(key + "." + counter);
+            while(nextString != null) {
+                strings.add(nextString);
+                counter++;
+                nextString = properties.getProperty(key + "." + counter);
+            }
+        }
+        return strings;
+    }
+
 }

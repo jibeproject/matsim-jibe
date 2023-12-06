@@ -85,14 +85,13 @@ public class LinkStress {
             if ((boolean) link.getAttributes().getAttribute("allowsCar")) {
                 double speedLimit = ((Integer) link.getAttributes().getAttribute("speedLimitMPH")).doubleValue();
                 double speed85perc = (double) link.getAttributes().getAttribute("veh85percSpeedKPH") * 0.621371;
-                double aadt = ((int) link.getAttributes().getAttribute("aadt")) * 0.865;
                 if (speed85perc >= speedLimit * 1.1) {
                     speedLimit = speed85perc;
                 }
 
                 double freightPoiFactor = getFreightPoiFactor(link);
 
-                stress = -1.625 + 0.0625 * speedLimit + 0.000125 * aadt + 0.2 * freightPoiFactor;
+                stress = -1.5 + 0.05 * speedLimit + 0.2 * freightPoiFactor;
 
                 if (stress < 0.) {
                     stress = 0;

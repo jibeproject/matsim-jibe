@@ -19,6 +19,8 @@ import java.io.IOException;
 import java.util.*;
 
 public class LocationData {
+
+    private final String description;
     private final static Logger log = Logger.getLogger(LocationData.class);
     private final static GeometryFactory gf = new GeometryFactory();
     private final static String SEP = ";";
@@ -31,7 +33,12 @@ public class LocationData {
     private final Map<String, IdSet<Node>> nodes = new LinkedHashMap<>();
     private final Map<String, Double> weights = new LinkedHashMap<>();
 
-    public LocationData(String filename, Geometry boundary) throws IOException {
+    public LocationData(String description, String filename, Geometry boundary) throws IOException {
+
+        // Set description
+        this.description = description;
+
+        // Read destinations
         String recString;
 
         int destinationsOutsideBoundary = 0;
@@ -85,6 +92,13 @@ public class LocationData {
         return Collections.unmodifiableMap(coords);
     }
 
+    public void transformWeights(double exponent) {
+        if(exponent != 1) {
+            log.info("Transforming all weights using exponent alpha = " + exponent);
+            weights.replaceAll((k,v) -> Math.pow(v,exponent));
+        }
+    }
+
     public Map<String, Double> getWeights() {
         return Collections.unmodifiableMap(weights);
     }
@@ -129,6 +143,10 @@ public class LocationData {
             nodeWeightMap.put(nodeId,weights.get(e.getKey()));
         }
         return nodeWeightMap;
+    }
+
+    public String getDescription() {
+        return this.description;
     }
 
     private static int findPositionInArray (String string, String[] array) {

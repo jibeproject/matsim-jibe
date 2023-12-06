@@ -11,12 +11,12 @@ import java.util.Arrays;
  * <p>
  * In some limited tests, this resulted in a speed-up of at least a factor 2.5 compared to MATSim's default LeastCostPathTree.
  * <p>
- * The implementation does not allocate any memory in the {@link #calculate(int, double, boolean)} method. All required memory is pre-allocated in the constructor. This makes the
+ * The implementation does not allocate any memory in the calculate method. All required memory is pre-allocated in the constructor. This makes the
  * implementation NOT thread-safe.
  *
  * @author mrieser / Simunto, sponsored by SBB Swiss Federal Railways
  */
-public class LeastCostPathTree3 {
+public class LcpTree1Way implements PathTree {
 
     private final SpeedyGraph graph;
     private final double[] data; // 3 entries per node: time, cost, distance
@@ -24,9 +24,11 @@ public class LeastCostPathTree3 {
     private final SpeedyGraph.LinkIterator outLI;
     private final SpeedyGraph.LinkIterator inLI;
     private final NodeMinHeap pq;
+    private final boolean fwd;
 
-    public LeastCostPathTree3(SpeedyGraph graph) {
+    public LcpTree1Way(SpeedyGraph graph, boolean fwd) {
         this.graph = graph;
+        this.fwd = fwd;
         this.data = new double[graph.nodeCount * 3];
         this.comingFrom = new int[graph.nodeCount];
         this.pq = new NodeMinHeap(graph.nodeCount, this::getCost, this::setCost);
@@ -34,11 +36,13 @@ public class LeastCostPathTree3 {
         this.inLI = graph.getInLinkIterator();
     }
 
-    public void calculate(int startNode, double startTime, boolean fwd) {
-        this.calculate(startNode, startTime, (node, arrTime, cost, distance, depTime) -> false, fwd);
+    @Override
+    public void calculate(int startNode, double startTime) {
+        this.calculate(startNode, startTime, (node, arrTime, cost, distance, depTime) -> false);
     }
 
-    public void calculate(int startNode, double startTime, StopCriterion stopCriterion, boolean fwd) {
+    @Override
+    public void calculate(int startNode, double startTime, StopCriterion stopCriterion) {
 
         Arrays.fill(this.data, Double.POSITIVE_INFINITY);
         Arrays.fill(this.comingFrom, -1);
@@ -48,12 +52,13 @@ public class LeastCostPathTree3 {
         this.pq.clear();
         this.pq.insert(startNode);
 
-        fillTree(startTime, stopCriterion, fwd);
+        fillTree(startTime, stopCriterion);
     }
 
+    @Override
     public void calculate(int startNode1, double cost1, double time1, double dist1,
                            int startNode2, double cost2, double time2, double dist2,
-                           double startTime, StopCriterion stopCriterion, boolean fwd) {
+                           double startTime, StopCriterion stopCriterion) {
 
         Arrays.fill(this.data, Double.POSITIVE_INFINITY);
         Arrays.fill(this.comingFrom, -1);
@@ -70,10 +75,10 @@ public class LeastCostPathTree3 {
             this.pq.insert(startNode1);
         }
 
-        fillTree(startTime, stopCriterion, fwd);
+        fillTree(startTime, stopCriterion);
     }
 
-    private void fillTree(double startTime, StopCriterion stopCriterion, boolean fwd) {
+    private void fillTree(double startTime, StopCriterion stopCriterion) {
         SpeedyGraph.LinkIterator LI = fwd ? this.outLI : this.inLI;
         while (!this.pq.isEmpty()) {
             final int nodeIdx = this.pq.poll();
@@ -112,10 +117,12 @@ public class LeastCostPathTree3 {
         }
     }
 
+    @Override
     public double getCost(int nodeIndex) {
         return this.data[nodeIndex * 3];
     }
 
+    @Override
     public OptionalTime getTime(int nodeIndex) {
         double time = this.data[nodeIndex * 3 + 1];
         if (Double.isInfinite(time)) {
@@ -124,6 +131,7 @@ public class LeastCostPathTree3 {
         return OptionalTime.defined(time);
     }
 
+    @Override
     public double getDistance(int nodeIndex) {
         return this.data[nodeIndex * 3 + 2];
     }
@@ -143,8 +151,4 @@ public class LeastCostPathTree3 {
         return this.comingFrom[nodeIndex];
     }
 
-    public interface StopCriterion {
-
-        boolean stop(int nodeIndex, double arrivalTime, double travelCost, double distance, double departureTime);
-    }
 }

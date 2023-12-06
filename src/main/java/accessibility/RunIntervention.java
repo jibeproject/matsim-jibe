@@ -93,14 +93,14 @@ public class RunIntervention {
         assert maxDestinations > 0;
 
         // Read population
-        LocationData populationData = new LocationData(populationFile,regionBoundary);
+        LocationData populationData = new LocationData(null,populationFile,regionBoundary);
         populationData.estimateNetworkNodes(network);
         IdMap<Node,String> populationNodeIdMap = populationData.getNodeIdMap();
         IdMap<Node,Double> populationNodeWtMap = populationData.getNodeWeightMap();
         Set<Id<Node>> populationNodes = populationNodeWtMap.keySet();
 
         // Read current destinations
-        LocationData currentDestinations = new LocationData(currentDestinationsFile,networkBoundary);
+        LocationData currentDestinations = new LocationData(null,currentDestinationsFile,networkBoundary);
         currentDestinations.estimateNetworkNodes(network);
         IdMap<Node,Double> destinationNodeWtMap = currentDestinations.getNodeWeightMap();
 

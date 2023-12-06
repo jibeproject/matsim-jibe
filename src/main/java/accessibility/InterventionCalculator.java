@@ -17,8 +17,7 @@ import org.matsim.core.utils.misc.Counter;
 import org.matsim.vehicles.Vehicle;
 import resources.Properties;
 import resources.Resources;
-import routing.graph.LeastCostPathTree3;
-import routing.graph.SpeedyGraph;
+import routing.graph.*;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -74,23 +73,20 @@ public final class InterventionCalculator {
 
     public Map<Id<Node>,Double> calculateSingle(Set<Id<Node>> startNodes, Id<Node> newNode, Double wt) {
 
-        LeastCostPathTree3 lcpTreeFwd = new LeastCostPathTree3(routingGraph);
-        LeastCostPathTree3 lcpTreeRev = new LeastCostPathTree3(routingGraph);
-        LeastCostPathTree3.StopCriterion stopCriterion = decayFunction.getTreeStopCriterion();
+        PathTree lcpTree = new LcpTree2Way(routingGraph);
+        StopCriterion stopCriterion = decayFunction.getTreeStopCriterion();
 
-        lcpTreeFwd.calculate(newNode.index(),0.,stopCriterion,true);
-        lcpTreeRev.calculate(newNode.index(),0.,stopCriterion,false);
+        lcpTree.calculate(newNode.index(),0.,stopCriterion);
 
         IdMap<Node,Double> result = new IdMap<>(Node.class);
         for(Id<Node> node : startNodes) {
             int toNodeIndex = node.index();
-            double dist = (lcpTreeFwd.getDistance(toNodeIndex) + lcpTreeRev.getDistance(toNodeIndex))/2;
-            double time = (lcpTreeFwd.getTime(toNodeIndex).orElse(Double.POSITIVE_INFINITY) +
-                    lcpTreeRev.getTime(toNodeIndex).orElse(Double.POSITIVE_INFINITY))/2;
+            double dist = lcpTree.getDistance(toNodeIndex);
+            double time = lcpTree.getTime(toNodeIndex).orElse(Double.POSITIVE_INFINITY);
             if(decayFunction.beyondCutoff(dist,time)) {
                 result.put(node,0.);
             } else {
-                double cost = (lcpTreeFwd.getCost(toNodeIndex) + lcpTreeRev.getCost(toNodeIndex))/2;
+                double cost = lcpTree.getCost(toNodeIndex);
                 result.put(node,decayFunction.getDecay(cost) * wt);
             }
 
@@ -113,9 +109,8 @@ public final class InterventionCalculator {
         }
 
         public void run() {
-            LeastCostPathTree3 lcpTreeFwd = new LeastCostPathTree3(routingGraph);
-            LeastCostPathTree3 lcpTreeRev = new LeastCostPathTree3(routingGraph);
-            LeastCostPathTree3.StopCriterion stopCriterion = decayFunction.getTreeStopCriterion();
+            PathTree lcpTree = new LcpTree2Way(routingGraph);
+            StopCriterion stopCriterion = decayFunction.getTreeStopCriterion();
 
             while (true) {
                 Id<Node> fromNodeId = this.startNodes.poll();
@@ -124,18 +119,16 @@ public final class InterventionCalculator {
                 }
 
                 this.counter.incCounter();
-                lcpTreeFwd.calculate(fromNodeId.index(),0.,stopCriterion,true);
-                lcpTreeRev.calculate(fromNodeId.index(),0.,stopCriterion,false);
+                lcpTree.calculate(fromNodeId.index(),0.,stopCriterion);
 
                 double accessibility = 0.;
 
                 for (Map.Entry<Id<Node>, Double> e : this.endNodes.entrySet()) {
                     int toNodeIndex = e.getKey().index();
-                    double dist = (lcpTreeFwd.getDistance(toNodeIndex) + lcpTreeRev.getDistance(toNodeIndex))/2;
-                    double time = (lcpTreeFwd.getTime(toNodeIndex).orElse(Double.POSITIVE_INFINITY) +
-                            lcpTreeRev.getTime(toNodeIndex).orElse(Double.POSITIVE_INFINITY))/2;
+                    double dist = lcpTree.getDistance(toNodeIndex);
+                    double time = lcpTree.getTime(toNodeIndex).orElse(Double.POSITIVE_INFINITY);
                     if(!decayFunction.beyondCutoff(dist,time)) {
-                        double cost = (lcpTreeFwd.getCost(toNodeIndex) + lcpTreeRev.getCost(toNodeIndex))/2;
+                        double cost = lcpTree.getCost(toNodeIndex);
                         accessibility += decayFunction.getDecay(cost) * e.getValue();
                     }
                 }

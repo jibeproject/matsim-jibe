@@ -18,7 +18,7 @@ import org.matsim.core.utils.misc.OptionalTime;
 import org.matsim.vehicles.Vehicle;
 import resources.Properties;
 import resources.Resources;
-import routing.graph.LeastCostPathTree3;
+import routing.graph.LcpTree1Way;
 import routing.graph.SpeedyGraph;
 
 import java.util.Set;
@@ -112,8 +112,8 @@ public final class NodeDetourCalculator {
         }
 
         public void run() {
-            LeastCostPathTree3 lcpTreeFast;
-            LeastCostPathTree3 lcpTreeJibe;
+            LcpTree1Way lcpTreeFast;
+            LcpTree1Way lcpTreeJibe;
 
             while (true) {
                 Id<Node> fromNodeId = this.originNodes.poll();
@@ -123,11 +123,11 @@ public final class NodeDetourCalculator {
 
                 this.counter.incCounter();
 
-                lcpTreeFast = new LeastCostPathTree3(this.graphFast);
-                lcpTreeJibe = new LeastCostPathTree3(this.graphJibe);
+                lcpTreeFast = new LcpTree1Way(this.graphFast,true);
+                lcpTreeJibe = new LcpTree1Way(this.graphJibe,true);
 
-                lcpTreeFast.calculate(fromNodeId.index(),0.,true);
-                lcpTreeJibe.calculate(fromNodeId.index(),0.,true);
+                lcpTreeFast.calculate(fromNodeId.index(),0.);
+                lcpTreeJibe.calculate(fromNodeId.index(),0.);
 
                 for (Id<Node> toNodeId : destinationNodes) {
 

@@ -25,8 +25,7 @@ import org.matsim.vehicles.Vehicle;
 import org.opengis.feature.simple.SimpleFeature;
 import resources.Properties;
 import resources.Resources;
-import routing.graph.LeastCostPathTree3;
-import routing.graph.SpeedyGraph;
+import routing.graph.*;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -36,9 +35,9 @@ public class FeatureCalculator {
     private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
 
     public static void calculate(Network routingNetwork, SimpleFeatureCollection collection,
-                                 Map<String, IdSet<Node>> endNodes, Map<String, Double> endWeights,
-                                 Map<Id<Node>,Double> nodeResults, int polygonRadius,
-                                 boolean fwd, TravelTime travelTime, TravelDisutility travelDisutility,
+                                 List<LocationData> endDataList,
+                                 Map<Id<Node>,double[]> nodeResults, int polygonRadius,
+                                 Boolean fwd, TravelTime travelTime, TravelDisutility travelDisutility,
                                  Vehicle vehicle, DecayFunction decayFunction) {
 
         int numberOfThreads = Resources.instance.getInt(Properties.NUMBER_OF_THREADS);
@@ -73,7 +72,7 @@ public class FeatureCalculator {
         Thread[] threads = new Thread[numberOfThreads];
 
         for (int i = 0; i < numberOfThreads; i++) {
-            FeatureWorker worker = new FeatureWorker(featuresQueue, polygonRadius, nodeResults,endNodes,endWeights,fwd,nodesPerZone,
+            FeatureWorker worker = new FeatureWorker(featuresQueue, polygonRadius, nodeResults,endDataList,fwd,nodesPerZone,
                     routingNetwork,routingGraph, decayFunction,marginalTravelTimes,marginalDisutilities,counter);
             threads[i] = new Thread(worker, "PolygonAccessibility-" + i);
             threads[i].start();
@@ -89,23 +88,25 @@ public class FeatureCalculator {
         }
 
         // normalise results
-        double min = features.stream().mapToDouble(c -> (double) c.getAttribute("accessibility")).min().orElseThrow();
-        double max = features.stream().mapToDouble(c -> (double) c.getAttribute("accessibility")).max().orElseThrow();
-        double diff = max - min;
-        for (SimpleFeature feature : features) {
-            double accessibility = (double) feature.getAttribute("accessibility");
-            feature.setAttribute("normalised",(accessibility-min) / diff);
+        for(LocationData endData : endDataList) {
+            String attributeName = "accessibility_" + endData.getDescription();
+            double min = features.stream().mapToDouble(c -> (double) c.getAttribute(attributeName)).min().orElseThrow();
+            double max = features.stream().mapToDouble(c -> (double) c.getAttribute(attributeName)).max().orElseThrow();
+            double diff = max - min;
+            for (SimpleFeature feature : features) {
+                double accessibility = (double) feature.getAttribute(attributeName);
+                feature.setAttribute("normalised_" + endData.getDescription(),(accessibility-min) / diff);
+            }
         }
     }
 
     private static class FeatureWorker implements Runnable {
 
-        private final ConcurrentLinkedQueue<SimpleFeature> polygons;
+        private final ConcurrentLinkedQueue<SimpleFeature> features;
         private final int zoneRadius;
-        private final Map<Id<Node>, Double> nodeResults;
-        private final Map<String, Double> endWeights;
-        private final Map<String, IdSet<Node>> endNodes;
-        private final boolean fwd;
+        private final Map<Id<Node>, double[]> nodeResults;
+        private final List<LocationData> endDataList;
+        private final Boolean fwd;
         private final Map<Id<Link>,Double> marginalTravelTimes;
         private final Map<Id<Link>,Double> marginalDisutilities;
         private final Map<SimpleFeature, IdSet<Node>> nodesInPolygons;
@@ -114,17 +115,16 @@ public class FeatureCalculator {
         private final Counter counter;
         private final DecayFunction decayFunction;
 
-        FeatureWorker(ConcurrentLinkedQueue<SimpleFeature> polygons, int zoneRadius, Map<Id<Node>, Double> nodeResults,
-                      Map<String, IdSet<Node>> endNodes, Map<String, Double> endWeights, boolean fwd,
+        FeatureWorker(ConcurrentLinkedQueue<SimpleFeature> features, int zoneRadius, Map<Id<Node>, double[]> nodeResults,
+                      List<LocationData> endDataList, Boolean fwd,
                       Map<SimpleFeature, IdSet<Node>> nodesInPolygons, Network network,
                       SpeedyGraph graph, DecayFunction decayFunction,
                       Map<Id<Link>,Double> marginalTravelTimes, Map<Id<Link>,Double> marginalDisutilities,
                       Counter counter) {
-            this.polygons = polygons;
+            this.features = features;
             this.zoneRadius = zoneRadius;
             this.nodeResults = nodeResults;
-            this.endWeights = endWeights;
-            this.endNodes = endNodes;
+            this.endDataList = endDataList;
             this.fwd = fwd;
             this.nodesInPolygons = nodesInPolygons;
             this.network = network;
@@ -136,11 +136,19 @@ public class FeatureCalculator {
         }
 
         public void run() {
-            LeastCostPathTree3 lcpTree = new LeastCostPathTree3(this.graph);
-            LeastCostPathTree3.StopCriterion stopCriterion = decayFunction.getTreeStopCriterion();
+            PathTree lcpTree;
+            if(fwd != null) {
+                log.info("Initialising 1-way least cost path tree in " + (fwd ? " FORWARD " : " REVERSE ") + " direction...");
+                lcpTree = new LcpTree1Way(this.graph,fwd);
+            } else {
+                log.info("Initialising 2-way least cost path tree...");
+                lcpTree = new LcpTree2Way(this.graph);
+            }
+
+            StopCriterion stopCriterion = decayFunction.getTreeStopCriterion();
 
             while (true) {
-                SimpleFeature feature = this.polygons.poll();
+                SimpleFeature feature = this.features.poll();
                 if (feature == null) {
                     return;
                 }
@@ -156,7 +164,11 @@ public class FeatureCalculator {
 
                     // If no nodes fall inside zone, then use to & from node of nearest link
                     if(nodesWithin > 0) {
-                        feature.setAttribute("accessibility", nodesInside.stream().mapToDouble(nodeResults::get).average().orElseThrow());
+                        for(int i = 0 ; i < endDataList.size() ; i++) {
+                            int finalI = i;
+                            feature.setAttribute("accessibility_" + endDataList.get(finalI).getDescription(),
+                                    nodesInside.stream().mapToDouble(n -> nodeResults.get(n)[finalI]).average().orElseThrow());
+                        }
                     } else {
                         Coord centroid = new Coord((double) feature.getAttribute("centroid_x"), (double) feature.getAttribute("centroid_y"));
                         calculateForPoint(feature, centroid, lcpTree, stopCriterion);
@@ -168,7 +180,7 @@ public class FeatureCalculator {
                 }
             }
         }
-        void calculateForPoint(SimpleFeature feature, Coord coord, LeastCostPathTree3 lcpTree, LeastCostPathTree3.StopCriterion stopCriterion) {
+        void calculateForPoint(SimpleFeature feature, Coord coord, PathTree lcpTree, StopCriterion stopCriterion) {
             Link link = NetworkUtils.getNearestLinkExactly(network, coord);
             Id<Link> linkId = link.getId();
             double connectorMarginalCost = marginalDisutilities.get(linkId);
@@ -186,39 +198,41 @@ public class FeatureCalculator {
             double timeA = connectorMarginalTime * connectorLengthA;
             double timeB = connectorMarginalTime * connectorLengthB;
 
-            lcpTree.calculate(
-                    nodeA.getId().index(),costA,timeA,connectorLengthA,
-                    nodeB.getId().index(),costB,timeB,connectorLengthB,
-                    0.,stopCriterion,fwd);
-
-            double accessibility = 0.;
-
-            for (Map.Entry<String, Double> endWeight : this.endWeights.entrySet()) {
-
-                double cost = Double.MAX_VALUE;
-
-                for (Id<Node> toNodeId : this.endNodes.get(endWeight.getKey())) {
-                    int toNodeIndex = toNodeId.index();
-                    double nodeDist = lcpTree.getDistance(toNodeIndex);
-                    double nodeTime = lcpTree.getTime(toNodeIndex).orElse(Double.POSITIVE_INFINITY);
-                    if(decayFunction.beyondCutoff(nodeDist, nodeTime)) {
-                        continue;
-                    }
-                    double nodeCost = lcpTree.getCost(toNodeIndex);
-                    if (nodeCost < cost) {
-                        cost = nodeCost;
-                    }
-                }
-                if(cost != Double.MAX_VALUE) {
-                    accessibility += decayFunction.getDecay(cost) * endWeight.getValue();
-                }
-            }
-
-            feature.setAttribute("accessibility",accessibility);
             feature.setAttribute("nodeA",nodeA.getId().toString());
             feature.setAttribute("costA",costA);
             feature.setAttribute("nodeB",nodeB.getId().toString());
             feature.setAttribute("costB",costB);
+
+            lcpTree.calculate(
+                    nodeA.getId().index(),costA,timeA,connectorLengthA,
+                    nodeB.getId().index(),costB,timeB,connectorLengthB,
+                    0.,stopCriterion);
+
+            for(LocationData endData: endDataList) {
+                Map<String, IdSet<Node>> endNodes = endData.getNodes();
+                Map<String, Double> endWeights = endData.getWeights();
+
+                double accessibility = 0.;
+                for (Map.Entry<String, Double> endWeight : endWeights.entrySet()) {
+                    double cost = Double.MAX_VALUE;
+                    for (Id<Node> toNodeId : endNodes.get(endWeight.getKey())) {
+                        int toNodeIndex = toNodeId.index();
+                        double nodeDist = lcpTree.getDistance(toNodeIndex);
+                        double nodeTime = lcpTree.getTime(toNodeIndex).orElse(Double.POSITIVE_INFINITY);
+                        if(decayFunction.beyondCutoff(nodeDist, nodeTime)) {
+                            continue;
+                        }
+                        double nodeCost = lcpTree.getCost(toNodeIndex);
+                        if (nodeCost < cost) {
+                            cost = nodeCost;
+                        }
+                    }
+                    if(cost != Double.MAX_VALUE) {
+                        accessibility += decayFunction.getDecay(cost) * endWeight.getValue();
+                    }
+                }
+                feature.setAttribute("accessibility_" + endData.getDescription(),accessibility);
+            }
         }
     }
 }

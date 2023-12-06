@@ -16,6 +16,8 @@ import routing.disutility.components.LinkAmbience;
 import routing.disutility.components.LinkComfort;
 import routing.disutility.components.LinkStress;
 
+import java.util.Objects;
+
 /**
  * Custom walk and bicycle disutility for JIBE
  * based on BicycleTravelDisutility by Dominik Ziemke
@@ -29,16 +31,18 @@ public class JibeDisutility3 implements TravelDisutility {
     private final double marginalCostAmbience_s;
     private final double marginalCostStress_s;
     private final TravelTime timeCalculator;
+    private Boolean dayNightOverride;
 
     // Default parameters
-    public JibeDisutility3(String mode, TravelTime tt) {
+    public JibeDisutility3(String mode, TravelTime tt, Boolean dayNightOverride) {
 
         if(!mode.equals(TransportMode.bike) && !mode.equals(TransportMode.walk)) {
-            throw new RuntimeException("Mode " + mode + " not suported for JIBE disutility.");
+            throw new RuntimeException("Mode " + mode + " not supported for JIBE disutility.");
         }
 
         this.mode = mode;
         this.timeCalculator = tt;
+        this.dayNightOverride = dayNightOverride;
         this.marginalCostOfGradient_s = Resources.instance.getMarginalCost(mode,Properties.GRADIENT);
         this.marginalCostOfComfort_s = Resources.instance.getMarginalCost(mode,Properties.COMFORT);
         this.marginalCostAmbience_s = Resources.instance.getMarginalCost(mode,Properties.AMBIENCE);
@@ -47,7 +51,7 @@ public class JibeDisutility3 implements TravelDisutility {
     }
 
     // Custom parameters
-    public JibeDisutility3(String mode, TravelTime tt,
+    public JibeDisutility3(String mode, TravelTime tt, Boolean dayNightOverride,
                            double marginalCostOfGradient_s, double marginalCostOfComfort_s,
                            double marginalCostAmbience_s, double marginalCostStress_s) {
 
@@ -57,23 +61,9 @@ public class JibeDisutility3 implements TravelDisutility {
 
         this.mode = mode;
         this.timeCalculator = tt;
+        this.dayNightOverride = dayNightOverride;
         this.marginalCostOfGradient_s = marginalCostOfGradient_s;
         this.marginalCostOfComfort_s = marginalCostOfComfort_s;
-        this.marginalCostAmbience_s = marginalCostAmbience_s;
-        this.marginalCostStress_s = marginalCostStress_s;
-        printMarginalCosts();
-    }
-
-    public JibeDisutility3(String mode, TravelTime tt, double marginalCostAmbience_s, double marginalCostStress_s) {
-
-        if(!mode.equals(TransportMode.bike) && !mode.equals(TransportMode.walk)) {
-            throw new RuntimeException("Mode " + mode + " not supported for JIBE disutility.");
-        }
-
-        this.mode = mode;
-        this.timeCalculator = tt;
-        this.marginalCostOfGradient_s = Resources.instance.getMarginalCost(mode,Properties.GRADIENT);
-        this.marginalCostOfComfort_s = Resources.instance.getMarginalCost(mode,Properties.COMFORT);
         this.marginalCostAmbience_s = marginalCostAmbience_s;
         this.marginalCostStress_s = marginalCostStress_s;
         printMarginalCosts();
@@ -104,8 +94,11 @@ public class JibeDisutility3 implements TravelDisutility {
             // Comfort of surface
             double comfortFactor = LinkComfort.getComfortFactor(link);
 
-            // Ambience factor
-            double ambience = LinkAmbience.getDayAmbience(link);
+            // Set day/night
+            boolean day = Objects.requireNonNullElseGet(dayNightOverride, () -> (time >= 21600 && time < 72000));
+
+            // Ambience
+            double ambience = day ? LinkAmbience.getDayAmbience(link) : LinkAmbience.getNightAmbience(link);;
 
             // Stress factors
             double linkStress = LinkStress.getStress(link,mode);
@@ -144,7 +137,16 @@ public class JibeDisutility3 implements TravelDisutility {
         return 0;
     }
 
-    public double getLinkTravelTime(Link link, double time, Person person, Vehicle vehicle) {
-        return timeCalculator.getLinkTravelTime(link, time, person, vehicle);
+    public double getJunctionComponent(Link link, Vehicle vehicle) {
+        if((boolean) link.getAttributes().getAttribute("crossVehicles")) {
+            double distance = link.getLength();
+            double travelTime = timeCalculator.getLinkTravelTime(link, 0., null, vehicle);
+            double junctionStress = JctStress.getStress(link,mode);
+            double junctionWidth = (double) link.getAttributes().getAttribute("crossWidth");
+            if(junctionWidth > distance) junctionWidth = distance;
+            double junctionTime = travelTime * (junctionWidth / distance);
+            return marginalCostStress_s * junctionTime * junctionStress;
+        }
+        else return 0;
     }
 }

@@ -1,12 +1,12 @@
 package accessibility.decay;
 
-import routing.graph.LeastCostPathTree3;
+import routing.graph.StopCriterion;
 
 public class DecayFunction {
 
     final private double cutoffTime;
     final private double cutoffDist;
-    final private LeastCostPathTree3.StopCriterion stopCriterion;
+    final private StopCriterion stopCriterion;
 
     public DecayFunction(double cutoffTime, double cutoffDist) {
         this.cutoffTime = Double.isNaN(cutoffTime) ? Double.MAX_VALUE : cutoffTime;
@@ -32,7 +32,7 @@ public class DecayFunction {
         return distance > cutoffDist || time > cutoffTime;
     }
 
-    public LeastCostPathTree3.StopCriterion getTreeStopCriterion() {
+    public StopCriterion getTreeStopCriterion() {
         return stopCriterion;
     }
 }

@@ -9,7 +9,6 @@ import network.NetworkUtils2;
 import org.geotools.geometry.jts.Geometries;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.Id;
-import org.matsim.api.core.v01.IdSet;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.core.router.util.TravelDisutility;
@@ -18,11 +17,10 @@ import org.matsim.vehicles.Vehicle;
 import resources.Resources;
 
 import org.apache.log4j.Logger;
-import routing.disutility.JibeDisutility4;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class RunAnalysis {
 
@@ -75,48 +73,53 @@ public class RunAnalysis {
         Vehicle veh = AccessibilityResources.instance.getVehicle();
         TravelDisutility td = AccessibilityResources.instance.getTravelDisutility();
 
-        if(td instanceof JibeDisutility4) {
-            ((JibeDisutility4) td).setNetwork(network);
-            ((JibeDisutility4) td).setVehicle(veh);
-            ((JibeDisutility4) td).precalculateDisutility();
-        }
-
         // Inputs/outputs
-        String endLocationsFilename = AccessibilityResources.instance.getString(AccessibilityProperties.END_LOCATIONS);
-        String outputNodesFilename = AccessibilityResources.instance.getString(AccessibilityProperties.OUTPUT_NODES);
         String inputFilename = AccessibilityResources.instance.getString(AccessibilityProperties.INPUT);
-        String outputFilename = AccessibilityResources.instance.getString(AccessibilityProperties.OUTPUT);
+
+        List<String> endLocationsFilenames = AccessibilityResources.instance.getStringList(AccessibilityProperties.END_LOCATIONS);
+        List<String> endLocationsDescriptions = AccessibilityResources.instance.getStringList(AccessibilityProperties.END_DESCRIPTION);
+        List<Double> endLocationsAlpha = AccessibilityResources.instance.getStringList(AccessibilityProperties.END_ALPHA).stream().map(Double::parseDouble).collect(Collectors.toList());
+
+        String outputNodesFilename = AccessibilityResources.instance.getString(AccessibilityProperties.OUTPUT_NODES);
+        String outputFeaturesFilename = AccessibilityResources.instance.getString(AccessibilityProperties.OUTPUT_FEATURES);
 
         // Input locations (to calculate accessibility for)
-        FeatureData features = new FeatureData(inputFilename);
+        FeatureData features = new FeatureData(inputFilename, endLocationsDescriptions);
 
         // Parameters
         DecayFunction df = DecayFunctions.getFromProperties(network,networkBoundary);
-        boolean fwd = AccessibilityResources.instance.fwdCalculation();
+        Boolean fwd = AccessibilityResources.instance.fwdCalculation();
 
         // Checks on whether to perform ANY calculations
         if(df == null) {
-            log.warn("No decay function. Skipping all accessibility calculations.");
+            log.error("No decay function. Skipping all accessibility calculations.");
             return;
         }
-        if(endLocationsFilename == null) {
-            log.warn("No end locations given. Skipping all accessibility calculations.");
+        if(endLocationsFilenames.size() == 0) {
+            log.error("No end locations given. Skipping all accessibility calculations.");
             return;
         }
-        if (outputNodesFilename == null && (inputFilename == null || outputFilename == null)) {
-            log.warn("No input/output files given. Skipping all accessibility calculations.");
+        int endLocationsSize = endLocationsFilenames.size();
+        if(endLocationsSize != endLocationsDescriptions.size()) {
+            log.error("Number of end locations does not match number of end descriptions.");
+        }
+        if (outputNodesFilename == null && (inputFilename == null || outputFeaturesFilename == null)) {
+            log.error("No input/output files given. Skipping all accessibility calculations.");
             return;
         }
-        LocationData endData = new LocationData(endLocationsFilename,networkBoundary);
-        endData.estimateNetworkNodes(network);
-        Map<String, IdSet<Node>> endNodes = endData.getNodes();
-        Map<String, Double> endWeights = endData.getWeights();
 
-        // Accessibility calculation on NODES (if using polygons or node output requested)
-        Map<Id<Node>,Double> nodeResults = null;
+        List<LocationData> endDataList = new ArrayList<>(endLocationsSize);
+        for(int i = 0 ; i < endLocationsSize ; i++) {
+            LocationData endData = new LocationData(endLocationsDescriptions.get(i),endLocationsFilenames.get(i),networkBoundary);
+            endData.estimateNetworkNodes(network);
+            endData.transformWeights(endLocationsAlpha.get(i));
+            endDataList.add(endData);
+        }
+
+        // Accessibility calculation on NODES (if using polygons)
+        Map<Id<Node>,double[]> nodeResults = null;
         if(Geometries.POLYGON.equals(features.getGeometryType())
-                || Geometries.MULTIPOLYGON.equals(features.getGeometryType())
-                || outputNodesFilename != null) {
+                || Geometries.MULTIPOLYGON.equals(features.getGeometryType())) {
 
             // Get applicable start nodes
             log.info("Identifying origin nodes within area of analysis...");
@@ -125,25 +128,25 @@ public class RunAnalysis {
             // Run node accessibility calculation
             log.info("Running node accessibility calculation...");
             long startTime = System.currentTimeMillis();
-            nodeResults = NodeCalculator.calculate(network, startNodes, endNodes, endWeights, fwd, tt, td, veh, df);
+            nodeResults = NodeCalculator.calculate(network, startNodes, endDataList, fwd, tt, td, veh, df);
             long endTime = System.currentTimeMillis();
             log.info("Calculation time: " + (endTime - startTime));
 
             // Output nodes as CSV (if it was provided in properties file)
             if(outputNodesFilename != null) {
-                AccessibilityWriter.writeNodesAsGpkg(nodeResults,fullNetwork,outputNodesFilename);
+                AccessibilityWriter.writeNodesAsGpkg(nodeResults,endLocationsDescriptions,fullNetwork,outputNodesFilename);
             }
         }
 
-        if(inputFilename != null && outputFilename != null) {
+        if(inputFilename != null && outputFeaturesFilename != null) {
 
             log.info("Running accessibility calculation...");
-            FeatureCalculator.calculate(network, features.getCollection(), endNodes, endWeights,
+            FeatureCalculator.calculate(network, features.getCollection(), endDataList,
                     nodeResults, features.getRadius(), fwd, tt, td, veh, df);
 
             // Output grid as gpkg
-            log.info("Saving output features to " + outputFilename);
-            GisUtils.writeFeaturesToGpkg(features.getCollection(), features.getDescription() + "_result", outputFilename);
+            log.info("Saving output features to " + outputFeaturesFilename);
+            GisUtils.writeFeaturesToGpkg(features.getCollection(), features.getDescription() + "_result", outputFeaturesFilename);
         }
     }
 }
