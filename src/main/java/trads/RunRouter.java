@@ -87,7 +87,8 @@ public class RunRouter {
 
         // Travel time
         FreespeedTravelTimeAndDisutility freeSpeed = new FreespeedTravelTimeAndDisutility(config.planCalcScore());
-        TravelTime ttBike = bicycle.getTravelTimeFast(networkBike,bike);
+        TravelTime ttBikeFast = bicycle.getTravelTimeFast(networkBike,bike);
+        TravelTime ttBike = bicycle.getTravelTime();
         TravelTime ttWalk = new WalkTravelTime();
 
 //        // Car freespeed & congested travel time
@@ -111,8 +112,8 @@ public class RunRouter {
 //        calc.network("car_congested", ORIGIN, DESTINATION, null, networkCar, carXy2l, congestedDisutility, congestedTime, null,savePath);
 
         // bike (shortest and fastest)
-        calc.network("bike_jibe_day", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBike,true), ttBike, ActiveAttributes.getJibe4(TransportMode.bike,bike),savePath);
-        calc.network("bike_jibe_night", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBike,false), ttBike, ActiveAttributes.getJibe4(TransportMode.bike,bike),savePath);
+        calc.network("bike_jibe_day", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBikeFast,true), ttBike, ActiveAttributes.getJibe4(TransportMode.bike,bike),savePath);
+        calc.network("bike_jibe_night", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBikeFast,false), ttBike, ActiveAttributes.getJibe4(TransportMode.bike,bike),savePath);
         calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new DistanceDisutility(), ttBike, null,savePath);
         calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new OnlyTimeDependentTravelDisutility(ttBike), ttBike, null,savePath);
 
