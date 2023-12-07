@@ -8,24 +8,16 @@ import static routing.disutility.components.CycleProtection.*;
 public class LinkStress {
 
     public static double getStress(Link link, String mode) {
-        if(mode.equals("walk")) {
-            return getWalkStress(link);
-        } else if (mode.equals("bike")) {
-            return getCycleStress(link);
-        } else {
+
+        if(!mode.equals("walk") && !mode.equals("bike")) {
             throw new RuntimeException("unknown mode " + mode);
-        }
-    }
-
-    private static double getCycleStress(Link link) {
-
-        if(!link.getAllowedModes().contains("bike")) {
+        } else if(!link.getAllowedModes().contains(mode)) {
             return Double.NaN;
         } else {
             double stress = 0;
             if((boolean) link.getAttributes().getAttribute("allowsCar")) {
                 String junction = (String) link.getAttributes().getAttribute("junction");
-                if (junction.equals("roundabout") || junction.equals("circular")) {
+                if (mode.equals("bike") && (junction.equals("roundabout") || junction.equals("circular"))) {
                     stress = 1.;
                 } else {
                     double speedLimit = ((Integer) link.getAttributes().getAttribute("speedLimitMPH")).doubleValue();
@@ -45,7 +37,7 @@ public class LinkStress {
                         intercept = 0;
                         speedFactor = 0;
                         aadtFactor = 0;
-                    } else if(protection.equals(PROTECTED)) {
+                    } else if(mode.equals("walk") || protection.equals(PROTECTED)) {
                         intercept = -1.5;
                         speedFactor = 0.05;
                         aadtFactor = 0;
@@ -68,35 +60,6 @@ public class LinkStress {
                     } else if (stress > 1.) {
                         stress = 1;
                     }
-                }
-            }
-            return stress;
-        }
-    }
-
-    private static double getWalkStress(Link link) {
-
-        if(!link.getAllowedModes().contains("walk")) {
-            return Double.NaN;
-        } else {
-
-            double stress = 0;
-
-            if ((boolean) link.getAttributes().getAttribute("allowsCar")) {
-                double speedLimit = ((Integer) link.getAttributes().getAttribute("speedLimitMPH")).doubleValue();
-                double speed85perc = (double) link.getAttributes().getAttribute("veh85percSpeedKPH") * 0.621371;
-                if (speed85perc >= speedLimit * 1.1) {
-                    speedLimit = speed85perc;
-                }
-
-                double freightPoiFactor = getFreightPoiFactor(link);
-
-                stress = -1.5 + 0.05 * speedLimit + 0.2 * freightPoiFactor;
-
-                if (stress < 0.) {
-                    stress = 0;
-                } else if (stress > 1.) {
-                    stress = 1;
                 }
             }
             return stress;
