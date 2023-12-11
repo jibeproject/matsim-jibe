@@ -186,27 +186,6 @@ public class CreateMatsimNetworkRoad {
             l1.getAttributes().putAttribute("allowsCarFwd", allowsCarOut);
             l2.getAttributes().putAttribute("allowsCarFwd", allowsCarRtn);
 
-            // Add old AADT from John Gulliver's model (Manchester only)
-            Double aadt = (Double) edge.getAttribute("aadt_hgv_im");
-            if(aadt != null) {
-                double aadtOut = 0.;
-                double aadtRtn = 0.;
-                if (allowsCarOut) {
-                    if (allowsCarRtn) {
-                        aadtOut = aadt / 2.;
-                        aadtRtn = aadtOut;
-                    } else {
-                        aadtOut = aadt;
-                    }
-                } else {
-                    aadt = 0.;
-                }
-                l1.getAttributes().putAttribute("aadt_old",aadt);
-                l2.getAttributes().putAttribute("aadt_old",aadt);
-                l1.getAttributes().putAttribute("aadtFwd_old",aadtOut);
-                l2.getAttributes().putAttribute("aadtFwd_old",aadtRtn);
-            }
-
             // Width
             double widthOut = (double) edge.getAttribute("avg_wdt_mp");
             double widthRtn = 0.;
@@ -255,18 +234,6 @@ public class CreateMatsimNetworkRoad {
             }
             l1.getAttributes().putAttribute("surface",surface);
             l2.getAttributes().putAttribute("surface",surface);
-
-            // Strava speeds
-            putDoubleAttribute(l1,edge, "sped_b_f", "stravaBikeSpeed", Double.NaN);
-            putDoubleAttribute(l2,edge, "sped_b_b","stravaBikeSpeed", Double.NaN);
-            putDoubleAttribute(l1,edge, "sped_p_f", "stravaWalkSpeed", Double.NaN);
-            putDoubleAttribute(l2,edge, "sped_p_b", "stravaWalkSpeed", Double.NaN);
-
-            // Strava volumes
-            putDoubleAttribute(l1,edge, "aamb_f", "stravaBikeVol", Double.NaN);
-            putDoubleAttribute(l2,edge, "aamb_b", "stravaBikeVol", Double.NaN);
-            putDoubleAttribute(l1,edge, "aamp_f", "stravaWalkVol", Double.NaN);
-            putDoubleAttribute(l2,edge, "aamp_b", "stravaWalkVol", Double.NaN);
 
             // Type
             l1.getAttributes().putAttribute("type",edge.getAttribute("highway"));

@@ -1,12 +1,13 @@
 package network;
 
 import gis.GpkgReader;
+import org.matsim.api.core.v01.Id;
 import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
 import resources.Properties;
 import resources.Resources;
 import routing.Bicycle;
 import routing.Gradient;
-import routing.disutility.JibeDisutility3Fast;
+import routing.disutility.JibeDisutility3;
 import routing.disutility.components.*;
 import routing.travelTime.WalkTravelTime;
 import com.google.common.math.LongMath;
@@ -93,24 +94,20 @@ public class WriteNetworkGpkg {
         builder.add("walkTime",Double.class);
         builder.add("carSpeedLimitMPH",Double.class);
         builder.add("car85PercSpeedKPH",Double.class);
-//        builder.add("bikeJibeMarginalDisutility",Double.class);
-//        builder.add("walkJibeMarginalDisutility",Double.class);
+        builder.add("bikeJibeMarginalDisutilityDay",Double.class);
+        builder.add("bikeJibeMarginalDisutilityNight",Double.class);
+        builder.add("walkJibeMarginalDisutilityDay",Double.class);
+        builder.add("walkJibeMarginalDisutilityNight",Double.class);
         builder.add("width",Double.class);
         builder.add("lanes",Integer.class);
         builder.add("aadt",Integer.class);
         builder.add("aadtFwd",Integer.class);
-        builder.add("aadt_old",Double.class);
-        builder.add("aadtFwd_old",Double.class);
         builder.add("car",Boolean.class);
         builder.add("bike",Boolean.class);
         builder.add("walk",Boolean.class);
         builder.add("motorway",Boolean.class);
         builder.add("trunk",Boolean.class);
         builder.add("dismount",Boolean.class);
-//        builder.add("stravaBikeSpeed",Double.class);
-//        builder.add("stravaBikeVol",Double.class);
-//        builder.add("stravaWalkSpeed",Double.class);
-//        builder.add("stravaWalkVol",Double.class);
         builder.add("disconnected_car",Boolean.class);
         builder.add("disconnected_bike",Boolean.class);
         builder.add("disconnected_walk",Boolean.class);
@@ -163,16 +160,19 @@ public class WriteNetworkGpkg {
         TravelTime ttWalk = new WalkTravelTime();
 
         // Travel Disutilities
-        JibeDisutility3Fast tdJibeBikeDay = new JibeDisutility3Fast(network,bike,TransportMode.bike, ttBike,true);
-        JibeDisutility3Fast tdJibeBikeNight = new JibeDisutility3Fast(network,bike,TransportMode.bike, ttBike,false);
+        JibeDisutility3 tdJibeBikeDay = new JibeDisutility3(TransportMode.bike, ttBike,true);
+        JibeDisutility3 tdJibeBikeNight = new JibeDisutility3(TransportMode.bike, ttBike,false);
 
-        JibeDisutility3Fast tdJibeWalkDay = new JibeDisutility3Fast(network,null,TransportMode.walk, ttWalk,true);
-        JibeDisutility3Fast tdJibeWalkNight = new JibeDisutility3Fast(network,null,TransportMode.walk, ttWalk,false);
+        JibeDisutility3 tdJibeWalkDay = new JibeDisutility3(TransportMode.walk, ttWalk,true);
+        JibeDisutility3 tdJibeWalkNight = new JibeDisutility3(TransportMode.walk, ttWalk,false);
 
 
-//        // Marginal Disutility maps
-//        Map<Id<Link>,Double> bikeMarginalDisutilities = NetworkUtils2.precalculateLinkMarginalDisutilities(network,tdJibeBike,0.,null,bike);
-//        Map<Id<Link>,Double> walkMarginalDisutilities = NetworkUtils2.precalculateLinkMarginalDisutilities(network,tdJibeWalk,0.,null,null);
+        // Marginal Disutility maps
+        Map<Id<Link>,Double> bikeMarginalDisutilitiesDay = NetworkUtils2.precalculateLinkMarginalDisutilities(network,tdJibeBikeDay,0.,null,bike);
+        Map<Id<Link>,Double> bikeMarginalDisutilitiesNight = NetworkUtils2.precalculateLinkMarginalDisutilities(network,tdJibeBikeNight,0.,null,bike);
+
+        Map<Id<Link>,Double> walkMarginalDisutilitiesDay = NetworkUtils2.precalculateLinkMarginalDisutilities(network,tdJibeWalkDay,0.,null,null);
+        Map<Id<Link>,Double> walkMarginalDisutilitiesNight = NetworkUtils2.precalculateLinkMarginalDisutilities(network,tdJibeWalkNight,0.,null,null);
 
         // Prepare geopackage data
         final GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory();
@@ -245,24 +245,20 @@ public class WriteNetworkGpkg {
             featureBuilder.add(walkTime);
             featureBuilder.add(link.getAttributes().getAttribute("speedLimitMPH"));
             featureBuilder.add(link.getAttributes().getAttribute("veh85percSpeedKPH"));
-//            featureBuilder.add(bikeMarginalDisutilities.get(link.getId()));
-//            featureBuilder.add(walkMarginalDisutilities.get(link.getId()));
+            featureBuilder.add(bikeMarginalDisutilitiesDay.get(link.getId()));
+            featureBuilder.add(bikeMarginalDisutilitiesNight.get(link.getId()));
+            featureBuilder.add(walkMarginalDisutilitiesDay.get(link.getId()));
+            featureBuilder.add(walkMarginalDisutilitiesNight.get(link.getId()));
             featureBuilder.add(link.getAttributes().getAttribute("width"));
             featureBuilder.add((int) link.getNumberOfLanes());
             featureBuilder.add(aadt);
             featureBuilder.add(aadtFwd);
-            featureBuilder.add(link.getAttributes().getAttribute("aadt_old"));
-            featureBuilder.add(link.getAttributes().getAttribute("aadtFwd_old"));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.car));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.bike));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.walk));
             featureBuilder.add(link.getAttributes().getAttribute("motorway"));
             featureBuilder.add(link.getAttributes().getAttribute("trunk"));
             featureBuilder.add(link.getAttributes().getAttribute("dismount"));
-//            featureBuilder.add(link.getAttributes().getAttribute("stravaBikeSpeed"));
-//            featureBuilder.add(link.getAttributes().getAttribute("stravaBikeVol"));
-//            featureBuilder.add(link.getAttributes().getAttribute("stravaWalkSpeed"));
-//            featureBuilder.add(link.getAttributes().getAttribute("stravaWalkVol"));
             featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.car));
             featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.bike));
             featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.walk));
@@ -271,7 +267,7 @@ public class WriteNetworkGpkg {
             featureBuilder.add(link.getAttributes().getAttribute("endsAtJct"));
             featureBuilder.add(link.getAttributes().getAttribute("crossVehicles"));
             featureBuilder.add(Crossing.getType(link,"bike").toString());
-            featureBuilder.add(Crossing.getType(link, "walk").toString());
+            featureBuilder.add(Crossing.getType(link,"walk").toString());
             featureBuilder.add(link.getAttributes().getAttribute("crossLanes"));
             featureBuilder.add(link.getAttributes().getAttribute("crossWidth"));
             featureBuilder.add(link.getAttributes().getAttribute("crossAadt"));
