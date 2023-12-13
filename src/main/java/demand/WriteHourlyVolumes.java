@@ -34,13 +34,13 @@ public class WriteHourlyVolumes {
         Network network = NetworkUtils2.readFullNetwork();
 
         log.info("Estimating volumes from events...");
-        int scaleFactor = (int) (1 / Resources.instance.getDouble(Properties.MATSIM_TFGM_OUTPUT_SCALE_FACTOR));
+        int scaleFactor = (int) (1 / Resources.instance.getDouble(Properties.MATSIM_DEMAND_OUTPUT_SCALE_FACTOR));
         log.info("Multiplying all volumes from events file by a factor of " + scaleFactor);
 
         EventsManager eventsManager = new EventsManagerImpl();
-        HourlyVolumeEventHandler hourlyVolumeEventHandler = new HourlyVolumeEventHandler(Resources.instance.getString(Properties.MATSIM_TFGM_OUTPUT_VEHICLES));
+        HourlyVolumeEventHandler hourlyVolumeEventHandler = new HourlyVolumeEventHandler(Resources.instance.getString(Properties.MATSIM_DEMAND_OUTPUT_VEHICLES));
         eventsManager.addHandler(hourlyVolumeEventHandler);
-        EventsUtils.readEvents(eventsManager,Resources.instance.getString(Properties.MATSIM_TFGM_OUTPUT_EVENTS));
+        EventsUtils.readEvents(eventsManager,Resources.instance.getString(Properties.MATSIM_DEMAND_OUTPUT_EVENTS));
 
         PrintWriter out = ioUtils.openFileForSequentialWriting(new File(outputCsv),false);
         assert out != null;

@@ -38,7 +38,7 @@ public class CreateConfig {
 
         // Specify population
         Population population = PopulationUtils.createPopulation(config);
-        PopulationUtils.readPopulation(population, Resources.instance.getString(Properties.MATSIM_TFGM_PLANS));
+        PopulationUtils.readPopulation(population, Resources.instance.getString(Properties.MATSIM_DEMAND_PLANS));
         PopulationUtils.sampleDown(population,scaleFactor);
         PopulationUtils.writePopulation(population,"temp.xml");
         config.plans().setInputFile("temp.xml");

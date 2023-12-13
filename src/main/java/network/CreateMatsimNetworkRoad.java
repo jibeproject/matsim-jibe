@@ -210,7 +210,7 @@ public class CreateMatsimNetworkRoad {
             l1.setCapacity(allowsCarOut ? capacity : 0.);
             l2.setCapacity(allowsCarRtn ? capacity : 0.);
 
-            // Speed limit
+            // Speed limit (miles per hour)
             Integer speedLimit = (Integer) edge.getAttribute("maxspeed");
             l1.getAttributes().putAttribute("speedLimitMPH",speedLimit);
             l2.getAttributes().putAttribute("speedLimitMPH",speedLimit);
@@ -395,13 +395,13 @@ public class CreateMatsimNetworkRoad {
 
     private static void addSimulationVolumes(Network network) {
         log.info("Adding volumes from events...");
-        int scaleFactor = (int) (1 / Resources.instance.getDouble(Properties.MATSIM_TFGM_OUTPUT_SCALE_FACTOR));
+        int scaleFactor = (int) (1 / Resources.instance.getDouble(Properties.MATSIM_DEMAND_OUTPUT_SCALE_FACTOR));
         log.info("Multiplying all volumes from events file by a factor of " + scaleFactor);
 
         EventsManager eventsManager = new EventsManagerImpl();
-        DailyVolumeEventHandler dailyVolumeEventHandler = new DailyVolumeEventHandler(Resources.instance.getString(Properties.MATSIM_TFGM_OUTPUT_VEHICLES));
+        DailyVolumeEventHandler dailyVolumeEventHandler = new DailyVolumeEventHandler(Resources.instance.getString(Properties.MATSIM_DEMAND_OUTPUT_VEHICLES));
         eventsManager.addHandler(dailyVolumeEventHandler);
-        EventsUtils.readEvents(eventsManager,Resources.instance.getString(Properties.MATSIM_TFGM_OUTPUT_EVENTS));
+        EventsUtils.readEvents(eventsManager,Resources.instance.getString(Properties.MATSIM_DEMAND_OUTPUT_EVENTS));
 
         // Print diagonstics
         int carEvents = dailyVolumeEventHandler.getCarVolumes().values().stream().mapToInt(e -> e).sum();
@@ -410,6 +410,8 @@ public class CreateMatsimNetworkRoad {
         log.info("Identified " + truckEvents + " truck link enter events.");
 
         // Add forward AADT
+        network.getLinks().forEach((id,link) -> link.getAttributes().putAttribute("aadtFwd_car", dailyVolumeEventHandler.getCarVolumes().getOrDefault(id,0) * scaleFactor));
+        network.getLinks().forEach((id,link) -> link.getAttributes().putAttribute("aadtFwd_truck", dailyVolumeEventHandler.getTruckVolumes().getOrDefault(id,0) * scaleFactor));
         network.getLinks().forEach((id,link) -> link.getAttributes().putAttribute("aadtFwd", dailyVolumeEventHandler.getAdjVolumes().getOrDefault(id,0) * scaleFactor));
 
         // Add forward + opposing AADT

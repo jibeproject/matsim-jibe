@@ -15,13 +15,13 @@ public class Properties {
     public static final String MATSIM_TRANSIT_NETWORK = "matsim.transit.network";
     public static final String MATSIM_TRANSIT_SCHEDULE = "matsim.transit.schedule";
 
-    public static final String MATSIM_TFGM_CONFIG = "matsim.tfgm.config";
-    public static final String MATSIM_TFGM_SCALE_FACTOR = "matsim.tfgm.scale.factor";
-    public static final String MATSIM_TFGM_VEHICLES = "matsim.tfgm.vehicles";
-    public static final String MATSIM_TFGM_PLANS = "matsim.tfgm.plans";
-    public static final String MATSIM_TFGM_OUTPUT_EVENTS = "matsim.tfgm.output.events";
-    public static final String MATSIM_TFGM_OUTPUT_VEHICLES = "matsim.tfgm.output.vehicles";
-    public static final String MATSIM_TFGM_OUTPUT_SCALE_FACTOR = "matsim.tfgm.output.scale.factor";
+    public static final String MATSIM_DEMAND_CONFIG = "matsim.demand.config";
+    public static final String MATSIM_DEMAND_SCALE_FACTOR = "matsim.demand.scale.factor";
+    public static final String MATSIM_DEMAND_VEHICLES = "matsim.demand.vehicles";
+    public static final String MATSIM_DEMAND_PLANS = "matsim.demand.plans";
+    public static final String MATSIM_DEMAND_OUTPUT_EVENTS = "matsim.demand.output.events";
+    public static final String MATSIM_DEMAND_OUTPUT_VEHICLES = "matsim.demand.output.vehicles";
+    public static final String MATSIM_DEMAND_OUTPUT_SCALE_FACTOR = "matsim.demand.output.scale.factor";
 
     // Other properties
     public static final String NUMBER_OF_THREADS = "number.of.threads";

@@ -97,7 +97,7 @@ public class GenerateManchesterPlans {
         this.omxFolder = omxFolder;
         this.rand = new Random();
         this.timeDistribution = new TimeDistributions(omxFolder + "vehicleEnRouteTimes.txt");
-        this.sampleSize = Resources.instance.getDouble(Properties.MATSIM_TFGM_SCALE_FACTOR);
+        this.sampleSize = Resources.instance.getDouble(Properties.MATSIM_DEMAND_SCALE_FACTOR);
     }
 
     // Generate randomly sampling demand
@@ -191,7 +191,7 @@ public class GenerateManchesterPlans {
 
         // Write the population file to specified folder
         PopulationWriter pw = new PopulationWriter(scenario.getPopulation(), scenario.getNetwork());
-        pw.write(Resources.instance.getString(Properties.MATSIM_TFGM_PLANS));
+        pw.write(Resources.instance.getString(Properties.MATSIM_DEMAND_PLANS));
 
         logger.info("Total commuter plans written: " + totalTrips.getCounter());
         logger.info("Total unassigned trips: " + this.unassignedTrips);
