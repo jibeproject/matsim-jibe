@@ -231,6 +231,11 @@ public class WriteNetworkGpkg {
                 ArrayUtils.reverse(coords);
             }
 
+            // Allows certain modes
+            boolean allowsCar = link.getAllowedModes().contains(TransportMode.car);
+            boolean allowsBike = link.getAllowedModes().contains(TransportMode.bike);
+            boolean allowsWalk = link.getAllowedModes().contains(TransportMode.walk);
+
             // Geometry
             featureBuilder.add(geometryFactory.createLineString(coords));
 
@@ -255,9 +260,9 @@ public class WriteNetworkGpkg {
             featureBuilder.add(link.getAttributes().getAttribute("aadtFwd"));
             featureBuilder.add(link.getAttributes().getAttribute("aadtFwd_car"));
             featureBuilder.add(link.getAttributes().getAttribute("aadtFwd_truck"));
-            featureBuilder.add(link.getAllowedModes().contains(TransportMode.car));
-            featureBuilder.add(link.getAllowedModes().contains(TransportMode.bike));
-            featureBuilder.add(link.getAllowedModes().contains(TransportMode.walk));
+            featureBuilder.add(allowsCar);
+            featureBuilder.add(allowsBike);
+            featureBuilder.add(allowsWalk);
             featureBuilder.add(link.getAttributes().getAttribute("motorway"));
             featureBuilder.add(link.getAttributes().getAttribute("trunk"));
             featureBuilder.add(link.getAttributes().getAttribute("dismount"));
@@ -265,7 +270,7 @@ public class WriteNetworkGpkg {
 //            featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.bike));
 //            featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.walk));
             featureBuilder.add(Gradient.getGradient(link));
-            featureBuilder.add(CycleProtection.getType(link).toString());
+            featureBuilder.add((allowsBike || allowsWalk) ? CycleProtection.getType(link).toString() : "null");
 //            featureBuilder.add(link.getAttributes().getAttribute("endsAtJct"));
 //            featureBuilder.add(link.getAttributes().getAttribute("crossVehicles"));
 //            featureBuilder.add(Crossing.getType(link,"bike").toString());
@@ -290,7 +295,7 @@ public class WriteNetworkGpkg {
             featureBuilder.add(link.getAttributes().getAttribute("hgvPOIs"));
 //            featureBuilder.add(LinkAmbience.getDayAmbience(link));
 //            featureBuilder.add(LinkAmbience.getNightAmbience(link));
-            featureBuilder.add(link.getAllowedModes().contains(TransportMode.bike) ? LinkStressDiscrete.getCycleStress(link).toString() : "null");
+            featureBuilder.add(allowsBike ? LinkStressDiscrete.getCycleStress(link).toString() : "null");
             featureBuilder.add(LinkStress.getStress(link, TransportMode.bike));
             featureBuilder.add(JctStress.getStress(link,TransportMode.bike));
             featureBuilder.add(LinkStress.getStress(link,TransportMode.walk));
