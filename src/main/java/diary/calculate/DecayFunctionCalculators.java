@@ -1,4 +1,4 @@
-package trads;
+package diary.calculate;
 
 import org.apache.commons.math3.stat.regression.SimpleRegression;
 import org.apache.log4j.Logger;
@@ -9,9 +9,8 @@ import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 import resources.Properties;
 import resources.Resources;
-import trads.calculate.RouteIndicatorCalculator;
-import trads.io.TradsCsvWriter;
-import trads.io.TradsReader;
+import io.TripCsvWriter;
+import io.DiaryReader;
 import trip.Purpose;
 import trip.Trip;
 
@@ -75,7 +74,7 @@ public class DecayFunctionCalculators {
                                                Geometry boundary, String outputCsvPath) throws IOException {
         // Read non-commute trips
         if(trips == null) {
-            trips = TradsReader.readTrips(boundary).stream()
+            trips = DiaryReader.readTrips(boundary).stream()
                     .filter(t -> !((t.getEndPurpose().isMandatory() && t.getStartPurpose().equals(Purpose.HOME)) ||
                             (t.getStartPurpose().isMandatory() && t.getEndPurpose().equals(Purpose.HOME))))
                     .collect(Collectors.toSet());
@@ -109,7 +108,7 @@ public class DecayFunctionCalculators {
 
         // Write outputs
         if(outputCsvPath != null) {
-            TradsCsvWriter.write(validTrips,outputCsvPath,calc.getAllAttributeNames());
+            TripCsvWriter.write(validTrips,outputCsvPath,calc.getAllAttributeNames());
         }
 
         return validTrips;

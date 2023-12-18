@@ -43,11 +43,19 @@ public class JctStress {
                 }
             }
 
+            // Ensure between 0 and 1
             if(stress < 0.) {
                 stress = 0;
             } else if (stress > 1.) {
                 stress = 1;
             }
+
+            // Compare to link stress (and take the highest)
+            double linkStress = LinkStress.getStress(link,mode);
+            if(stress < linkStress) {
+                return linkStress;
+            }
+
             return stress;
         }
         return 0;

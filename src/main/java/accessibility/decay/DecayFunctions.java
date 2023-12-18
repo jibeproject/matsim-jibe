@@ -9,7 +9,7 @@ import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 import routing.disutility.DistanceDisutility;
-import trads.DecayFunctionCalculators;
+import diary.calculate.DecayFunctionCalculators;
 import trip.Purpose;
 
 import java.io.IOException;

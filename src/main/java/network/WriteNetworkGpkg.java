@@ -125,7 +125,7 @@ public class WriteNetworkGpkg {
 //        builder.add("crossingAADT",Double.class);
 //        builder.add("crossingSpeedLimit",Double.class);
 //        builder.add("crossing85PercSpeed",Double.class);
-//        builder.add("vgvi",Double.class);
+        builder.add("vgvi",Double.class);
         builder.add("shannon",Double.class);
         builder.add("POIs",Double.class);
         builder.add("negPOIs",Double.class);
@@ -138,13 +138,13 @@ public class WriteNetworkGpkg {
 //        builder.add("f_POIs",Double.class);
 //        builder.add("f_negPOIs",Double.class);
         builder.add("freightPOIs",Integer.class);
-//        builder.add("f_ambience_day",Double.class);
-//        builder.add("f_ambience_night",Double.class);
+//        builder.add("ambience_day",Double.class);
+//        builder.add("ambience_night",Double.class);
         builder.add("bikeStressDiscrete",String.class);
         builder.add("bikeStress",Double.class);
-//        builder.add("bikeStressJct",Double.class);
+        builder.add("bikeStressJct",Double.class);
         builder.add("walkStress",Double.class);
-//        builder.add("walkStressJct",Double.class);
+        builder.add("walkStressJct",Double.class);
 
         return builder.buildFeatureType();
     }
@@ -162,20 +162,20 @@ public class WriteNetworkGpkg {
         TravelTime ttBike = bicycle.getTravelTime();
         TravelTime ttWalk = new WalkTravelTime();
 
-        // Travel Disutilities
-        JibeDisutility3 tdJibeBikeDay = new JibeDisutility3(TransportMode.bike, ttBike,true);
-        JibeDisutility3 tdJibeBikeNight = new JibeDisutility3(TransportMode.bike, ttBike,false);
-
-        JibeDisutility3 tdJibeWalkDay = new JibeDisutility3(TransportMode.walk, ttWalk,true);
-        JibeDisutility3 tdJibeWalkNight = new JibeDisutility3(TransportMode.walk, ttWalk,false);
-
-
-        // Marginal Disutility maps
-        Map<Id<Link>,Double> bikeMarginalDisutilitiesDay = NetworkUtils2.precalculateLinkMarginalDisutilities(network,tdJibeBikeDay,0.,null,bike);
-        Map<Id<Link>,Double> bikeMarginalDisutilitiesNight = NetworkUtils2.precalculateLinkMarginalDisutilities(network,tdJibeBikeNight,0.,null,bike);
-
-        Map<Id<Link>,Double> walkMarginalDisutilitiesDay = NetworkUtils2.precalculateLinkMarginalDisutilities(network,tdJibeWalkDay,0.,null,null);
-        Map<Id<Link>,Double> walkMarginalDisutilitiesNight = NetworkUtils2.precalculateLinkMarginalDisutilities(network,tdJibeWalkNight,0.,null,null);
+//        // Travel Disutilities
+//        JibeDisutility3 tdJibeBikeDay = new JibeDisutility3(TransportMode.bike, ttBike,true);
+//        JibeDisutility3 tdJibeBikeNight = new JibeDisutility3(TransportMode.bike, ttBike,false);
+//
+//        JibeDisutility3 tdJibeWalkDay = new JibeDisutility3(TransportMode.walk, ttWalk,true);
+//        JibeDisutility3 tdJibeWalkNight = new JibeDisutility3(TransportMode.walk, ttWalk,false);
+//
+//
+//        // Marginal Disutility maps
+//        Map<Id<Link>,Double> bikeMarginalDisutilitiesDay = NetworkUtils2.precalculateLinkMarginalDisutilities(network,tdJibeBikeDay,0.,null,bike);
+//        Map<Id<Link>,Double> bikeMarginalDisutilitiesNight = NetworkUtils2.precalculateLinkMarginalDisutilities(network,tdJibeBikeNight,0.,null,bike);
+//
+//        Map<Id<Link>,Double> walkMarginalDisutilitiesDay = NetworkUtils2.precalculateLinkMarginalDisutilities(network,tdJibeWalkDay,0.,null,null);
+//        Map<Id<Link>,Double> walkMarginalDisutilitiesNight = NetworkUtils2.precalculateLinkMarginalDisutilities(network,tdJibeWalkNight,0.,null,null);
 
         // Prepare geopackage data
         final GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory();
@@ -275,7 +275,7 @@ public class WriteNetworkGpkg {
 //            featureBuilder.add(link.getAttributes().getAttribute("crossAadt"));
 //            featureBuilder.add(link.getAttributes().getAttribute("crossSpeedLimitMPH"));
 //            featureBuilder.add(link.getAttributes().getAttribute("cross85PercSpeed"));
-//            featureBuilder.add(link.getAttributes().getAttribute("vgvi"));
+            featureBuilder.add(link.getAttributes().getAttribute("vgvi"));
             featureBuilder.add(link.getAttributes().getAttribute("shannon"));
             featureBuilder.add(link.getAttributes().getAttribute("POIs"));
             featureBuilder.add(link.getAttributes().getAttribute("negPOIs"));
@@ -292,9 +292,9 @@ public class WriteNetworkGpkg {
 //            featureBuilder.add(LinkAmbience.getNightAmbience(link));
             featureBuilder.add(link.getAllowedModes().contains(TransportMode.bike) ? LinkStressDiscrete.getCycleStress(link).toString() : "null");
             featureBuilder.add(LinkStress.getStress(link, TransportMode.bike));
-//            featureBuilder.add(JctStress.getStress(link,TransportMode.bike));
+            featureBuilder.add(JctStress.getStress(link,TransportMode.bike));
             featureBuilder.add(LinkStress.getStress(link,TransportMode.walk));
-//            featureBuilder.add(JctStress.getStress(link,TransportMode.walk));
+            featureBuilder.add(JctStress.getStress(link,TransportMode.walk));
             SimpleFeature feature = featureBuilder.buildFeature(null);
             collection.add(feature);
         }

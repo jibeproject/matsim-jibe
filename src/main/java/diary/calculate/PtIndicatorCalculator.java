@@ -1,4 +1,4 @@
-package trads.calculate;
+package diary.calculate;
 import ch.sbb.matsim.routing.pt.raptor.*;
 import trip.Place;
 import org.matsim.api.core.v01.Coord;

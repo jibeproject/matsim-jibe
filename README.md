@@ -43,7 +43,7 @@ Creates a directed 2-way edges file (.gpkg) based on the matsim network. Include
 This is especially useful for visualisations in which attributes are different in each direction.
 Note that the output from this code is only meant for visualisation, it is not to be taken as input anywhere else.
 
-## Trads package (src/main/java/trads)
+## Trads package (src/main/java/diary)
 This package contains everything related to routing trips from the Greater Manchester TRADS travel survey and collecting attributes to expand the trips dataset.
 
 ### RunTradsAnalysis.java

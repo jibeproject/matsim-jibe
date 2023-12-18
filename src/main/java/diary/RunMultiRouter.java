@@ -1,4 +1,4 @@
-package trads;
+package diary;
 
 import gis.GpkgReader;
 import io.ioUtils;
@@ -23,8 +23,8 @@ import routing.disutility.components.JctStress;
 import routing.disutility.components.LinkAmbience;
 import routing.disutility.components.LinkStress;
 import routing.travelTime.WalkTravelTime;
-import trads.calculate.LogitDataCalculator;
-import trads.io.TradsReader;
+import diary.calculate.LogitDataCalculator;
+import io.DiaryReader;
 import trip.Trip;
 
 import java.io.*;
@@ -73,7 +73,7 @@ public class RunMultiRouter {
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
-        Set<Trip> trips = TradsReader.readTrips(boundary);
+        Set<Trip> trips = DiaryReader.readTrips(boundary);
 
         // Filter to only routable trips with chosen mode
         Set<Trip> selectedTrips = trips.stream()

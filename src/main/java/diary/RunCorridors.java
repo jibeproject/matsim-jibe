@@ -1,18 +1,16 @@
-package trads;
+package diary;
 
 import com.google.common.collect.Iterables;
 import gis.GpkgReader;
 import io.ioUtils;
 import network.NetworkUtils2;
 import org.apache.log4j.Logger;
-import org.locationtech.jts.algorithm.Distance;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.IdMap;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
-import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
@@ -22,28 +20,25 @@ import resources.Resources;
 import routing.Bicycle;
 import routing.disutility.DistanceDisutility;
 import routing.travelTime.WalkTravelTime;
-import trads.calculate.LinkCorridorCalculator;
-import trads.io.TradsReader;
-import trip.Purpose;
+import diary.calculate.LinkCorridorCalculator;
+import io.DiaryReader;
 import trip.Trip;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static trip.Place.*;
 
 // Code to calculate route-based corridors between origin-destination pairs.
 // NOTE: Feasible for detour factors up to 50%
 
-public class RunLinkCorridor {
+public class RunCorridors {
 
-    private final static Logger logger = Logger.getLogger(RunLinkCorridor.class);
+    private final static Logger logger = Logger.getLogger(RunCorridors.class);
     private final static char SEP = ',';
 
     public static void main(String[] args) throws IOException, FactoryException {
@@ -69,7 +64,7 @@ public class RunLinkCorridor {
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
-        Set<Trip> trips = TradsReader.readTrips(boundary);//.stream()
+        Set<Trip> trips = DiaryReader.readTrips(boundary);//.stream()
 //                .filter(t -> !((t.getEndPurpose().isMandatory() && t.getStartPurpose().equals(Purpose.HOME)) ||
 //                        (t.getStartPurpose().isMandatory() && t.getEndPurpose().equals(Purpose.HOME))))
 //                .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -89,15 +84,15 @@ public class RunLinkCorridor {
             veh = null;
         } else throw new RuntimeException("Modes other than walk and bike are not supported!");
 
+        // Disutility function
+        TravelDisutility td = new DistanceDisutility();
+
         // Write header
         writeHeader(outputCsv);
 
-        // Use time disutility
-        TravelDisutility td = new DistanceDisutility();
-
-        // Calculate shortest, fastest, and jibe route
+        // Calculate corridors in partitions of 1000
         for(List<Trip> partition : Iterables.partition(trips,1000)) {
-            Map<Trip, IdMap<Link,Double>> results = LinkCorridorCalculator.calculate(partition,HOME, DESTINATION, td, veh, modeNetwork, modeNetwork, 1.5);
+            Map<Trip, IdMap<Link,Double>> results = LinkCorridorCalculator.calculate(partition,ORIGIN, DESTINATION, td, veh, modeNetwork, modeNetwork, 1.25);
             writeResults(results,outputCsv);
         }
     }

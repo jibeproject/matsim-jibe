@@ -1,4 +1,4 @@
-package trads.io;
+package io;
 
 import trip.Place;
 import org.apache.log4j.Logger;
@@ -20,21 +20,20 @@ import java.io.IOException;
 import java.util.*;
 
 import static trip.Purpose.*;
-import static trads.io.TradsAttributes.*;
 
-public class TradsReader {
+public class DiaryReader {
 
-    private final static Logger logger = Logger.getLogger(TradsReader.class);
+    private final static Logger logger = Logger.getLogger(DiaryReader.class);
 
     public static Set<Trip> readTrips(Geometry geometry) throws IOException {
         Set<Trip> trips = new LinkedHashSet<>();
         String recString;
-        Counter counter = new Counter("Processed " + " TRADS records.");
+        Counter counter = new Counter("Processed " + "travel diary records.");
         int badCoords = 0;
         int badTimes = 0;
 
         // Open Reader
-        String filePath = Resources.instance.getString(Properties.TRADS_TRIPS);
+        String filePath = Resources.instance.getString(Properties.DIARY_FILE);
         if(filePath == null) {
             throw new RuntimeException("No TRADS survey path in the properties file!");
         }
@@ -44,30 +43,32 @@ public class TradsReader {
 
         // Read Header
         recString = in.readLine();
-        String[] header = recString.split(SEP);
-        int posHouseholdId = findPositionInArray(HOUSEHOLD_ID, header);
-        int posPersonId = findPositionInArray(PERSON_ID, header);
-        int posTripId = findPositionInArray(TRIP_ID, header);
-        int posStartTime = findPositionInArray(START_TIME, header);
-        int posMainMode = findPositionInArray(MAIN_MODE, header);
-        int posStartPurpose = findPositionInArray(START_PURPOSE, header);
-        int posEndPurpose = findPositionInArray(END_PURPOSE, header);
-        int posHomeZone = findPositionInArray(HOME_ZONE,header);
-        int posMainZone = findPositionInArray(MAIN_ZONE,header);
-        int posOriginZone = findPositionInArray(ORIGIN_ZONE,header);
-        int posDestinationZone = findPositionInArray(DESTINATION_ZONE,header);
-        int posHomeX = findPositionInArray(X_HOME_COORD, header);
-        int posHomeY = findPositionInArray(Y_HOME_COORD, header);
-        int posMainX = findPositionInArray(X_MAIN_COORD, header);
-        int posMainY = findPositionInArray(Y_MAIN_COORD, header);
-        int posOrigX = findPositionInArray(X_ORIGIN_COORD, header);
-        int posOrigY = findPositionInArray(Y_ORIGIN_COORD, header);
-        int posDestX = findPositionInArray(X_DESTINATION_COORD, header);
-        int posDestY = findPositionInArray(Y_DESTINATION_COORD, header);
+        String[] header = recString.split(Resources.instance.getString(Properties.DIARY_DELIMITER));
+        int posHouseholdId = findPositionInArray(Properties.HOUSEHOLD_ID, header);
+        int posPersonId = findPositionInArray(Properties.PERSON_ID, header);
+        int posTripId = findPositionInArray(Properties.TRIP_ID, header);
+        int posStartTime = findPositionInArray(Properties.START_TIME, header);
+        int posMainMode = findPositionInArray(Properties.MAIN_MODE, header);
+        int posStartPurpose = findPositionInArray(Properties.ORIGIN_PURPOSE, header);
+        int posEndPurpose = findPositionInArray(Properties.DESTINATION_PURPOSE, header);
+        int posHomeZone = findPositionInArray(Properties.HOME_ZONE,header);
+        int posMainZone = findPositionInArray(Properties.MAIN_ZONE,header);
+        int posOriginZone = findPositionInArray(Properties.ORIGIN_ZONE,header);
+        int posDestinationZone = findPositionInArray(Properties.DESTINATION_ZONE,header);
+        int posHomeX = findPositionInArray(Properties.HOME_X, header);
+        int posHomeY = findPositionInArray(Properties.HOME_Y, header);
+        int posMainX = findPositionInArray(Properties.MAIN_X, header);
+        int posMainY = findPositionInArray(Properties.MAIN_Y, header);
+        int posOrigX = findPositionInArray(Properties.ORIGIN_X, header);
+        int posOrigY = findPositionInArray(Properties.ORIGIN_Y, header);
+        int posDestX = findPositionInArray(Properties.DESTINATION_X, header);
+        int posDestY = findPositionInArray(Properties.DESTINATION_Y, header);
 
+
+        String sep = Resources.instance.getString(Properties.DIARY_DELIMITER);
         while ((recString = in.readLine()) != null) {
             counter.incCounter();
-            String[] lineElements = recString.split(SEP);
+            String[] lineElements = recString.split(sep);
 
             String householdId = lineElements[posHouseholdId];
             int personId = Integer.parseInt(lineElements[posPersonId]);
@@ -90,8 +91,13 @@ public class TradsReader {
             String mainMode = getTransportMode(lineElements[posMainMode]);
 
             // Read start and end purpose
-            Purpose startPurpose = getPurpose(lineElements[posStartPurpose]);
-            Purpose endPurpose = getPurpose(lineElements[posEndPurpose]);
+            Purpose startPurpose = null;
+            Purpose endPurpose = null;
+
+            if(posStartPurpose != -1 && posEndPurpose != -1) {
+                startPurpose = getPurpose(lineElements[posStartPurpose]);
+                endPurpose = getPurpose(lineElements[posEndPurpose]);
+            }
 
             // Zones
             Map<Place,String> zones = new HashMap<>(3);
@@ -167,34 +173,55 @@ public class TradsReader {
         return trips;
     }
 
-    private static int findPositionInArray (String string, String[] array) {
-        int ind = -1;
-        for (int a = 0; a < array.length; a++) {
-            if (array[a].equalsIgnoreCase(string)) {
-                ind = a;
+    private static int findPositionInArray (String property, String[] array) {
+        String string = Resources.instance.getString(property);
+        if (string == null) {
+            logger.warn("No diary attribute for \"" + property + "\" specified in properties file");
+            return -1;
+        } else {
+            int ind = -1;
+            for (int a = 0; a < array.length; a++) {
+                if (array[a].equalsIgnoreCase(string)) {
+                    ind = a;
+                }
             }
+            if (ind == -1) {
+                logger.error ("Could not find element " + string +
+                        " in array");
+            }
+            return ind;
         }
-        if (ind == -1) {
-            logger.error ("Could not find element " + string +
-                    " in array");
-        }
-        return ind;
     }
 
-    private static String getTransportMode(String tradsMode) {
-        switch(tradsMode) {
-            case "Walk": return TransportMode.walk;
-            case "Bicycle": return TransportMode.bike;
-            case "Motorcycle, scooter, moped": return TransportMode.motorcycle;
-            case "Car or van driver": return TransportMode.car;
+    private static String getTransportMode(String mode) {
+        switch(mode) {
+            case "Walk":
+            case "Walking":
+                return TransportMode.walk;
+            case "Bicycle":
+                return TransportMode.bike;
+            case "Motorcycle":
+            case "Motorcycle, scooter, moped":
+                return TransportMode.motorcycle;
+            case "Car or van driver":
+            case "Vehicle Driver":
+                return TransportMode.car;
             case "Train":
             case "2+ Train":
                 return TransportMode.train;
-            case "Taxi, minicab": return TransportMode.taxi;
-            default: return tradsMode;
+            case "Taxi":
+            case "Taxi, minicab":
+                return TransportMode.taxi;
+            case "Public Bus":
+            case "School Bus":
+            case "Tram":
+                return TransportMode.pt;
+            default:
+                return TransportMode.other;
         }
     }
 
+    // todo: generalise to also work for melbourne
     private static Purpose getPurpose(String purpose) {
         switch(purpose) {
             case "Home": return HOME;

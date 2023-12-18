@@ -4,6 +4,7 @@ import network.NetworkUtils2;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.Identifiable;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -19,7 +20,7 @@ import org.opengis.referencing.FactoryException;
 import resources.Resources;
 import routing.disutility.JibeDisutility;
 import routing.travelTime.WalkTravelTime;
-import trads.io.TradsRouteWriter;
+import io.TripRouteWriter;
 import trip.Place;
 import trip.Trip;
 
@@ -27,6 +28,7 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static trip.Place.DESTINATION;
 import static trip.Place.ORIGIN;
@@ -101,8 +103,7 @@ public class RunNodeRouter2 {
             Id<Node> destination = Id.createNodeId(lineElements[posDestination]);
 
             Map<Place,Coord> coords = new HashMap<>(2);
-            Coord originCoord = modeNetwork.getNodes().get(origin).getCoord();
-            coords.put(ORIGIN,originCoord);
+            coords.put(ORIGIN,modeNetwork.getNodes().get(origin).getCoord());
             coords.put(DESTINATION,modeNetwork.getNodes().get(destination).getCoord());
 
             Map<Place,Boolean> coordsInBoundary = new HashMap<>(2);
@@ -119,11 +120,11 @@ public class RunNodeRouter2 {
             LeastCostPathCalculator.Path pathFast = dijkstraFast.calcLeastCostPath(modeNetwork.getNodes().get(origin), modeNetwork.getNodes().get(destination), 0., null, veh);
             LeastCostPathCalculator.Path pathJibe = dijkstraJibe.calcLeastCostPath(modeNetwork.getNodes().get(origin), modeNetwork.getNodes().get(destination), 0., null, veh);
 
-            storeResults("fast",trip,pathFast,tdFast,originCoord);
-            storeResults("jibe",trip,pathJibe,tdJibe,originCoord);
+            storeResults("fast",trip,pathFast,tdFast);
+            storeResults("jibe",trip,pathJibe,tdJibe);
         }
 
-        TradsRouteWriter.write(trips, outputFile, Set.of("mc_ambience","mc_stress","cost","time","dist"));
+        TripRouteWriter.write(trips, modeNetwork, outputFile, false, Set.of("mc_ambience","mc_stress","cost","time","dist"));
     }
     private static int findPositionInArray (String string, String[] array) {
         int ind = -1;
@@ -139,7 +140,7 @@ public class RunNodeRouter2 {
         return ind;
     }
 
-    private static void storeResults(String route, Trip trip, LeastCostPathCalculator.Path path, TravelDisutility td, Coord originCoord) {
+    private static void storeResults(String route, Trip trip, LeastCostPathCalculator.Path path, TravelDisutility td) {
         Map<String,Object> results = new LinkedHashMap<>();
 
         // If JibeDisutility, get marginal costs
@@ -157,8 +158,8 @@ public class RunNodeRouter2 {
         results.put("dist",dist);
 
         // Set path
-        int[] edgeIDs = path.links.stream().mapToInt(l -> (int) l.getAttributes().getAttribute("edgeID")).toArray();
-        trip.setRoutePath(route,originCoord,edgeIDs,dist,path.travelTime);
+        List<Id<Link>> linkIDs = path.links.stream().map(Identifiable::getId).collect(Collectors.toList());
+        trip.addRoute(route,linkIDs,dist);
 
         // Set attributes
         trip.setAttributes(route,results);

@@ -1,4 +1,4 @@
-package trads;
+package diary;
 
 import gis.GpkgReader;
 import network.NetworkUtils2;
@@ -10,9 +10,9 @@ import org.matsim.core.router.util.TravelTime;
 import resources.Resources;
 import routing.disutility.DistanceDisutility;
 import routing.travelTime.WalkTravelTime;
-import trads.calculate.RouteIndicatorCalculator;
-import trads.io.TradsCsvWriter;
-import trads.io.TradsReader;
+import diary.calculate.RouteIndicatorCalculator;
+import io.TripCsvWriter;
+import io.DiaryReader;
 import trip.Trip;
 
 import java.io.IOException;
@@ -22,9 +22,9 @@ import static trip.Place.*;
 
 // SCRIPT TO ADD MAIN DISTANCES FOR ANALYZING RUBBER BANDING IN TOUR-MAKING
 
-public class RunDestinationChoiceAnalysis {
+public class RunRubberBandingAnalysis {
 
-    private final static Logger logger = Logger.getLogger(RunDestinationChoiceAnalysis.class);
+    private final static Logger logger = Logger.getLogger(RunRubberBandingAnalysis.class);
 
     public static void main(String[] args) throws IOException {
 
@@ -50,7 +50,7 @@ public class RunDestinationChoiceAnalysis {
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
-        Set<Trip> trips = TradsReader.readTrips(boundary);
+        Set<Trip> trips = DiaryReader.readTrips(boundary);
 
         // Travel time
         TravelTime ttWalk = new WalkTravelTime();
@@ -68,6 +68,6 @@ public class RunDestinationChoiceAnalysis {
 
         // Write results
         logger.info("Writing results to csv file...");
-        TradsCsvWriter.write(trips, outputFile, calc.getAllAttributeNames());
+        TripCsvWriter.write(trips, outputFile, calc.getAllAttributeNames());
     }
 }

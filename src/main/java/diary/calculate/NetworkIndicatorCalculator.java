@@ -1,10 +1,12 @@
-package trads.calculate;
+package diary.calculate;
 
+import org.matsim.api.core.v01.Id;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.utils.misc.Counter;
 import routing.TravelAttribute;
 import trip.Place;
 import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.Identifiable;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
@@ -16,8 +18,10 @@ import routing.disutility.JibeDisutility;
 import trip.Trip;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.stream.Collectors;
 
 public class NetworkIndicatorCalculator implements Runnable {
 
@@ -79,7 +83,7 @@ public class NetworkIndicatorCalculator implements Runnable {
                 // Calculate least cost path
                 LeastCostPathCalculator.Path path = pathCalculator.calcLeastCostPath(nOrig, nDest, trip.getStartTime(), null, vehicle);
 
-                // If JibeDisutility, get marginal costs
+                // If JibeDisutility, get marginal costs todo: update this for new Jibe Disutility
                 if(travelDisutility instanceof JibeDisutility) {
                     results.put("mc_ambience", ((JibeDisutility) travelDisutility).getMarginalCostAmbience_m());
                     results.put("mc_stress", ((JibeDisutility) travelDisutility).getMarginalCostStress_m());
@@ -95,8 +99,8 @@ public class NetworkIndicatorCalculator implements Runnable {
 
                 // Set path
                 if(savePath) {
-                    int[] edgeIDs = path.links.stream().mapToInt(l -> (int) l.getAttributes().getAttribute("edgeID")).toArray();
-                    trip.setRoutePath(route,nOrig.getCoord(),edgeIDs,dist,path.travelTime);
+                    List<Id<Link>> linkIDs = path.links.stream().map(Identifiable::getId).collect(Collectors.toList());
+                    trip.addRoute(route,linkIDs,dist);
                 }
 
                 // Additional attributes

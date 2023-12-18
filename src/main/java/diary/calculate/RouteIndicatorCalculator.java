@@ -1,4 +1,4 @@
-package trads.calculate;
+package diary.calculate;
 
 import resources.Properties;
 import resources.Resources;

@@ -1,11 +1,11 @@
-package trads;
+package diary;
 
 import gis.GpkgReader;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.TransportMode;
 import resources.Resources;
-import trads.io.TradsReader;
+import io.DiaryReader;
 import trip.Purpose;
 import trip.Trip;
 
@@ -32,7 +32,7 @@ public class CheckTripsInBoundary {
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
-        Set<Trip> trips = TradsReader.readTrips(boundary);
+        Set<Trip> trips = DiaryReader.readTrips(boundary);
 
         logger.info("Total trips: " + trips.size());
         logger.info("Trips in network boundary: " + trips.stream().filter(t -> t.routable(ORIGIN,DESTINATION)).count());

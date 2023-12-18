@@ -16,8 +16,8 @@ import resources.Resources;
 import routing.disutility.DistanceDisutility;
 import routing.disutility.JibeDisutility;
 import routing.travelTime.WalkTravelTime;
-import trads.calculate.RouteIndicatorCalculator;
-import trads.io.TradsRouteWriter;
+import diary.calculate.RouteIndicatorCalculator;
+import io.TripRouteWriter;
 import trip.Place;
 import trip.Trip;
 
@@ -100,7 +100,7 @@ public class RunNodeRouter {
         calc.network(mode + "_fast", ORIGIN, DESTINATION, veh, modeNetwork, modeNetwork, new OnlyTimeDependentTravelDisutility(tt), tt, null, true);
         calc.network(mode + "_jibe", ORIGIN, DESTINATION, veh, modeNetwork, modeNetwork, new JibeDisutility(mode,tt,0.,0.), tt, null, true);
 
-        TradsRouteWriter.write(trips, outputFile, calc.getAllAttributeNames());
+        TripRouteWriter.write(trips, modeNetwork, outputFile, false, calc.getAllAttributeNames());
 
 
     }

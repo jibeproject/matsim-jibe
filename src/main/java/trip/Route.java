@@ -1,33 +1,23 @@
 package trip;
 
-import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.network.Link;
+import java.util.List;
 
 public class Route {
-    private final Coord startCoord;
-    private final int[] path;
+    private final List<Id<Link>> linkIds;
     private final double distance;
-    private final double time;
 
-    public Route(Coord startCoord, int[] path, double distance, double time) {
-        this.startCoord = startCoord;
-        this.path = path;
+    public Route(List<Id<Link>> linkIds, double distance) {
+        this.linkIds = linkIds;
         this.distance = distance;
-        this.time = time;
     }
 
-    public Coord getStartCoord() {
-        return startCoord;
-    }
-
-    public int[] getLinks() {
-        return this.path;
+    public List<Id<Link>> getLinkIds() {
+        return this.linkIds;
     }
 
     public double getDistance() {
         return this.distance;
-    }
-
-    public double getTime() {
-        return time;
     }
 }

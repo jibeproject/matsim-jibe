@@ -29,8 +29,27 @@ public class Properties {
     public static final String DECAY_PERCENTILE = "decay.percentile";
     
     // TRADS Survey data
-    public static final String TRADS_TRIPS = "trads.trips";
-
+    public static final String DIARY_FILE = "diary.file";
+    public static final String DIARY_DELIMITER = "diary.delimiter";
+    public static final String HOUSEHOLD_ID = "diary.household.id";
+    public static final String PERSON_ID = "diary.person.id";
+    public static final String TRIP_ID = "diary.trip.id";
+    public static final String START_TIME = "diary.start.time";
+    public static final String MAIN_MODE = "diary.main.mode";
+    public static final String ORIGIN_PURPOSE = "diary.origin.purpose";
+    public static final String DESTINATION_PURPOSE = "diary.destination.purpose";
+    public static final String HOME_ZONE = "diary.home.zone";
+    public static final String MAIN_ZONE = "diary.main.zone";
+    public static final String ORIGIN_ZONE = "diary.origin.zone";
+    public static final String DESTINATION_ZONE = "diary.destination.zone";
+    public static final String HOME_X = "diary.home.x";
+    public static final String HOME_Y = "diary.home.y";
+    public static final String MAIN_X = "diary.main.x";
+    public static final String MAIN_Y = "diary.main.y";
+    public static final String ORIGIN_X = "diary.origin.x";
+    public static final String ORIGIN_Y = "diary.origin.y";
+    public static final String DESTINATION_X = "diary.destination.x";
+    public static final String DESTINATION_Y = "diary.destination.y";
 
     // Parameters for JIBE routing (generic)
     public static final String TIME = "time";

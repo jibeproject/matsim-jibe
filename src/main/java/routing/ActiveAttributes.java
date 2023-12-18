@@ -40,7 +40,7 @@ public class ActiveAttributes {
         return attributes;
     }
 
-    public static LinkedHashMap<String,TravelAttribute> getJibe4(String mode, Vehicle veh) {
+    public static LinkedHashMap<String,TravelAttribute> getJibe3(String mode, Vehicle veh) {
         LinkedHashMap<String,TravelAttribute> attributes = new LinkedHashMap<>();
         attributes.put("gradient",(l,td,tt) -> Math.max(Math.min(Gradient.getGradient(l),0.5),0.) * tt.getLinkTravelTime(l,0.,null,veh));
         attributes.put("comfort",(l,td,tt) -> LinkComfort.getComfortFactor(l) * tt.getLinkTravelTime(l,0.,null,veh));
