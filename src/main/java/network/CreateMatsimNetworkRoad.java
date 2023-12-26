@@ -187,17 +187,16 @@ public class CreateMatsimNetworkRoad {
 
             // ALLOWED MODES
             Set<String> allowedModesOut = Sets.newHashSet(linkModes.split(","));
-            l1.setAllowedModes(allowedModesOut);
 
             // If allows walk but not bike, add bike but specify must dismount
-            boolean walkNotBike = allowedModesOut.contains("walk") && !allowedModesOut.contains("bike");
+            boolean walkNotBike = allowedModesOut.contains(walk) && !allowedModesOut.contains(bike);
             boolean dismount = walkNotBike || roadType.contains("Cycling Forbidden") || cycleosm.equals("dismount");
 
             l1.getAttributes().putAttribute("dismount",dismount);
             l2.getAttributes().putAttribute("dismount",dismount);
 
             // Add back cycling (dismounted) if walking is allowed
-            if(walkNotBike) allowedModesOut.add("bike");
+            if(walkNotBike) allowedModesOut.add(bike);
 
             // Allowed modes return
             Set<String> allowedModesRtn = new HashSet<>(allowedModesOut);
@@ -219,6 +218,9 @@ public class CreateMatsimNetworkRoad {
                     }
                 }
             }
+
+            // Set allowed modes
+            l1.setAllowedModes(allowedModesOut);
             l2.setAllowedModes(allowedModesRtn);
 
             // Are cars allowed on this link? (necessary for mode-specific filtered networks)
