@@ -18,7 +18,7 @@ public enum LinkStressDiscrete {
             if (junction.equals("roundabout") || junction.equals("circular")) {
                 return RED;
             } else {
-                double speedLimit = ((Integer) link.getAttributes().getAttribute("speedLimitMPH")).doubleValue();
+                double speedLimit = (double) link.getAttributes().getAttribute("speedLimitMPH");
                 double speed85perc = (double) link.getAttributes().getAttribute("veh85percSpeedKPH") * 0.621371;
                 double aadt = ((int) link.getAttributes().getAttribute("aadt")) * 0.865;
                 CycleProtection protection = CycleProtection.getType(link);
@@ -60,7 +60,7 @@ public enum LinkStressDiscrete {
                         return AMBER;
                     }
                 } else {
-                    if (!protection.equals(OFFROAD)) {
+                    if (!protection.equals(KERBED)) {
                         return RED;
                     }
                 }

@@ -45,18 +45,20 @@ public class ActiveAttributes {
         attributes.put("gradient",(l,td,tt) -> Math.max(Math.min(Gradient.getGradient(l),0.5),0.) * tt.getLinkTravelTime(l,0.,null,veh));
         attributes.put("comfort",(l,td,tt) -> LinkComfort.getComfortFactor(l) * tt.getLinkTravelTime(l,0.,null,veh));
         attributes.put("vgvi",(l,td,tt) -> LinkAmbience.getVgviFactor(l) * tt.getLinkTravelTime(l,0.,null,veh));
-        attributes.put("lighting",(l,td,tt) -> LinkAmbience.getLightingFactor(l) * tt.getLinkTravelTime(l,0.,null,veh));
+//        attributes.put("lighting",(l,td,tt) -> LinkAmbience.getLightingFactor(l) * tt.getLinkTravelTime(l,0.,null,veh));
         attributes.put("shannon", (l,td,tt) -> LinkAmbience.getShannonFactor(l) * tt.getLinkTravelTime(l,0.,null,veh));
-        attributes.put("crime", (l,td,tt) -> LinkAmbience.getCrimeFactor(l) * tt.getLinkTravelTime(l,0.,null,veh));
+//        attributes.put("crime", (l,td,tt) -> LinkAmbience.getCrimeFactor(l) * tt.getLinkTravelTime(l,0.,null,veh));
         attributes.put("POIs",(l,td,tt) -> LinkAmbience.getPoiFactor(l) * tt.getLinkTravelTime(l,0.,null,veh));
         attributes.put("negPOIs",(l,td,tt) -> LinkAmbience.getNegativePoiFactor(l) * tt.getLinkTravelTime(l,0.,null,veh));
-        attributes.put("ambience", (l,td,tt) -> LinkAmbience.getDayAmbience(l) * tt.getLinkTravelTime(l,0.,null,veh));
+//        attributes.put("ambience", (l,td,tt) -> LinkAmbience.getDayAmbience(l) * tt.getLinkTravelTime(l,0.,null,veh));
         attributes.put("stressLink",(l,td,tt) -> LinkStress.getStress(l,mode) * tt.getLinkTravelTime(l,0.,null,veh));
-        attributes.put("stressJct",(l,td,tt) -> getJibe4StressJct(mode,l,tt,veh));
+        attributes.put("stressJct",(l,td,tt) -> getJibe3StressJct(mode,l,tt,veh));
         return attributes;
     }
 
-    private static double getJibe4StressJct(String mode, Link l, TravelTime tt, Vehicle veh) {
+
+
+    private static double getJibe3StressJct(String mode, Link l, TravelTime tt, Vehicle veh) {
         if((boolean) l.getAttributes().getAttribute("crossVehicles")) {
             return JctStress.getStress(l,mode) * tt.getLinkTravelTime(l,0.,null,veh) *
                     (Math.min((double) l.getAttributes().getAttribute("crossWidth") / l.getLength(), 1.));

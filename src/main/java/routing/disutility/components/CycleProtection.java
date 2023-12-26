@@ -5,7 +5,7 @@ import org.matsim.api.core.v01.network.Link;
 import org.matsim.contrib.bicycle.BicycleUtils;
 
 public enum CycleProtection {
-    OFFROAD,
+    KERBED,
     PROTECTED,
     LANE,
     MIXED;
@@ -17,7 +17,8 @@ public enum CycleProtection {
         if (link.getAllowedModes().contains(TransportMode.walk) || link.getAllowedModes().contains(TransportMode.bike)) {
             switch (cycleosm) {
                 case "offroad":
-                    return OFFROAD;
+                case "kerbed":
+                    return KERBED;
                 case "protected":
                     return PROTECTED;
                 case "painted":

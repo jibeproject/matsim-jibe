@@ -107,8 +107,6 @@ public class CreateMatsimNetworkRoad {
         String linkModes = (String) edge.getAttribute("modes");
 
         if(origNodeId != destNodeId && !linkModes.equals("pt")) {
-            String roadType = (String) edge.getAttribute("roadtyp");
-
             Node origNode = net.getNodes().get(Id.createNodeId(origNodeId));
             Node destNode = net.getNodes().get(Id.createNodeId(destNodeId));
 
@@ -147,9 +145,59 @@ public class CreateMatsimNetworkRoad {
             l1.getAttributes().putAttribute("urban",urban);
             l2.getAttributes().putAttribute("urban",urban);
 
+            // CYCLING INFRASTRUCTURE
+            // Cycle lane
+            l1.getAttributes().putAttribute("cycleway",Objects.requireNonNullElse(edge.getAttribute("cyclwy_f"),"null"));
+            l2.getAttributes().putAttribute("cycleway",Objects.requireNonNullElse(edge.getAttribute("cyclwy_b"),"null"));
+
+            // OSM Cycle lane type
+            String cycleosm = (String) edge.getAttribute("cyclesm");
+            if(cycleosm == null) {
+                cycleosm = "null";
+            }
+            l1.getAttributes().putAttribute("cycleosm",cycleosm);
+            l2.getAttributes().putAttribute("cycleosm",cycleosm);
+
+            // ROAD TYPE
+            // Type
+            String highway = (String) edge.getAttribute("highway");
+            l1.getAttributes().putAttribute("type",edge.getAttribute("highway"));
+            l2.getAttributes().putAttribute("type",edge.getAttribute("highway"));
+
+            // Roadtyp attribute
+            String roadType = (String) edge.getAttribute("roadtyp");
+            if(roadType == null) {
+                roadType = highway;
+            }
+
+            // Is the road a motorway?
+            boolean motorway = roadType.contains("motorway");
+            l1.getAttributes().putAttribute("motorway",motorway);
+            l2.getAttributes().putAttribute("motorway",motorway);
+
+            // Is the road a trunk road?
+            boolean trunk = motorway || roadType.contains("Trunk") || roadType.contains("trunk");
+            l1.getAttributes().putAttribute("trunk",trunk);
+            l2.getAttributes().putAttribute("trunk",trunk);
+
+            // Is the road a primary road?
+            boolean primary = trunk || roadType.contains("Main") || roadType.contains("primary");
+            l1.getAttributes().putAttribute("primary",primary);
+            l2.getAttributes().putAttribute("primary",primary);
+
             // ALLOWED MODES
             Set<String> allowedModesOut = Sets.newHashSet(linkModes.split(","));
             l1.setAllowedModes(allowedModesOut);
+
+            // If allows walk but not bike, add bike but specify must dismount
+            boolean walkNotBike = allowedModesOut.contains("walk") && !allowedModesOut.contains("bike");
+            boolean dismount = walkNotBike || roadType.contains("Cycling Forbidden") || cycleosm.equals("dismount");
+
+            l1.getAttributes().putAttribute("dismount",dismount);
+            l2.getAttributes().putAttribute("dismount",dismount);
+
+            // Add back cycling (dismounted) if walking is allowed
+            if(walkNotBike) allowedModesOut.add("bike");
 
             // Allowed modes return
             Set<String> allowedModesRtn = new HashSet<>(allowedModesOut);
@@ -158,11 +206,11 @@ public class CreateMatsimNetworkRoad {
                 allowedModesRtn.remove(bike);
                 allowedModesRtn.remove(car);
                 allowedModesRtn.remove(truck);
-            } else if(oneWaySummary.equals("One Way - Two Way Cycling")) {
+            } else if(oneWaySummary.equals("One Way - Two Way Cycling")) { // Manchester network only
                 allowedModesRtn.remove(car);
                 allowedModesRtn.remove(truck);
             } else  {
-                Boolean isOneWay = (Boolean) edge.getAttribute("is_oneway"); // Attribute currently only for Melbourne network
+                Boolean isOneWay = (Boolean) edge.getAttribute("is_oneway"); // Melbourne network only
                 if(isOneWay != null) {
                     if(isOneWay) {
                         allowedModesRtn.remove(bike);
@@ -211,59 +259,23 @@ public class CreateMatsimNetworkRoad {
             l2.setCapacity(allowsCarRtn ? capacity : 0.);
 
             // Speed limit (miles per hour)
-            Integer speedLimit = (Integer) edge.getAttribute("maxspeed");
+            double speedLimit = (double) edge.getAttribute("maxspeed");
             l1.getAttributes().putAttribute("speedLimitMPH",speedLimit);
             l2.getAttributes().putAttribute("speedLimitMPH",speedLimit);
-
-            // Cycle lane
-            l1.getAttributes().putAttribute("cycleway",edge.getAttribute("cyclwy_f"));
-            l2.getAttributes().putAttribute("cycleway",edge.getAttribute("cyclwy_b"));
-
-            // OSM Cycle lane type
-            String cycleosm = (String) edge.getAttribute("cyclesm");
-            if(cycleosm == null) {
-                cycleosm = "null";
-            }
-            l1.getAttributes().putAttribute("cycleosm",cycleosm);
-            l2.getAttributes().putAttribute("cycleosm",cycleosm);
 
             // Surface
             String surface = (String) edge.getAttribute("surface");
             if(surface == null) {
-                surface = "unknown";
+                surface = "null";
             }
             l1.getAttributes().putAttribute("surface",surface);
             l2.getAttributes().putAttribute("surface",surface);
-
-            // Type
-            l1.getAttributes().putAttribute("type",edge.getAttribute("highway"));
-            l2.getAttributes().putAttribute("type",edge.getAttribute("highway"));
-
-            // Is the road a motorway?
-            boolean motorway = roadType.contains("motorway");
-            l1.getAttributes().putAttribute("motorway",motorway);
-            l2.getAttributes().putAttribute("motorway",motorway);
-
-            // Is the road a trunk road?
-            boolean trunk = motorway || roadType.contains("Trunk");
-            l1.getAttributes().putAttribute("trunk",trunk);
-            l2.getAttributes().putAttribute("trunk",trunk);
-
-            // Is the road a primary road?
-            boolean primary = trunk || roadType.contains("Main");
-            l1.getAttributes().putAttribute("primary",primary);
-            l2.getAttributes().putAttribute("primary",primary);
-
-            // Do cyclists have to dismount?
-            boolean dismount = roadType.contains("Cycling Forbidden") || cycleosm.equals("dismount");
-            l1.getAttributes().putAttribute("dismount",dismount);
-            l2.getAttributes().putAttribute("dismount",dismount);
 
             // Add NDVImean attribute
             Double ndvi = (Double) edge.getAttribute("NDVImen");
             if(ndvi == null) {
                 ndvi = 0.;
-                // log.warn("Null NDVI for edge " + edgeID + ". Set to 0."); todo: uncomment once NDVI is added to Melbourne dataset
+                // log.warn("Null NDVI for edge " + edgeID + ". Set to 0."); todo: uncomment when/if NDVI is added to Melbourne dataset
             }
             l1.getAttributes().putAttribute("ndvi",ndvi);
             l2.getAttributes().putAttribute("ndvi",ndvi);
@@ -375,8 +387,8 @@ public class CreateMatsimNetworkRoad {
                             .mapToInt(l -> (int) l.getAttributes().getAttribute("aadtFwd"))
                             .sum();
                     crossSpeedLimit = crossingLinks.stream()
-                            .mapToInt(l -> (int) l.getAttributes().getAttribute("speedLimitMPH"))
-                            .max().getAsInt();
+                            .mapToDouble(l -> (double) l.getAttributes().getAttribute("speedLimitMPH"))
+                            .max().getAsDouble();
                     cross85PercSpeed = crossingLinks.stream()
                             .mapToDouble(l -> (double) l.getAttributes().getAttribute("veh85percSpeedKPH"))
                             .max().getAsDouble();

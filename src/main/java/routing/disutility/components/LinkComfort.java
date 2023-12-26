@@ -9,10 +9,9 @@ public class LinkComfort {
     public static double getComfortFactor(Link link) {
 
         String surface = (String) link.getAttributes().getAttribute(BicycleUtils.SURFACE);
-        String type = (String) link.getAttributes().getAttribute(BicycleUtils.WAY_TYPE);
 
         double comfortFactor = 1.0;
-        if (surface != null) {
+        if (!surface.equals("null")) {
             switch (surface) {
                 case "paved":
                 case "asphalt": comfortFactor = 1.0; break;
@@ -45,14 +44,6 @@ public class LinkComfort {
                 case "asphalt;paving_stones:35": comfortFactor = .60; break;
                 case "paving_stones:3": comfortFactor = .40; break;
                 default: comfortFactor = .85;
-            }
-        } else {
-            // For many primary and secondary roads, no surface is specified because they are by default assumed to be is asphalt.
-            // For tertiary roads street this is not true, e.g. Friesenstr. in Kreuzberg
-            if (type != null) {
-                if (type.equals("primary") || type.equals("primary_link") || type.equals("secondary") || type.equals("secondary_link")) {
-                    comfortFactor = 1.0;
-                }
             }
         }
         return (1. - comfortFactor);

@@ -30,9 +30,6 @@ public class JctStress {
             if(crossingType.equals(UNCONTROLLED)) {
                 if(crossingSpeed < 60) {
                     stress = crossingAadt/(300*crossingSpeed + 16500) + crossingSpeed/90 + crossingLanes/3 - 0.5;
-                    if(mode.equals(TransportMode.bike) && link.getAllowedModes().contains(TransportMode.car)) {
-                        stress = Math.max(stress,LinkStress.getStress(link,mode));
-                    }
                 } else {
                     stress = 1.;
                 }

@@ -117,18 +117,19 @@ public class RunRouter {
 //        // beeline
         calc.beeline("beeline", ORIGIN, DESTINATION);
 
-        // car (freespeed only)
+        // car
         calc.network("car_freespeed", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,savePath);
         calc.network("car_congested", ORIGIN, DESTINATION, null, networkCar, carXy2l, congestedDisutility, congestedTime, null,savePath);
 
-        // bike (shortest and fastest)
-        calc.network("bike_jibe_day", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBikeFast,true), ttBike, null,savePath);
-        calc.network("bike_jibe_night", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBikeFast,false), ttBike, null,savePath);
+         // bike
+//        calc.network("bike_jibe_day", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBikeFast,true), ttBike, null,savePath);
+//        calc.network("bike_jibe_night", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBikeFast,false), ttBike, null,savePath);
         calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new DistanceDisutility(), ttBikeFast, null,savePath);
         calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new OnlyTimeDependentTravelDisutility(ttBikeFast), ttBike, null,savePath);
 
-        calc.network("walk_jibe_day", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new JibeDisutility3Fast(networkWalk,null,TransportMode.walk,ttWalk,true), ttWalk, null, savePath);
-        calc.network("walk_jibe_night", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new JibeDisutility3Fast(networkWalk,null,TransportMode.walk,ttWalk,false), ttWalk, null, savePath);
+        // walk
+//        calc.network("walk_jibe_day", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new JibeDisutility3Fast(networkWalk,null,TransportMode.walk,ttWalk,true), ttWalk, null, savePath);
+//        calc.network("walk_jibe_night", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new JibeDisutility3Fast(networkWalk,null,TransportMode.walk,ttWalk,false), ttWalk, null, savePath);
         calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new DistanceDisutility(), ttWalk, null,savePath);
         calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, null,savePath);
 
