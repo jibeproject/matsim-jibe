@@ -22,9 +22,9 @@ import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.router.costcalculators.FreespeedTravelTimeAndDisutility;
 import org.matsim.core.router.util.TravelTime;
+import routing.ActiveAttributes;
 import routing.Bicycle;
 import routing.disutility.DistanceDisutility;
-import routing.disutility.JibeDisutility3Fast;
 import routing.travelTime.WalkTravelTime;
 import diary.calculate.RouteIndicatorCalculator;
 import io.TripCsvWriter;
@@ -124,14 +124,14 @@ public class RunRouter {
          // bike
 //        calc.network("bike_jibe_day", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBikeFast,true), ttBike, null,savePath);
 //        calc.network("bike_jibe_night", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBikeFast,false), ttBike, null,savePath);
-        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new DistanceDisutility(), ttBikeFast, null,savePath);
-        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new OnlyTimeDependentTravelDisutility(ttBikeFast), ttBike, null,savePath);
+        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new DistanceDisutility(), ttBikeFast, ActiveAttributes.getJibeDist(TransportMode.bike),savePath);
+        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new OnlyTimeDependentTravelDisutility(ttBikeFast), ttBike, ActiveAttributes.getJibeTime(TransportMode.bike,bike),savePath);
 
         // walk
 //        calc.network("walk_jibe_day", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new JibeDisutility3Fast(networkWalk,null,TransportMode.walk,ttWalk,true), ttWalk, null, savePath);
 //        calc.network("walk_jibe_night", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new JibeDisutility3Fast(networkWalk,null,TransportMode.walk,ttWalk,false), ttWalk, null, savePath);
-        calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new DistanceDisutility(), ttWalk, null,savePath);
-        calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, null,savePath);
+        calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new DistanceDisutility(), ttWalk, ActiveAttributes.getJibeDist(TransportMode.walk),savePath);
+        calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, ActiveAttributes.getJibeTime(TransportMode.walk,null),savePath);
 
 //        // public transport
 //        calc.pt("pt", ORIGIN, DESTINATION, config, transitScheduleFilePath, transitNetworkFilePath);
