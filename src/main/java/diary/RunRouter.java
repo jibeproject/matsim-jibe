@@ -47,7 +47,7 @@ public class RunRouter {
             throw new RuntimeException("Program requires 2 arguments: \n" +
                     "(0) Properties file \n" +
                     "(1) Route data output (.csv) \n" +
-                    "(2) Link data output (specify .gpkg OR write \"true\" to include links in csv file) \n");
+                    "(2) Link data output (specify .gpkg OR write \"true\" to include links in csv file. Otherwise write \"false\") \n");
         }
 
         Resources.initializeResources(args[0]);
@@ -82,8 +82,9 @@ public class RunRouter {
 
         // Create car networks
         logger.info("Creating mode-specific networks...");
-        Network networkCar = NetworkUtils.createNetwork();
-        new MatsimNetworkReader(networkCar).readFile(Resources.instance.getString(Properties.MATSIM_CAR_NETWORK));
+        Network networkCarInput = NetworkUtils.createNetwork();
+        new MatsimNetworkReader(networkCarInput).readFile(Resources.instance.getString(Properties.MATSIM_CAR_NETWORK));
+        Network networkCar = NetworkUtils2.extractModeSpecificNetwork(networkCarInput, TransportMode.car);
         Network carXy2l = NetworkUtils2.extractXy2LinksNetwork(networkCar, l -> !((boolean) l.getAttributes().getAttribute("motorway")));
 
         // Create active mode networks
@@ -98,7 +99,6 @@ public class RunRouter {
         // Travel time
         FreespeedTravelTimeAndDisutility freeSpeed = new FreespeedTravelTimeAndDisutility(config.planCalcScore());
         TravelTime ttBikeFast = bicycle.getTravelTimeFast(networkBike,bike);
-        TravelTime ttBike = bicycle.getTravelTime();
         TravelTime ttWalk = new WalkTravelTime();
 
         // Car freespeed & congested travel time
@@ -114,7 +114,7 @@ public class RunRouter {
         // CALCULATOR
         RouteIndicatorCalculator calc = new RouteIndicatorCalculator(trips);
 
-//        // beeline
+        // beeline
         calc.beeline("beeline", ORIGIN, DESTINATION);
 
         // car
@@ -125,7 +125,7 @@ public class RunRouter {
 //        calc.network("bike_jibe_day", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBikeFast,true), ttBike, null,savePath);
 //        calc.network("bike_jibe_night", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBikeFast,false), ttBike, null,savePath);
         calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new DistanceDisutility(), ttBikeFast, ActiveAttributes.getJibeDist(TransportMode.bike),savePath);
-        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new OnlyTimeDependentTravelDisutility(ttBikeFast), ttBike, ActiveAttributes.getJibeTime(TransportMode.bike,bike),savePath);
+        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new OnlyTimeDependentTravelDisutility(ttBikeFast), ttBikeFast, ActiveAttributes.getJibeTime(TransportMode.bike,bike),savePath);
 
         // walk
 //        calc.network("walk_jibe_day", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new JibeDisutility3Fast(networkWalk,null,TransportMode.walk,ttWalk,true), ttWalk, null, savePath);
@@ -135,7 +135,7 @@ public class RunRouter {
 
 //        // public transport
 //        calc.pt("pt", ORIGIN, DESTINATION, config, transitScheduleFilePath, transitNetworkFilePath);
-
+//
 //        // Activity-based modelling calculations (not relevant for JIBE)
 //        calc.beeline("beeline_hs", HOME, DESTINATION);
 //        calc.beeline("beeline_sm", DESTINATION, MAIN);
