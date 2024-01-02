@@ -261,7 +261,16 @@ public class CreateMatsimNetworkRoad {
             l2.setCapacity(allowsCarRtn ? capacity : 0.);
 
             // Speed limit (miles per hour)
-            double speedLimit = (double) edge.getAttribute("maxspeed");
+            Object speedLimitObj = edge.getAttribute("maxspeed");
+            double speedLimit;
+            if(speedLimitObj instanceof Double) {
+                speedLimit = (double) speedLimitObj;
+            } else if (speedLimitObj instanceof Integer) {
+                speedLimit = ((Integer) speedLimitObj).doubleValue();
+            } else {
+                throw new RuntimeException("maxspeed attribute must be stored as integer or double!");
+            }
+
             l1.getAttributes().putAttribute("speedLimitMPH",speedLimit);
             l2.getAttributes().putAttribute("speedLimitMPH",speedLimit);
 

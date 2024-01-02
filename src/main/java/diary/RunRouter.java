@@ -25,6 +25,7 @@ import org.matsim.core.router.util.TravelTime;
 import routing.ActiveAttributes;
 import routing.Bicycle;
 import routing.disutility.DistanceDisutility;
+import routing.disutility.JibeDisutility3Fast;
 import routing.travelTime.WalkTravelTime;
 import diary.calculate.RouteIndicatorCalculator;
 import io.TripCsvWriter;
@@ -97,39 +98,39 @@ public class RunRouter {
 //        String transitNetworkFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_NETWORK);
 
         // Travel time
-        FreespeedTravelTimeAndDisutility freeSpeed = new FreespeedTravelTimeAndDisutility(config.planCalcScore());
+//        FreespeedTravelTimeAndDisutility freeSpeed = new FreespeedTravelTimeAndDisutility(config.planCalcScore());
         TravelTime ttBikeFast = bicycle.getTravelTimeFast(networkBike,bike);
         TravelTime ttWalk = new WalkTravelTime();
 
-        // Car freespeed & congested travel time
-        String tfgmDemandEvents = Resources.instance.getString(Properties.MATSIM_DEMAND_OUTPUT_EVENTS);
-        TravelTimeCalculator.Builder builder = new TravelTimeCalculator.Builder(networkCar);
-        TravelTimeCalculator congested = builder.build();
-        EventsManager events = EventsUtils.createEventsManager();
-        events.addHandler(congested);
-        (new MatsimEventsReader(events)).readFile(tfgmDemandEvents);
-        TravelTime congestedTime = congested.getLinkTravelTimes();
-        TravelDisutility congestedDisutility = new OnlyTimeDependentTravelDisutility(congested.getLinkTravelTimes());
+//        // Car freespeed & congested travel time
+//        String tfgmDemandEvents = Resources.instance.getString(Properties.MATSIM_DEMAND_OUTPUT_EVENTS);
+//        TravelTimeCalculator.Builder builder = new TravelTimeCalculator.Builder(networkCar);
+//        TravelTimeCalculator congested = builder.build();
+//        EventsManager events = EventsUtils.createEventsManager();
+//        events.addHandler(congested);
+//        (new MatsimEventsReader(events)).readFile(tfgmDemandEvents);
+//        TravelTime congestedTime = congested.getLinkTravelTimes();
+//        TravelDisutility congestedDisutility = new OnlyTimeDependentTravelDisutility(congested.getLinkTravelTimes());
 
         // CALCULATOR
         RouteIndicatorCalculator calc = new RouteIndicatorCalculator(trips);
 
-        // beeline
-        calc.beeline("beeline", ORIGIN, DESTINATION);
-
-        // car
-        calc.network("car_freespeed", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,savePath);
-        calc.network("car_congested", ORIGIN, DESTINATION, null, networkCar, carXy2l, congestedDisutility, congestedTime, null,savePath);
+//        // beeline
+//        calc.beeline("beeline", ORIGIN, DESTINATION);
+//
+//        // car
+//        calc.network("car_freespeed", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,savePath);
+//        calc.network("car_congested", ORIGIN, DESTINATION, null, networkCar, carXy2l, congestedDisutility, congestedTime, null,savePath);
 
          // bike
-//        calc.network("bike_jibe_day", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBikeFast,true), ttBike, null,savePath);
-//        calc.network("bike_jibe_night", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBikeFast,false), ttBike, null,savePath);
+        calc.network("bike_jibe_day", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBikeFast,true), ttBikeFast, ActiveAttributes.getJibeTime(TransportMode.bike,bike),savePath);
+        calc.network("bike_jibe_night", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBikeFast,false), ttBikeFast, ActiveAttributes.getJibeTime(TransportMode.bike,bike),savePath);
         calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new DistanceDisutility(), ttBikeFast, ActiveAttributes.getJibeDist(TransportMode.bike),savePath);
         calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new OnlyTimeDependentTravelDisutility(ttBikeFast), ttBikeFast, ActiveAttributes.getJibeTime(TransportMode.bike,bike),savePath);
 
         // walk
-//        calc.network("walk_jibe_day", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new JibeDisutility3Fast(networkWalk,null,TransportMode.walk,ttWalk,true), ttWalk, null, savePath);
-//        calc.network("walk_jibe_night", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new JibeDisutility3Fast(networkWalk,null,TransportMode.walk,ttWalk,false), ttWalk, null, savePath);
+        calc.network("walk_jibe_day", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new JibeDisutility3Fast(networkWalk,null,TransportMode.walk,ttWalk,true), ttWalk, ActiveAttributes.getJibeTime(TransportMode.walk,null), savePath);
+        calc.network("walk_jibe_night", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new JibeDisutility3Fast(networkWalk,null,TransportMode.walk,ttWalk,false), ttWalk, ActiveAttributes.getJibeTime(TransportMode.walk,null), savePath);
         calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new DistanceDisutility(), ttWalk, ActiveAttributes.getJibeDist(TransportMode.walk),savePath);
         calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, ActiveAttributes.getJibeTime(TransportMode.walk,null),savePath);
 
