@@ -190,7 +190,7 @@ public class RunMultiRouter {
                     if(day) {
                         vgviLight += LinkAmbience.getVgviFactor(link) * linkLength;
                     } else {
-                        vgviLight += LinkAmbience.getLightingFactor(link) * linkLength;
+                        vgviLight += LinkAmbience.getDarknessFactor(link) * linkLength;
                     }
                     stressLink += LinkStress.getStress(link,mode) * linkLength;
                     stressJct += JctStress.getStress(link,mode) * (double) link.getAttributes().getAttribute("crossWidth");

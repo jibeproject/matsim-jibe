@@ -106,7 +106,7 @@ public class JibeDisutility2 implements TravelDisutility {
                 vgviLight = LinkAmbience.getVgviFactor(link);
             } else {
                 // Nighttime - use Street Lighting
-                vgviLight = LinkAmbience.getLightingFactor(link);
+                vgviLight = LinkAmbience.getDarknessFactor(link);
             }
             disutility += mcVgviLight * vgviLight * distance;
 

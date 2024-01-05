@@ -4,13 +4,13 @@ import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.contrib.bicycle.BicycleUtils;
 
-public enum CycleProtection {
+public enum Protection {
     KERBED,
     PROTECTED,
     LANE,
     MIXED;
 
-    public static CycleProtection getType(Link link) {
+    public static Protection getType(Link link) {
         String cycleosm = (String) link.getAttributes().getAttribute("cycleosm");
         String cycleway = (String) link.getAttributes().getAttribute(BicycleUtils.CYCLEWAY);
 

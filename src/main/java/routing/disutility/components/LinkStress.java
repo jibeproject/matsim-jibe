@@ -2,7 +2,7 @@ package routing.disutility.components;
 
 import org.matsim.api.core.v01.network.Link;
 
-import static routing.disutility.components.CycleProtection.*;
+import static routing.disutility.components.Protection.*;
 
 
 public class LinkStress {
@@ -22,7 +22,7 @@ public class LinkStress {
                 double speedLimit = (double) link.getAttributes().getAttribute("speedLimitMPH");
                 double speed85perc = (double) link.getAttributes().getAttribute("veh85percSpeedKPH") * 0.621371;
                 double aadt = ((int) link.getAttributes().getAttribute("aadt")) * 0.865;
-                CycleProtection protection = CycleProtection.getType(link);
+                Protection protection = Protection.getType(link);
 
                 if (speed85perc >= speedLimit * 1.1) {
                     speedLimit = speed85perc;

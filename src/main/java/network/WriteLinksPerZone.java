@@ -54,7 +54,7 @@ public class WriteLinksPerZone {
 
         // Write header
         out.println(idAttribute + SEP + "linkID" + SEP + "length" + SEP + "gradient" + SEP +
-                "vgvi" + SEP + "lighting" + SEP + "mStressLink" + SEP + "mStressJct");
+                "vgvi" + SEP + "darkness" + SEP + "mStressLink" + SEP + "mStressJct");
 
         // Write rows
         for (Map.Entry<SimpleFeature, IdSet<Link>> entry : linksPerZone.entrySet()) {
@@ -65,7 +65,7 @@ public class WriteLinksPerZone {
                         link.getLength() + SEP +
                         Math.max(Gradient.getGradient(link),0.) + SEP +
                         LinkAmbience.getVgviFactor(link) + SEP +
-                        LinkAmbience.getLightingFactor(link) + SEP +
+                        LinkAmbience.getDarknessFactor(link) + SEP +
                         LinkStress.getStress(link,mode) + SEP +
                         JctStress.getStress(link,mode));
             }

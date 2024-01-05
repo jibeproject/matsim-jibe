@@ -16,7 +16,7 @@ public class ActiveAttributes {
     public static LinkedHashMap<String,TravelAttribute> get(String mode) {
         LinkedHashMap<String,TravelAttribute> attributes = new LinkedHashMap<>();
         attributes.put("vgvi",(l,td,tt) -> LinkAmbience.getVgviFactor(l) * l.getLength());
-        attributes.put("lighting",(l,td,tt) -> LinkAmbience.getLightingFactor(l) * l.getLength());
+        attributes.put("darkness",(l,td,tt) -> LinkAmbience.getDarknessFactor(l) * l.getLength());
         attributes.put("shannon", (l,td,tt) -> LinkAmbience.getShannonFactor(l) * l.getLength());
         attributes.put("crime", (l,td,tt) -> LinkAmbience.getCrimeFactor(l) * l.getLength());
         attributes.put("POIs",(l,td,tt) -> LinkAmbience.getPoiFactor(l) * l.getLength());
@@ -45,7 +45,7 @@ public class ActiveAttributes {
         attributes.put("gradient",(l,td,tt) -> Math.max(Math.min(Gradient.getGradient(l),0.5),0.) * tt.getLinkTravelTime(l,0.,null,veh));
         attributes.put("comfort",(l,td,tt) -> LinkComfort.getComfortFactor(l) * tt.getLinkTravelTime(l,0.,null,veh));
         attributes.put("vgvi",(l,td,tt) -> LinkAmbience.getVgviFactor(l) * tt.getLinkTravelTime(l,0.,null,veh));
-        attributes.put("lighting",(l,td,tt) -> LinkAmbience.getLightingFactor(l) * tt.getLinkTravelTime(l,0.,null,veh));
+        attributes.put("darkness",(l,td,tt) -> LinkAmbience.getDarknessFactor(l) * tt.getLinkTravelTime(l,0.,null,veh));
         attributes.put("shannon_adj", (l,td,tt) -> LinkAmbience.getShannonFactor(l) * tt.getLinkTravelTime(l,0.,null,veh));
         attributes.put("shannon_sum", (l,td,tt) -> (double) l.getAttributes().getAttribute("shannon") * tt.getLinkTravelTime(l,0.,null,veh));
         attributes.put("crime", (l,td,tt) -> LinkAmbience.getCrimeFactor(l) * tt.getLinkTravelTime(l,0.,null,veh));
@@ -64,7 +64,7 @@ public class ActiveAttributes {
         attributes.put("gradient",(l,td,tt) -> Math.max(Math.min(Gradient.getGradient(l),0.5),0.) * l.getLength());
         attributes.put("comfort",(l,td,tt) -> LinkComfort.getComfortFactor(l) * l.getLength());
         attributes.put("vgvi",(l,td,tt) -> LinkAmbience.getVgviFactor(l) * l.getLength());
-        attributes.put("lighting",(l,td,tt) -> LinkAmbience.getLightingFactor(l) * l.getLength());
+        attributes.put("darkness",(l,td,tt) -> LinkAmbience.getDarknessFactor(l) * l.getLength());
         attributes.put("shannon_adj", (l,td,tt) -> LinkAmbience.getShannonFactor(l) * l.getLength());
         attributes.put("shannon_sum", (l,td,tt) -> (double) l.getAttributes().getAttribute("shannon") * l.getLength());
         attributes.put("crime", (l,td,tt) -> LinkAmbience.getCrimeFactor(l) * l.getLength());

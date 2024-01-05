@@ -11,7 +11,7 @@ public class WalkTravelTime implements TravelTime {
     @Override
     // Applies Tobler's Hiking Function
     public double getLinkTravelTime(Link link, double v, Person person, Vehicle vehicle) {
-        double gradient = Gradient.getGradient(link);
+        double gradient = Math.min(1,Math.max(-1,Gradient.getGradient(link)));
         return 3 * link.getLength() / (5 * Math.exp(-3.5*Math.abs(gradient + 0.05)));
     }
 }

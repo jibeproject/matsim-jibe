@@ -6,23 +6,23 @@ public class LinkAmbience {
 
 
     public static double getVgviFactor (Link link){
-        double vgvi = (double) link.getAttributes().getAttribute("vgvi");
-        return 1. - vgvi;
+        return (double) link.getAttributes().getAttribute("vgvi");
     }
 
-    public static double getLightingFactor (Link link){
+    public static double getDarknessFactor(Link link){
         int lights = (int) link.getAttributes().getAttribute("streetLights");
-        return 1. - Math.min(1., 15 * lights / link.getLength());
+        int idealSpacing = (boolean) link.getAttributes().getAttribute("primary") ? 30 : 15;
+        return 1 - Math.min(1., idealSpacing * lights / link.getLength());
     }
 
     public static double getShannonFactor (Link link){
         double shannon = (double) link.getAttributes().getAttribute("shannon");
-        return 1. - Math.min(1., shannon / 1.6);
+        return Math.min(1., shannon / 1.6);
     }
 
     public static double getPoiFactor (Link link){
         int pois = (int) link.getAttributes().getAttribute("POIs");
-        return 1 - Math.min(1., 5 * pois / link.getLength());
+        return Math.min(1., 5 * pois / link.getLength());
     }
 
     public static double getNegativePoiFactor (Link link){
@@ -42,17 +42,24 @@ public class LinkAmbience {
         double negativePois = getNegativePoiFactor(link);
         double crime = getCrimeFactor(link);
 
-        return vgvi / 3 + (pois + shannon + negativePois + crime) / 6;
+        double good = 0.5 * vgvi + Math.min(0.5,0.5 * pois + 0.5 * shannon);
+        double bad = 0.5 * negativePois + 0.5 * crime;
+
+        return Math.max(0.,Math.min(1.,0.5 - good + bad));
     }
 
     public static double getNightAmbience(Link link){
+        double vgvi = getVgviFactor(link);
         double pois = getPoiFactor(link);
         double shannon = getShannonFactor(link);
-        double lighting = getLightingFactor(link);
         double negativePois = getNegativePoiFactor(link);
         double crime = getCrimeFactor(link);
+        double darkness = getDarknessFactor(link);
 
-        return (pois + shannon) / 6 + (lighting + negativePois + crime) * 2 / 9;
+        double good = 0.25 * vgvi + Math.min(0.5,0.5 * pois + 0.5 * shannon);
+        double bad = 0.25 * darkness + 0.5 * negativePois + 0.5 * crime;
+
+        return Math.max(0.,Math.min(1.,0.5 - good + bad));
     }
 
 }
