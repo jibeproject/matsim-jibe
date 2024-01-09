@@ -26,7 +26,7 @@ public class Trip {
     private final Map<String, Map<String,Object>> routeAttributes = new LinkedHashMap<>();
     private final Map<String,Integer> routePathIndices = new LinkedHashMap<>();
     private final List<Route> routes = new ArrayList<>();
-    private final List<List<Id<Link>>> paths = new ArrayList<>(); // todo: just use routes instead if not too much impact on runtime. Probably, it will be faster if I can check distance first.
+    private final List<List<Id<Link>>> paths = new ArrayList<>();
 
     public Trip(String householdId, int personId, int tripId, int startTime,
                 String mainMode, Purpose startPurpose, Purpose endPurpose, Map<Place, String> zones, Map<Place,Coord> coords, Map<Place,Boolean> coordsInsideBoundary) {

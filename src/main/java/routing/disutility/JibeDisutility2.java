@@ -23,40 +23,32 @@ public class JibeDisutility2 implements TravelDisutility {
 
     private final static Logger logger = Logger.getLogger(JibeDisutility2.class);
     private final String mode;
-    private final double mcTime_s;
-    private final double mcDistance_m;
-    private final double mcGradient_m_100m;
-    private final double mcVgviLight;
-    private final double mcStressLink;
-    private final double mcStressJct;
+    private final double marginalCostGradient;
+    private final double marginalCostVgvi;
+    private final double marginalCostLinkStress;
+    private final double marginalCostJctStress;
     private final TravelTime timeCalculator;
     private final Network network;
-    private final Person person;
     private final Vehicle vehicle;
-
-    private final double[] disutilities = new double[Id.getNumberOfIds(Link.class) * 2];
+    private final double[] disutilities = new double[Id.getNumberOfIds(Link.class)];
 
     // Custom parameters
-    public JibeDisutility2(Network network, Person person, Vehicle vehicle, String mode, TravelTime tt,
-                           double mcTime_s, double mcDistance_m,
-                           double mcGradient_m_100m, double mcVgviLight,
-                           double mcStressLink, double mcStressJct) {
+    public JibeDisutility2(Network network, Vehicle vehicle, String mode, TravelTime tt,
+                           double marginalCostGradient, double marginalCostVgvi,
+                           double marginalCostLinkStress, double marginalCostJctStress) {
 
         if(!mode.equals(TransportMode.bike) && !mode.equals(TransportMode.walk)) {
             throw new RuntimeException("Mode " + mode + " not supported for JIBE disutility.");
         }
 
         this.network = network;
-        this.person = person;
         this.vehicle = vehicle;
         this.mode = mode;
         this.timeCalculator = tt;
-        this.mcTime_s = mcTime_s;
-        this.mcDistance_m = mcDistance_m;
-        this.mcGradient_m_100m = mcGradient_m_100m;
-        this.mcVgviLight = mcVgviLight;
-        this.mcStressLink = mcStressLink;
-        this.mcStressJct = mcStressJct;
+        this.marginalCostGradient = marginalCostGradient;
+        this.marginalCostVgvi = marginalCostVgvi;
+        this.marginalCostLinkStress = marginalCostLinkStress;
+        this.marginalCostJctStress = marginalCostJctStress;
         printMarginalCosts();
         precalculateDisutility();
     }
@@ -64,62 +56,58 @@ public class JibeDisutility2 implements TravelDisutility {
     private void printMarginalCosts() {
         logger.info("Initialised JIBE disutility with the following parameters:" +
                 "\nMode: " + this.mode +
-                "\nMarginal cost of time (/s): " + this.mcTime_s +
-                "\nMarginal cost of distance (/m): " + this.mcDistance_m +
-                "\nMarginal cost of gradient (m/100m): " + this.mcGradient_m_100m +
-                "\nMarginal cost of lighting/vgvi (/m): " + this.mcVgviLight +
-                "\nMarginal cost of LINK stress (/m): " + this.mcStressLink +
-                "\nMarginal cost of JCT stress (/m): " + this.mcStressJct);
+                "\nMarginal cost of gradient (/s): " + this.marginalCostGradient +
+                "\nMarginal cost of vgvi (/s): " + this.marginalCostVgvi +
+                "\nMarginal cost of link stress (/s): " + this.marginalCostLinkStress +
+                "\nMarginal cost of jct stress (/s): " + this.marginalCostJctStress);
     }
 
-    private void precalculateDisutility() {
+    public void precalculateDisutility() {
         logger.info("precalculating disutilities...");
         for(Link link : network.getLinks().values()) {
-            disutilities[link.getId().index() * 2] = calculateDisutility(link,true,person,vehicle);
-            disutilities[link.getId().index() * 2 + 1] = calculateDisutility(link,false,person,vehicle);
+            disutilities[link.getId().index()] = calculateDisutility(link);
         }
     }
 
-    private double calculateDisutility(Link link, boolean day, Person person, Vehicle vehicle) {
-
+    private double calculateDisutility(Link link) {
         if(link.getAllowedModes().contains(this.mode)) {
 
-            double travelTime = timeCalculator.getLinkTravelTime(link, 0., person, vehicle);
-
-            double distance = link.getLength();
-
-            // Travel time disutility
-            double disutility = mcTime_s * travelTime;
-
-            // Distance disutility (0 by default)
-            disutility += mcDistance_m * distance;
+            double linkTime = timeCalculator.getLinkTravelTime(link, 0., null, vehicle);
+            double linkLength = link.getLength();
 
             // Gradient factor
-            double gradient = Gradient.getGradient(link);
-            if(gradient < 0.) gradient = 0.;
-            disutility += mcGradient_m_100m * gradient * distance;
+            double gradient = Math.max(Math.min(Gradient.getGradient(link),0.5),0.);
 
-            // Lighting / VGVI
-            double vgviLight;
-            if(day) {
-                // Daytime - use VGVI
-                vgviLight = LinkAmbience.getVgviFactor(link);
-            } else {
-                // Nighttime - use Street Lighting
-                vgviLight = LinkAmbience.getDarknessFactor(link);
-            }
-            disutility += mcVgviLight * vgviLight * distance;
+            // VGVI
+            double vgvi = Math.max(0.,0.81 - LinkAmbience.getVgviFactor(link));
 
-            // Link Stress
+            // Link stress
             double linkStress = LinkStress.getStress(link,mode);
-            disutility += mcStressLink * linkStress * distance;
+
+            // Junction stress
+            double jctStress = 0;
+            if((boolean) link.getAttributes().getAttribute("crossVehicles")) {
+                double junctionWidth = Math.min(linkLength,(double) link.getAttributes().getAttribute("crossWidth"));
+                jctStress = (junctionWidth / linkLength) * JctStress.getStress(link,mode);
+            }
+
+            // Link disutility
+            double disutility = linkTime * (1 +
+                    marginalCostGradient * gradient +
+                    marginalCostVgvi * vgvi +
+                    marginalCostLinkStress * linkStress +
+                    marginalCostJctStress * jctStress);
 
             // Junction stress factor
-            double junctionStress = JctStress.getStress(link,mode);
-            double crossingWidth = (double) link.getAttributes().getAttribute("crossWidth");
-            disutility += mcStressJct * junctionStress * crossingWidth;
+            if((boolean) link.getAttributes().getAttribute("crossVehicles")) {
+                double junctionStress = JctStress.getStress(link,mode);
+                double junctionWidth = (double) link.getAttributes().getAttribute("crossWidth");
+                if(junctionWidth > linkLength) junctionWidth = linkLength;
+                double junctionTime = linkTime * (junctionWidth / linkLength);
 
-            // Check it's not NAN
+                disutility += marginalCostJctStress * junctionTime * junctionStress;
+            }
+
             if(Double.isNaN(disutility)) {
                 throw new RuntimeException("Null JIBE disutility for link " + link.getId().toString());
             }
@@ -133,14 +121,12 @@ public class JibeDisutility2 implements TravelDisutility {
 
     @Override
     public double getLinkTravelDisutility(Link link, double time, Person person, Vehicle vehicle) {
-        int idx = link.getId().index() * 2;
-        if(time < 21600 || time >= 72000) {
-            idx += 1;
-        }
-        return disutilities[idx];
+        return disutilities[link.getId().index()];
     }
+
     @Override
     public double getLinkMinimumTravelDisutility(Link link) {
         return 0;
     }
+
 }

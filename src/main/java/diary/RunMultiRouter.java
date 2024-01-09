@@ -42,9 +42,6 @@ public class RunMultiRouter {
 
     private final static String SEP = ",";
 
-    // Equivalent MC of distance for bike = 0.002, walk = 0.005
-    // (see travelDiaryProcessing/Manchester/calcAvgSpeed.csv)
-
     public static void main(String[] args) throws IOException, FactoryException {
         if (args.length != 5) {
             throw new RuntimeException("Program requires 5 arguments: \n" +
@@ -121,10 +118,10 @@ public class RunMultiRouter {
 
         // GENERATE RANDOM NUMBERS AND WRITE SAMPLES
         logger.info("Randomly sampling " + SAMPLES + " sets of marginal cost values.");
-        double[] mcGradient = random.doubles(SAMPLES,0,0.1).toArray();
-        double[] mcVgviLight = random.doubles(SAMPLES,0,0.02).toArray();
-        double[] mcStressLink = random.doubles(SAMPLES,0,0.02).toArray();
-        double[] mcStressJct = random.doubles(SAMPLES,0,0.02).toArray();
+        double[] mcGradient = random.doubles(SAMPLES,0,20).toArray();
+        double[] mcVgvi = random.doubles(SAMPLES,0,10).toArray();
+        double[] mcStressLink = random.doubles(SAMPLES,0,10).toArray();
+        double[] mcStressJct = random.doubles(SAMPLES,0,10).toArray();
         int[] newPathCount = new int[SAMPLES];
 
         // ESTIMATE PATHS
@@ -133,8 +130,8 @@ public class RunMultiRouter {
         LogitDataCalculator calc = new LogitDataCalculator(selectedTrips);
         for (int i = 0 ; i < SAMPLES ; i++) {
             logger.info("Estimating path for sample " + (i+1) + "...");
-            JibeDisutility2 disutility = new JibeDisutility2(network,null,veh,mode,tt,0.00667,0,
-                    mcGradient[i],mcVgviLight[i],mcStressLink[i],mcStressJct[i]);
+            JibeDisutility2 disutility = new JibeDisutility2(network,veh,mode,tt,mcGradient[i],
+                    mcVgvi[i],mcStressLink[i],mcStressJct[i]);
             calc.calculate(veh,network,disutility,tt);
             int thisPathCount = selectedTrips.stream().mapToInt(t -> t.getPaths().size()).sum();
             newPathCount[i] = thisPathCount - currPathCount;
@@ -150,10 +147,10 @@ public class RunMultiRouter {
         PrintWriter out = ioUtils.openFileForSequentialWriting(mcCsvFile,true);
         assert out != null;
         if(writeHeader) {
-            out.println("mcGradient" + SEP + "mcVgviLight" + SEP + "mcStressLink" + SEP + "mcStressJct" + SEP + "newPathCount");
+            out.println("mcGradient" + SEP + "mcVgvi" + SEP + "mcStressLink" + SEP + "mcStressJct" + SEP + "newPathCount");
         }
         for(int i = 0 ; i < SAMPLES ; i++) {
-            out.println(mcGradient[i] + SEP + mcVgviLight[i] + SEP + mcStressLink[i] + SEP + mcStressJct[i] + SEP + newPathCount[i]);
+            out.println(mcGradient[i] + SEP + mcVgvi[i] + SEP + mcStressLink[i] + SEP + mcStressJct[i] + SEP + newPathCount[i]);
         }
         out.close();
 
@@ -164,19 +161,18 @@ public class RunMultiRouter {
 
         // Write header
         out.println("IDNumber" + SEP + "PersonNumber" + SEP + "TripNumber" + SEP + "path" + SEP +
-                "distance" + SEP + "travelTime" + SEP + "gradient" + SEP + "vgviLight" + SEP +
+                "distance" + SEP + "travelTime" + SEP + "gradient" + SEP + "vgvi" + SEP +
                 "stressLink" + SEP + "stressJct" + SEP + "links");
 
-        // Write routes todo: make part of disutility, otherwise we'll have problems...
+        // Write routes
         for(Trip trip : selectedTrips) {
-            boolean day = trip.getStartTime() >= 21600 && trip.getStartTime() < 72000;
             int pathId = 0;
             for(List<Id<Link>> path : trip.getPaths()) {
                 StringBuilder links = new StringBuilder();
                 double distance = 0.;
                 double travelTime = 0.;
                 double gradient = 0.;
-                double vgviLight = 0.;
+                double vgvi = 0.;
                 double stressLink = 0.;
                 double stressJct = 0.;
                 for(Id<Link> linkId : path) {
@@ -186,18 +182,17 @@ public class RunMultiRouter {
                     double linkTime = tt.getLinkTravelTime(link,trip.getStartTime(),null,veh);
                     distance += linkLength;
                     travelTime += linkTime;
-                    gradient += Math.max(Math.min(Gradient.getGradient(link),0.5),0.) * linkLength;
-                    if(day) {
-                        vgviLight += LinkAmbience.getVgviFactor(link) * linkLength;
-                    } else {
-                        vgviLight += LinkAmbience.getDarknessFactor(link) * linkLength;
+                    gradient += linkTime * Math.max(Math.min(Gradient.getGradient(link),0.5),0.);
+                    vgvi += linkTime * Math.max(0.,0.81 - LinkAmbience.getVgviFactor(link));
+                    stressLink += linkTime * LinkStress.getStress(link,mode);
+                    if((boolean) link.getAttributes().getAttribute("crossVehicles")) {
+                        double junctionWidth = Math.min(linkLength,(double) link.getAttributes().getAttribute("crossWidth"));
+                        stressJct += linkTime * (junctionWidth / linkLength) * JctStress.getStress(link,mode);
                     }
-                    stressLink += LinkStress.getStress(link,mode) * linkLength;
-                    stressJct += JctStress.getStress(link,mode) * (double) link.getAttributes().getAttribute("crossWidth");
                 }
                 links.deleteCharAt(links.length() - 1);
                 out.println(trip.getHouseholdId() + SEP + trip.getPersonId() + SEP + trip.getTripId() + SEP + pathId + SEP +
-                        distance + SEP + travelTime + SEP + gradient + SEP + vgviLight + SEP + stressLink + SEP + stressJct + SEP +
+                        distance + SEP + travelTime + SEP + gradient + SEP + vgvi + SEP + stressLink + SEP + stressJct + SEP +
                         links);
                 pathId++;
             }
