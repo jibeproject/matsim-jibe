@@ -38,7 +38,7 @@ public class RunMultiRouter {
 
     private final static Logger logger = Logger.getLogger(RunMultiRouter.class);
 
-    private final static int SAMPLES = 1000;
+    private final static int SAMPLES = 800;
 
     private final static String SEP = ",";
 
@@ -85,7 +85,7 @@ public class RunMultiRouter {
 
         if(mode.equals(TransportMode.bike)) {
             Bicycle bicycle = new Bicycle(null);
-            tt = bicycle.getTravelTime();
+            tt = bicycle.getTravelTimeFast(network);
             veh = bicycle.getVehicle();
         } else if (mode.equals(TransportMode.walk)) {
             tt = new WalkTravelTime();
@@ -102,7 +102,7 @@ public class RunMultiRouter {
             if(origNode.equals(destNode)) {
                 it.remove();
                 logger.warn("HouseholdID " + trip.getHouseholdId() + " Person " + trip.getPersonId() + " Trip " + trip.getTripId() +
-                        " are in different zones bu have the same origin & destination. Removing...");
+                        " are in different zones but have the same origin & destination. Removing...");
             } else {
                 trip.setNodes(origNode,destNode);
             }
@@ -118,10 +118,10 @@ public class RunMultiRouter {
 
         // GENERATE RANDOM NUMBERS AND WRITE SAMPLES
         logger.info("Randomly sampling " + SAMPLES + " sets of marginal cost values.");
-        double[] mcGradient = random.doubles(SAMPLES,0,20).toArray();
-        double[] mcVgvi = random.doubles(SAMPLES,0,10).toArray();
-        double[] mcStressLink = random.doubles(SAMPLES,0,10).toArray();
-        double[] mcStressJct = random.doubles(SAMPLES,0,10).toArray();
+        double[] mcGradient = new double[SAMPLES]; // random.doubles(SAMPLES,0,20).toArray(); // 0-30 for cycling, 0-2 for walking
+        double[] mcVgvi = random.doubles(SAMPLES,0,3).toArray();
+        double[] mcStressLink = random.doubles(SAMPLES,0,3).toArray();
+        double[] mcStressJct = random.doubles(SAMPLES,0,25).toArray();
         int[] newPathCount = new int[SAMPLES];
 
         // ESTIMATE PATHS

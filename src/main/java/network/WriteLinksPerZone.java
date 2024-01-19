@@ -4,15 +4,20 @@ import gis.GisUtils;
 import io.ioUtils;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.IdSet;
+import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
+import org.matsim.core.router.util.TravelTime;
+import org.matsim.vehicles.Vehicle;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.referencing.FactoryException;
 import resources.Resources;
+import routing.Bicycle;
 import routing.Gradient;
 import routing.disutility.components.JctStress;
 import routing.disutility.components.LinkAmbience;
 import routing.disutility.components.LinkStress;
+import routing.travelTime.WalkTravelTime;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,26 +53,46 @@ public class WriteLinksPerZone {
         // Get links per zone
         Map<SimpleFeature, IdSet<Link>> linksPerZone = GisUtils.calculateLinksIntersectingZones(features,network);
 
+        // Travel time and vehicle
+        TravelTime tt;
+        Vehicle veh;
+
+        if(mode.equals(TransportMode.bike)) {
+            Bicycle bicycle = new Bicycle(null);
+            tt = bicycle.getTravelTime();
+            veh = bicycle.getVehicle();
+        } else if (mode.equals(TransportMode.walk)) {
+            tt = new WalkTravelTime();
+            veh = null;
+        } else throw new RuntimeException("Modes other than walk and bike are not supported!");
+
         // Create CSV
         PrintWriter out = ioUtils.openFileForSequentialWriting(new File(outputCsv), false);
         assert out != null;
 
         // Write header
-        out.println(idAttribute + SEP + "linkID" + SEP + "length" + SEP + "gradient" + SEP +
-                "vgvi" + SEP + "darkness" + SEP + "mStressLink" + SEP + "mStressJct");
+        out.println(idAttribute + SEP + "linkID" + SEP + "length" + SEP + "time" + SEP +
+                "gradient" + SEP + "vgvi" + SEP + "stressLink" + SEP + "stressJct");
 
         // Write rows
         for (Map.Entry<SimpleFeature, IdSet<Link>> entry : linksPerZone.entrySet()) {
             String zoneId = (String) entry.getKey().getAttribute(idAttribute);
             for(Id<Link> linkId : entry.getValue()) {
                 Link link = network.getLinks().get(linkId);
-                out.println(zoneId + SEP + linkId.toString() + SEP +
-                        link.getLength() + SEP +
-                        Math.max(Gradient.getGradient(link),0.) + SEP +
-                        LinkAmbience.getVgviFactor(link) + SEP +
-                        LinkAmbience.getDarknessFactor(link) + SEP +
+                double linkLength = link.getLength();
+                double linkTime = tt.getLinkTravelTime(link,0.,null,veh);
+
+                double stressJct = 0.;
+                if((boolean) link.getAttributes().getAttribute("crossVehicles")) {
+                    double junctionWidth = Math.min(linkLength,(double) link.getAttributes().getAttribute("crossWidth"));
+                    stressJct = (junctionWidth / linkLength) * JctStress.getStress(link,mode);
+                }
+
+                out.println(zoneId + SEP + linkId.toString() + SEP + linkLength + SEP + linkTime + SEP +
+                        Math.max(Math.min(Gradient.getGradient(link),0.5),0.) + SEP +
+                        Math.max(0.,0.81 - LinkAmbience.getVgviFactor(link)) + SEP +
                         LinkStress.getStress(link,mode) + SEP +
-                        JctStress.getStress(link,mode));
+                        stressJct);
             }
         }
         out.close();

@@ -50,8 +50,8 @@ public class Bicycle {
         return this.travelTime;
     }
 
-    public TravelTime getTravelTimeFast(Network network, Vehicle vehicle) {
-        return new BicycleTravelTimeFast(linkSpeedCalculator, network, vehicle);
+    public TravelTime getTravelTimeFast(Network network) {
+        return new BicycleTravelTimeFast(this.linkSpeedCalculator, network, this.vehicle);
     }
 
 }
