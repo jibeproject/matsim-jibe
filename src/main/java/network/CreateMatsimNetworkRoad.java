@@ -190,38 +190,26 @@ public class CreateMatsimNetworkRoad {
 
             // If allows walk but not bike, add bike but specify must dismount
             boolean walkNotBike = allowedModesOut.contains(walk) && !allowedModesOut.contains(bike);
-            boolean dismount = walkNotBike || roadType.contains("Cycling Forbidden") || cycleosm.equals("dismount");
-
-            l1.getAttributes().putAttribute("dismount",dismount);
-            l2.getAttributes().putAttribute("dismount",dismount);
-
-            // Add back cycling (dismounted) if walking is allowed
             if(walkNotBike) allowedModesOut.add(bike);
 
-            // Allowed modes return
+            // One way details
+            boolean oneWay = ((String) edge.getAttribute("onwysmm")).startsWith("One Way") || Boolean.TRUE.equals(edge.getAttribute("is_oneway"));
+
+            // Allowed modes on return link
             Set<String> allowedModesRtn = new HashSet<>(allowedModesOut);
-            String oneWaySummary = (String) edge.getAttribute("onwysmm");
-            if(oneWaySummary.equals("One Way")) {
-                allowedModesRtn.remove(bike);
+            if(oneWay) {
                 allowedModesRtn.remove(car);
                 allowedModesRtn.remove(truck);
-            } else if(oneWaySummary.equals("One Way - Two Way Cycling")) { // Manchester network only
-                allowedModesRtn.remove(car);
-                allowedModesRtn.remove(truck);
-            } else  {
-                Boolean isOneWay = (Boolean) edge.getAttribute("is_oneway"); // Melbourne network only
-                if(isOneWay != null) {
-                    if(isOneWay) {
-                        allowedModesRtn.remove(bike);
-                        allowedModesRtn.remove(car);
-                        allowedModesRtn.remove(truck);
-                    }
-                }
             }
 
             // Set allowed modes
             l1.setAllowedModes(allowedModesOut);
             l2.setAllowedModes(allowedModesRtn);
+
+            // Do cyclists have to dismount?
+            boolean dismount = walkNotBike || roadType.contains("Cycling Forbidden") || cycleosm.equals("dismount");
+            l1.getAttributes().putAttribute("dismount",dismount);
+            l2.getAttributes().putAttribute("dismount",dismount || oneWay);
 
             // Are cars allowed on this link? (necessary for mode-specific filtered networks)
             boolean allowsCarOut = allowedModesOut.contains(car);
