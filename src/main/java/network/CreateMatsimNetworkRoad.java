@@ -106,7 +106,7 @@ public class CreateMatsimNetworkRoad {
         int destNodeId = (int) edge.getAttribute("to");
         String linkModes = (String) edge.getAttribute("modes");
 
-        if(origNodeId != destNodeId && !linkModes.equals("pt")) {
+        if(origNodeId != destNodeId && !List.of("bus","tram","train").contains(linkModes)) {
             Node origNode = net.getNodes().get(Id.createNodeId(origNodeId));
             Node destNode = net.getNodes().get(Id.createNodeId(destNodeId));
 
