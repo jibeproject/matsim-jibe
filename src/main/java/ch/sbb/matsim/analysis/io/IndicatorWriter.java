@@ -4,11 +4,9 @@
 
 package ch.sbb.matsim.analysis.io;
 
-import ch.sbb.matsim.analysis.data.GeometryData;
 import ch.sbb.matsim.analysis.data.IndicatorData;
 import com.google.common.math.LongMath;
 import org.apache.log4j.Logger;
-import org.locationtech.jts.geom.LineString;
 import org.matsim.core.utils.io.IOUtils;
 
 import java.io.*;
@@ -30,7 +28,7 @@ public final class IndicatorWriter {
     private final static String SHORTEST_DISTANCE_ROUTE_NAME = "shortestDistance";
     private final static String LEAST_TIME_ROUTE_NAME = "fastest";
 
-    public static<T> void writeAsCsv(IndicatorData indicatorData, String filename) throws IOException {
+    public static<T> void writeAsCsv(IndicatorData<T> indicatorData, String filename) throws IOException {
         HashMap<String, IndicatorData> multiIndicatorData = new HashMap<>();
         multiIndicatorData.put("NA",indicatorData);
         writeAsCsv(multiIndicatorData, filename);

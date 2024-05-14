@@ -16,18 +16,16 @@ import java.util.Map;
 
 public class GpkgReader {
 
-    public static Map<Integer, SimpleFeature> readNodes() {
+    public static Map<Integer, SimpleFeature> readFeatures(File file, String id) {
 
-        final File nodesFile = Resources.instance.getFile(Properties.NETWORK_NODES);
-
-        Map<Integer,SimpleFeature> nodes = new HashMap<>();
+        Map<Integer,SimpleFeature> features = new HashMap<>();
 
         try{
-            GeoPackage geopkg = new GeoPackage(nodesFile);
+            GeoPackage geopkg = new GeoPackage(file);
             SimpleFeatureReader r = geopkg.reader(geopkg.features().get(0), null,null);
             while(r.hasNext()) {
-                SimpleFeature node = r.next();
-                nodes.put((int) node.getAttribute("nodeID"),node);
+                SimpleFeature feature = r.next();
+                features.put((int) feature.getAttribute(id),feature);
             }
             r.close();
             geopkg.close();
@@ -35,31 +33,15 @@ public class GpkgReader {
             e.printStackTrace();
         }
 
-        return nodes;
+        return features;
+    }
 
+    public static Map<Integer, SimpleFeature> readNodes() {
+        return readFeatures(Resources.instance.getFile(Properties.NETWORK_NODES), "nodeID");
     }
 
     public static Map<Integer, SimpleFeature> readEdges() {
-
-        File edgesFile = Resources.instance.getFile(Properties.NETWORK_LINKS);
-
-        Map<Integer,SimpleFeature> edges = new HashMap<>();
-
-        try{
-            GeoPackage geopkg = new GeoPackage(edgesFile);
-            SimpleFeatureReader r = geopkg.reader(geopkg.features().get(0), null,null);
-            while(r.hasNext()) {
-                SimpleFeature edge = r.next();
-                edges.put((int) edge.getAttribute("edgeID"),edge);
-            }
-            r.close();
-            geopkg.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return edges;
-
+        return readFeatures(Resources.instance.getFile(Properties.NETWORK_LINKS), "edgeID");
     }
 
     public static Geometry readRegionBoundary() throws IOException {

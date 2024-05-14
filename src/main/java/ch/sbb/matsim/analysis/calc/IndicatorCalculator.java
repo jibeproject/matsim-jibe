@@ -4,6 +4,8 @@
 
 package ch.sbb.matsim.analysis.calc;
 
+import resources.Properties;
+import resources.Resources;
 import routing.TravelAttribute;
 import ch.sbb.matsim.analysis.data.IndicatorData;
 import ch.sbb.matsim.graph.Graph;
@@ -43,10 +45,10 @@ public final class IndicatorCalculator {
     private IndicatorCalculator() {
     }
 
-    public static <T> IndicatorData<T> calculate(Network routingNetwork, Set<T> origins, Set<T> destinations, Map<T, Node> zoneNodeMap,
+    public static <T> IndicatorData<T> calculate(Network routingNetwork, Set<T> origins, Set<T> destinations, Map<T, Id<Node>> zoneNodeMap,
                                                  TravelTime travelTime, TravelDisutility travelDisutility,
                                                  LinkedHashMap<String, TravelAttribute> travelAttributes,
-                                                 Vehicle vehicle, int numberOfThreads) {
+                                                 Vehicle vehicle) {
         Graph routingGraph = new Graph(routingNetwork);
 
         // prepare calculation
@@ -56,6 +58,7 @@ public final class IndicatorCalculator {
         ConcurrentLinkedQueue<T> originZones = new ConcurrentLinkedQueue<>(origins);
 
         Counter counter = new Counter("NetworkRouting zone ", " / " + origins.size());
+        int numberOfThreads = Resources.instance.getInt(Properties.NUMBER_OF_THREADS);
         Thread[] threads = new Thread[numberOfThreads];
         for (int i = 0; i < numberOfThreads; i++) {
             RowWorker<T> worker = new RowWorker<>(originZones, destinations, routingGraph, zoneNodeMap, networkIndicators,
@@ -80,7 +83,7 @@ public final class IndicatorCalculator {
         private final ConcurrentLinkedQueue<T> originZones;
         private final Set<T> destinationZones;
         private final Graph graph;
-        private final Map<T, Node> zoneNodeMap;
+        private final Map<T, Id<Node>> zoneNodeMap;
         private final IndicatorData<T> indicatorData;
         private final TravelTime travelTime;
         private final TravelDisutility travelDisutility;
@@ -92,7 +95,7 @@ public final class IndicatorCalculator {
 
         private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
 
-        RowWorker(ConcurrentLinkedQueue<T> originZones, Set<T> destinationZones, Graph graph, Map<T, Node> zoneNodeMap,
+        RowWorker(ConcurrentLinkedQueue<T> originZones, Set<T> destinationZones, Graph graph, Map<T, Id<Node>> zoneNodeMap,
                   IndicatorData<T> indicatorData, TravelTime travelTime, TravelDisutility travelDisutility,
                   LinkedHashMap<String, TravelAttribute> travelAttributes, Vehicle vehicle, Counter counter) {
             this.originZones = originZones;
@@ -122,14 +125,14 @@ public final class IndicatorCalculator {
                 }
 
                 this.counter.incCounter();
-                Node fromNode = this.zoneNodeMap.get(fromZoneId);
-                if (fromNode != null) {
-                    lcpTree.calculate(fromNode.getId().index(), 0, PERSON, vehicle);
+                Id<Node> fromNodeId = this.zoneNodeMap.get(fromZoneId);
+                if (fromNodeId != null) {
+                    lcpTree.calculate(fromNodeId.index(), 0, PERSON, vehicle);
 
                     for (T toZoneId : this.destinationZones) {
-                        Node toNode = this.zoneNodeMap.get(toZoneId);
-                        if (toNode != null) {
-                            int nodeIndex = toNode.getId().index();
+                        Id<Node> toNodeId = this.zoneNodeMap.get(toZoneId);
+                        if (toNodeId != null) {
+                            int nodeIndex = toNodeId.index();
                             double tt = lcpTree.getTime(nodeIndex);
                             double dist = lcpTree.getDistance(nodeIndex);
                             double cost = lcpTree.getCost(nodeIndex);

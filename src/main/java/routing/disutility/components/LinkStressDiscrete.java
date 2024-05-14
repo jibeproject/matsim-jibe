@@ -27,7 +27,7 @@ public enum LinkStressDiscrete {
                     speedLimit = speed85perc;
                 }
 
-                if (speedLimit <= 20) {
+                if (speedLimit <= 21.75) {
                     if (protection.equals(LANE)) {
                         if (aadt >= 4000) {
                             return AMBER;
@@ -39,7 +39,7 @@ public enum LinkStressDiscrete {
                             return AMBER;
                         }
                     }
-                } else if (speedLimit <= 30) {
+                } else if (speedLimit <= 31.07) {
                     if (protection.equals(LANE)) {
                         if (aadt >= 4000) {
                             return RED;
@@ -53,7 +53,7 @@ public enum LinkStressDiscrete {
                             return AMBER;
                         }
                     }
-                } else if (speedLimit <= 40) {
+                } else if (speedLimit <= 40.39) {
                     if (protection.equals(LANE) || protection.equals(MIXED)) {
                         return RED;
                     } else if (protection.equals(PROTECTED)) {

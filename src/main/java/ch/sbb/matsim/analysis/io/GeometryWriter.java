@@ -21,6 +21,8 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
@@ -41,15 +43,15 @@ public final class GeometryWriter {
     private final static String LEAST_TIME_ROUTE_NAME = "fastest";
 
 
-    public static <T> void writeGpkg(GeometryData<T> geometryData, Map<String, Node> zoneNodeMap,
+    public static <T> void writeGpkg(Network network, GeometryData<T> geometryData, Map<String, Id<Node>> zoneNodeMap,
                                      String outputGpkg) throws IOException, FactoryException {
 
         HashMap<String, GeometryData> multiGeometryData = new HashMap<>();
         multiGeometryData.put("NA",geometryData);
-        writeGpkg(multiGeometryData,zoneNodeMap,outputGpkg);
+        writeGpkg(network, multiGeometryData,zoneNodeMap,outputGpkg);
     }
 
-    public static <T> void writeGpkg(HashMap<String, GeometryData> multiGeometryData, Map<String, Node> zoneNodeMap,
+    public static <T> void writeGpkg(Network network, HashMap<String, GeometryData> multiGeometryData, Map<String, Id<Node>> zoneNodeMap,
                                      String outputGpkg) throws FactoryException, IOException {
 
         final GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory();
@@ -66,8 +68,8 @@ public final class GeometryWriter {
         final DefaultFeatureCollection nodeCollection = new DefaultFeatureCollection("Nodes",nodeTYPE);
 
         // Build origin/destination nodes
-        for (Map.Entry<String, Node> entry : zoneNodeMap.entrySet()) {
-            Point point = buildPoint(entry.getValue().getCoord(), geometryFactory);
+        for (Map.Entry<String, Id<Node>> entry : zoneNodeMap.entrySet()) {
+            Point point = buildPoint(network.getNodes().get(entry.getValue()).getCoord(), geometryFactory);
             nodeFeatureBuilder.add(point);
             nodeFeatureBuilder.add(entry.getKey());
             SimpleFeature feature = nodeFeatureBuilder.buildFeature(null);
@@ -95,7 +97,7 @@ public final class GeometryWriter {
             // Loop through zone IDs
             int counter = 0;
             for (T fromZoneId : fromZoneIds) {
-                Coord startCoord = zoneNodeMap.get(fromZoneId).getCoord();
+                Coord startCoord = network.getNodes().get(zoneNodeMap.get(fromZoneId)).getCoord();
                 counter++;
                 if (LongMath.isPowerOfTwo(counter)) {
                     log.info("Processing zone " + counter + " / " + fromZoneIds.length);

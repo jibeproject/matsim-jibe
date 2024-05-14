@@ -23,6 +23,8 @@ import org.matsim.core.utils.misc.Time;
 import org.matsim.pt.transitSchedule.api.TransitLine;
 import org.matsim.pt.transitSchedule.api.TransitRoute;
 import org.matsim.pt.transitSchedule.api.TransitStopFacility;
+import resources.Properties;
+import resources.Resources;
 
 /**
  * Calculates zone-to-zone matrices containing a number of performance indicators related to public transport.
@@ -69,7 +71,7 @@ public class PtCalculator {
 
     public static <T> PtData<T> calculatePtIndicators(SwissRailRaptorData raptorData, Set<T> origins, Set<T> destinations, Map<T, Coord> zoneCoordMap, double minDepartureTime,
                                                       double maxDepartureTime, double stepSize_seconds, RaptorParameters parameters,
-                                                      int numberOfThreads, BiPredicate<TransitLine, TransitRoute> trainDetector) {
+                                                      BiPredicate<TransitLine, TransitRoute> trainDetector) {
         // prepare calculation
         PtData<T> pti = new PtData<>(origins, destinations);
         Config config = ConfigUtils.createConfig();
@@ -78,6 +80,7 @@ public class PtCalculator {
         ConcurrentLinkedQueue<T> originZones = new ConcurrentLinkedQueue<>(origins);
 
         Counter counter = new Counter("PT-FrequencyMatrix-" + Time.writeTime(minDepartureTime) + "-" + Time.writeTime(maxDepartureTime) + " zone ", " / " + zoneCoordMap.size());
+        int numberOfThreads = Resources.instance.getInt(Properties.NUMBER_OF_THREADS);
         Thread[] threads = new Thread[numberOfThreads];
         for (int i = 0; i < numberOfThreads; i++) {
             SwissRailRaptor raptor = new SwissRailRaptor.Builder(raptorData, config).build();

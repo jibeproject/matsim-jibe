@@ -4,6 +4,8 @@
 
 package ch.sbb.matsim.analysis.calc;
 
+import resources.Properties;
+import resources.Resources;
 import routing.TravelAttribute;
 import ch.sbb.matsim.analysis.data.GeometryData;
 import ch.sbb.matsim.graph.Graph;
@@ -44,10 +46,10 @@ public final class GeometryCalculator {
     private GeometryCalculator() {
     }
 
-    public static <T> GeometryData<T> calculate(Network routingNetwork, Set<T> origins, Set<T> destinations, Map<T, Node> zoneNodeMap,
+    public static <T> GeometryData<T> calculate(Network routingNetwork, Set<T> origins, Set<T> destinations, Map<T, Id<Node>> zoneNodeMap,
                                                 TravelTime travelTime, TravelDisutility travelDisutility,
                                                 LinkedHashMap<String, TravelAttribute> travelAttributes,
-                                                Vehicle vehicle, int numberOfThreads) {
+                                                Vehicle vehicle) {
         Graph routingGraph = new Graph(routingNetwork);
 
         // prepare calculation
@@ -57,6 +59,7 @@ public final class GeometryCalculator {
         ConcurrentLinkedQueue<T> originZones = new ConcurrentLinkedQueue<>(origins);
 
         Counter counter = new Counter("PathGeometries zone ", " / " + origins.size());
+        int numberOfThreads = Resources.instance.getInt(Properties.NUMBER_OF_THREADS);
         Thread[] threads = new Thread[numberOfThreads];
         for (int i = 0; i < numberOfThreads; i++) {
             RowWorker<T> worker = new RowWorker<>(originZones, destinations, routingGraph, zoneNodeMap,
@@ -81,7 +84,7 @@ public final class GeometryCalculator {
         private final ConcurrentLinkedQueue<T> originZones;
         private final Set<T> destinationZones;
         private final Graph graph;
-        private final Map<T, Node> zoneNodeMap;
+        private final Map<T, Id<Node>> zoneNodeMap;
         private final GeometryData<T> geometryData;
         private final TravelTime travelTime;
         private final TravelDisutility travelDisutility;
@@ -93,7 +96,7 @@ public final class GeometryCalculator {
 
         private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
 
-        RowWorker(ConcurrentLinkedQueue<T> originZones, Set<T> destinationZones, Graph graph, Map<T, Node> zoneNodeMap, GeometryData<T> geometryData,
+        RowWorker(ConcurrentLinkedQueue<T> originZones, Set<T> destinationZones, Graph graph, Map<T, Id<Node>> zoneNodeMap, GeometryData<T> geometryData,
                   TravelTime travelTime, TravelDisutility travelDisutility, LinkedHashMap<String, TravelAttribute> travelAttributes, Vehicle vehicle, Counter counter) {
             this.originZones = originZones;
             this.destinationZones = destinationZones;
@@ -127,14 +130,14 @@ public final class GeometryCalculator {
                 }
 
                 this.counter.incCounter();
-                Node fromNode = this.zoneNodeMap.get(fromZoneId);
-                if (fromNode != null) {
-                    lcpTree.calculate(fromNode.getId().index(), 0, PERSON, vehicle);
+                Id<Node> fromNodeId = this.zoneNodeMap.get(fromZoneId);
+                if (fromNodeId != null) {
+                    lcpTree.calculate(fromNodeId.index(), 0, PERSON, vehicle);
 
                     for (T toZoneId : this.destinationZones) {
-                        Node toNode = this.zoneNodeMap.get(toZoneId);
-                        if (toNode != null) {
-                            int nodeIndex = toNode.getId().index();
+                        Id<Node> toNodeId = this.zoneNodeMap.get(toZoneId);
+                        if (toNodeId != null) {
+                            int nodeIndex = toNodeId.index();
 
                             int[] linksTravelled = lcpTree.getLinkArray(nodeIndex);
                             double tt = lcpTree.getTime(nodeIndex);

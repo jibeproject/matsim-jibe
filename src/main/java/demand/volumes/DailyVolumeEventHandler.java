@@ -34,8 +34,6 @@ public class DailyVolumeEventHandler implements LinkEnterEventHandler {
         } else if (vehicleType.equals("truck")) {
             truckVolumes.put(linkId, truckVolumes.getOrDefault(linkId,0) + 1);
             adjVolumes.put(linkId, adjVolumes.getOrDefault(linkId,0) + 6);
-        } else {
-            throw new RuntimeException("Unrecognised vehicle type " + mode);
         }
     }
 

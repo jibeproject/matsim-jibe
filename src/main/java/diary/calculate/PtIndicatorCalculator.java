@@ -1,5 +1,6 @@
 package diary.calculate;
 import ch.sbb.matsim.routing.pt.raptor.*;
+import org.matsim.api.core.v01.population.PlanElement;
 import trip.Place;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
@@ -62,7 +63,7 @@ public class PtIndicatorCalculator implements Runnable {
                 Facility fOrig = activityFacilitiesFactory.createActivityFacility(Id.create(1, ActivityFacility.class), cOrig);
                 Facility fDest = activityFacilitiesFactory.createActivityFacility(Id.create(1, ActivityFacility.class), cDest);
 
-                List<Leg> legs = null;//raptor.calcRoute(fOrig, fDest, earliestDepartureTime, departureTime, latestDepartureTime, null); todo: adapt to MATSim 14.0
+                List<? extends PlanElement> legs = raptor.calcRoute(fOrig, fDest, earliestDepartureTime, departureTime, latestDepartureTime,null, null);
 
                 int ptLegs = 0;
                 int walkLegs = 0;
@@ -75,7 +76,8 @@ public class PtIndicatorCalculator implements Runnable {
                 ArrayList<Double> walkLegTravelDistances = new ArrayList<>();
 
                 if (legs != null) {
-                    for (Leg leg : legs) {
+                    for (Object legT : legs) {
+                        Leg leg = (Leg) legT;
                         String mode = leg.getMode();
                         double travelTime = leg.getTravelTime().seconds();
                         if (mode.equals("pt")) {
@@ -101,8 +103,8 @@ public class PtIndicatorCalculator implements Runnable {
                 Double egressDistance = null;
 
                 if (legs != null) {
-                    Leg firstLeg = legs.get(0);
-                    Leg lastLeg = legs.get(legs.size() - 1);
+                    Leg firstLeg = (Leg) legs.get(0);
+                    Leg lastLeg = (Leg) legs.get(legs.size() - 1);
                     if (!lastLeg.getMode().equals("walk") || !firstLeg.getMode().equals("walk")) {
                         throw new RuntimeException("First or last leg of trip " + trip.getTripId() + " not walk!");
                     }

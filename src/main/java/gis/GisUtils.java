@@ -63,7 +63,7 @@ public class GisUtils {
         out.close();
     }
 
-    public static Map<SimpleFeature, IdSet<Node>> assignNodesToZones(Set<SimpleFeature> zones, Set<Id<Node>> nodeIds, Network network) {
+    public static Map<SimpleFeature, IdSet<Node>> assignNodesToZones(Collection<SimpleFeature> zones, Set<Id<Node>> nodeIds, Network network) {
         log.info("Assigning nodeIds to polygon features...");
         SpatialIndex zonesQt = createQuadtree(zones);
         Map<SimpleFeature, IdSet<Node>> nodesPerZone = new HashMap<>(zones.size());
@@ -78,25 +78,6 @@ public class GisUtils {
             }
         }
         return Collections.unmodifiableMap(nodesPerZone);
-    }
-
-    public static IdSet<Node> getNodesInAreas(Geometry region, Set<SimpleFeature> zones, Network network) {
-
-        Set<Id<Node>> candidates = NetworkUtils2.getNodesInBoundary(network,region);
-
-        log.info("Assigning nodeIds to polygon features...");
-        SpatialIndex zonesQt = createQuadtree(zones);
-        IdSet<Node> nodes = new IdSet<>(Node.class);
-        Counter counter = new Counter("Processing node "," / " + candidates.size());
-        for (Id<Node> nodeId : candidates) {
-            counter.incCounter();
-            SimpleFeature z = findZone(network.getNodes().get(nodeId).getCoord(),zonesQt);
-            if (z != null) {
-                nodes.add(nodeId);
-            }
-        }
-        log.info("Identified " + nodes.size() + " candidates.");
-        return nodes;
     }
 
     public static IdMap<Node,String> getCandidateNodes(Geometry region, Set<SimpleFeature> zones, Network network) {
@@ -131,7 +112,7 @@ public class GisUtils {
         return results;
     }
 
-    public static Map<SimpleFeature, IdSet<Link>> calculateLinksIntersectingZones(Set<SimpleFeature> zones, Network network) {
+    public static Map<SimpleFeature, IdSet<Link>> calculateLinksIntersectingZones(Collection<SimpleFeature> zones, Network network) {
         Map<Integer,SimpleFeature> edges = GpkgReader.readEdges();
         log.info("Assigning linkIds to polygon features...");
         SpatialIndex zonesQt = createQuadtree(new HashSet<>(zones));
@@ -153,7 +134,7 @@ public class GisUtils {
         return Collections.unmodifiableMap(linksPerZone);
     }
 
-    private static SpatialIndex createQuadtree(Set<SimpleFeature> features) {
+    private static SpatialIndex createQuadtree(Collection<SimpleFeature> features) {
         log.info("Creating spatial index");
         SpatialIndex zonesQt = new Quadtree();
         Counter counter = new Counter("Indexing zone "," / " + features.size());

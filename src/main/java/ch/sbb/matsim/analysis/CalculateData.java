@@ -37,6 +37,7 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.index.SpatialIndex;
 import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -56,6 +57,8 @@ import org.matsim.pt.transitSchedule.api.TransitRoute;
 import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.referencing.FactoryException;
+import resources.Properties;
+import resources.Resources;
 import routing.TravelAttribute;
 
 /**
@@ -75,11 +78,10 @@ public class CalculateData {
     private final static GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
 
     private final String outputDirectory;
-    private final int numberOfThreads;
     private Integer batchSize;
     private Map<String, Coord> zoneCoordMap = null;
 
-    public CalculateData(String outputDirectory, int numberOfThreads, Integer batchSize) {
+    public CalculateData(String outputDirectory, Integer batchSize) {
         this.outputDirectory = outputDirectory;
         File outputDir = new File(outputDirectory);
         if (!outputDir.exists()) {
@@ -94,7 +96,6 @@ public class CalculateData {
             }
         }
 
-        this.numberOfThreads = numberOfThreads;
         this.batchSize = batchSize;
     }
 
@@ -120,6 +121,13 @@ public class CalculateData {
         }
     }
 
+    public final void setZoneCoordMap(Map<Integer,Coord> m) {
+       this.zoneCoordMap = new LinkedHashMap<>();
+        for(Map.Entry<Integer,Coord> e : m.entrySet()) {
+            zoneCoordMap.put(e.getKey().toString(),e.getValue());
+        }
+    }
+
     public final void calculateRouteIndicators(String networkFilename, Config config, TravelTime tt, TravelDisutility td,
                                                String outputPrefix, TravelAttribute[] aggregatedAttributes,
                                                String transportMode, Predicate<Link> xy2linksPredicate) throws IOException {
@@ -137,7 +145,7 @@ public class CalculateData {
         final Network xy2linksNetwork = NetworkUtils2.extractXy2LinksNetwork(modeSpecificNetwork, xy2linksPredicate);
 
         log.info("calculating zone-node map");
-        Map<String, Node> zoneNodeMap = buildZoneNodeMap(zoneCoordMap, xy2linksNetwork, modeSpecificNetwork);
+        Map<String, Id<Node>> zoneNodeMap = buildZoneNodeMap(zoneCoordMap, xy2linksNetwork, modeSpecificNetwork);
 
         log.info("splitting into batches of size " + batchSize);
 
@@ -154,7 +162,7 @@ public class CalculateData {
             log.info("INITIATING BATCH " + counter + " OF " + numberOfBatches);
             long startTime = System.currentTimeMillis();
             IndicatorData<String> netIndicators = IndicatorCalculator.calculate(
-                    modeSpecificNetwork, origins, destinations, zoneNodeMap, tt, td, null,null, this.numberOfThreads);
+                    modeSpecificNetwork, origins, destinations, zoneNodeMap, tt, td, null,null);
             long endTime = System.currentTimeMillis();
             log.info("Batch " + counter + " calculation time: " + (endTime - startTime));
 
@@ -185,7 +193,7 @@ public class CalculateData {
         final Network xy2linksNetwork = NetworkUtils2.extractXy2LinksNetwork(modeSpecificNetwork, xy2linksPredicate);
 
         log.info("calculating zone-node map");
-        Map<String, Node> zoneNodeMap = buildZoneNodeMap(zoneCoordMap, xy2linksNetwork, modeSpecificNetwork);
+        Map<String, Id<Node>> zoneNodeMap = buildZoneNodeMap(zoneCoordMap, xy2linksNetwork, modeSpecificNetwork);
 
         log.info("fixing origin zones");
         Set<String> originZones;
@@ -208,12 +216,12 @@ public class CalculateData {
             log.info("INITIATING BATCH " + counter + " OF " + numberOfBatches);
             long startTime = System.currentTimeMillis();
             GeometryData<String> geometries = GeometryCalculator.calculate(
-                    modeSpecificNetwork, origins, destinations, zoneNodeMap, tt, td, null,null, this.numberOfThreads);
+                    modeSpecificNetwork, origins, destinations, zoneNodeMap, tt, td, null,null);
             long endTime = System.currentTimeMillis();
             log.info("Batch " + counter + " calculation time: " + (endTime - startTime));
 
             startTime = System.currentTimeMillis();
-            GeometryWriter.writeGpkg(geometries, zoneNodeMap, outputFilePath);
+            GeometryWriter.writeGpkg(modeSpecificNetwork, geometries, zoneNodeMap, outputFilePath);
             endTime = System.currentTimeMillis();
             log.info("Batch " + counter + " writing time: " + (endTime - startTime));
 
@@ -221,12 +229,12 @@ public class CalculateData {
         }
     }
 
-    public final void calculatePtIndicators(String networkFilename, String transitScheduleFilename, double startTime, double endTime, Config config, String outputPrefix, BiPredicate<TransitLine, TransitRoute> trainDetector) throws IOException {
+    public final void calculatePtIndicators(String transitScheduleFilename, double startTime, double endTime, Config config, String outputPrefix, BiPredicate<TransitLine, TransitRoute> trainDetector) throws IOException {
         String prefix = outputPrefix == null ? "" : outputPrefix;
         Scenario scenario = ScenarioUtils.createScenario(config);
         log.info("loading schedule from " + transitScheduleFilename);
         new TransitScheduleReader(scenario).readFile(transitScheduleFilename);
-        new MatsimNetworkReader(scenario.getNetwork()).readFile(networkFilename);
+        new MatsimNetworkReader(scenario.getNetwork()).readFile(Resources.instance.getString(Properties.MATSIM_TRANSIT_NETWORK));
 
         log.info("prepare PT Matrix calculation");
         RaptorStaticConfig raptorConfig = RaptorUtils.createStaticConfig(config);
@@ -246,7 +254,7 @@ public class CalculateData {
             Set<String> origins = Sets.newHashSet(originBatch);
             log.info("BATCH " + counter + ": calc PT matrices for " + Time.writeTime(startTime) + " - " + Time.writeTime(endTime));
             PtData<String> matrices = PtCalculator.calculatePtIndicators(
-                    raptorData, origins, destinations, this.zoneCoordMap, startTime, endTime, 120, raptorParameters, this.numberOfThreads, trainDetector);
+                    raptorData, origins, destinations, this.zoneCoordMap, startTime, endTime, 120, raptorParameters, trainDetector);
 
             log.info("BATCH " + counter + ": write PT matrices to " + outputDirectory + (prefix.isEmpty() ? "" : (" with prefix " + prefix)));
             PtWriter.writeAsCsv(matrices,outputDirectory + "/" + prefix + "_" + "batch" + counter + ".csv.gz");
@@ -297,13 +305,13 @@ public class CalculateData {
         return zoneCoordMap;
     }
 
-    public static <T> Map<T, Node> buildZoneNodeMap(Map<T, Coord> zoneCoordMap, Network xy2lNetwork, Network routingNetwork) {
-        Map<T, Node> zoneNodeMap = new HashMap<>();
+    public static <T> Map<T, Id<Node>> buildZoneNodeMap(Map<T, Coord> zoneCoordMap, Network xy2lNetwork, Network routingNetwork) {
+        Map<T, Id<Node>> zoneNodeMap = new HashMap<>();
         for (Map.Entry<T, Coord> e : zoneCoordMap.entrySet()) {
             T zoneId = e.getKey();
             Coord coord = e.getValue();
-            Node node = routingNetwork.getNodes().get(NetworkUtils.getNearestLink(xy2lNetwork, coord).getToNode().getId());
-            zoneNodeMap.put(zoneId, node);
+            Id<Node> nodeId = routingNetwork.getNodes().get(NetworkUtils.getNearestLink(xy2lNetwork, coord).getToNode().getId()).getId();
+            zoneNodeMap.put(zoneId, nodeId);
         }
         return zoneNodeMap;
     }
