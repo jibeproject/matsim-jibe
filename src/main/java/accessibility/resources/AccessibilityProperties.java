@@ -4,6 +4,7 @@ public class AccessibilityProperties {
 
     public static final String MODE = "mode";
     public static final String IMPEDANCE = "disutility";
+    public static final String CYCLE_STRESS_THRESHOLD = "stress.limit";
     public static final String END_LOCATIONS = "end.coords";
     public static final String END_DESCRIPTION = "end.description";
     public static final String END_ALPHA = "end.alpha";

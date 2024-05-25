@@ -11,6 +11,7 @@ import org.matsim.vehicles.Vehicle;
 import routing.Bicycle;
 import routing.disutility.DistanceDisutility;
 import routing.disutility.JibeDisutility3;
+import routing.travelTime.BicycleTravelTime;
 import routing.travelTime.WalkTravelTime;
 import trip.Purpose;
 
@@ -58,6 +59,10 @@ public class AccessibilityResources {
                     Bicycle bicycle = new Bicycle(instance.config);
                     instance.veh = bicycle.getVehicle();
                     instance.tt = bicycle.getTravelTime();
+                    String stressThreshold = properties.getProperty(AccessibilityProperties.CYCLE_STRESS_THRESHOLD);
+                    if(stressThreshold != null) {
+                        ((BicycleTravelTime) instance.tt).setLinkStressThreshold(stressThreshold);
+                    }
                     instance.setActiveDisutility();
                     break;
                 case TransportMode.walk:
