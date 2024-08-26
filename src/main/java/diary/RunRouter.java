@@ -84,7 +84,7 @@ public class RunRouter {
         // Create car networks
         logger.info("Creating mode-specific networks...");
         Network networkCarInput = NetworkUtils.createNetwork();
-        new MatsimNetworkReader(networkCarInput).readFile(Resources.instance.getString(Properties.MATSIM_CAR_NETWORK));
+        new MatsimNetworkReader(networkCarInput).readFile(Resources.instance.getString(Properties.MATSIM_DEMAND_OUTPUT_NETWORK));
         Network networkCar = NetworkUtils2.extractModeSpecificNetwork(networkCarInput, TransportMode.car);
         Network carXy2l = NetworkUtils2.extractXy2LinksNetwork(networkCar, l -> !((boolean) l.getAttributes().getAttribute("motorway")));
 
@@ -93,34 +93,34 @@ public class RunRouter {
         Network networkBike = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.bike);
         Network networkWalk = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.walk);
 
-//        // Load public transport data
-//        String transitScheduleFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_SCHEDULE);
-//        String transitNetworkFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_NETWORK);
+        // Load public transport data
+        String transitScheduleFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_SCHEDULE);
+        String transitNetworkFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_NETWORK);
 
         // Travel time
-//        FreespeedTravelTimeAndDisutility freeSpeed = new FreespeedTravelTimeAndDisutility(config.planCalcScore());
+        FreespeedTravelTimeAndDisutility freeSpeed = new FreespeedTravelTimeAndDisutility(config.planCalcScore());
         TravelTime ttBikeFast = bicycle.getTravelTimeFast(networkBike);
         TravelTime ttWalk = new WalkTravelTime();
 
-//        // Car freespeed & congested travel time
-//        String tfgmDemandEvents = Resources.instance.getString(Properties.MATSIM_DEMAND_OUTPUT_EVENTS);
-//        TravelTimeCalculator.Builder builder = new TravelTimeCalculator.Builder(networkCar);
-//        TravelTimeCalculator congested = builder.build();
-//        EventsManager events = EventsUtils.createEventsManager();
-//        events.addHandler(congested);
-//        (new MatsimEventsReader(events)).readFile(tfgmDemandEvents);
-//        TravelTime congestedTime = congested.getLinkTravelTimes();
-//        TravelDisutility congestedDisutility = new OnlyTimeDependentTravelDisutility(congested.getLinkTravelTimes());
+        // Car freespeed & congested travel time
+        String tfgmDemandEvents = Resources.instance.getString(Properties.MATSIM_DEMAND_OUTPUT_EVENTS);
+        TravelTimeCalculator.Builder builder = new TravelTimeCalculator.Builder(networkCar);
+        TravelTimeCalculator congested = builder.build();
+        EventsManager events = EventsUtils.createEventsManager();
+        events.addHandler(congested);
+        (new MatsimEventsReader(events)).readFile(tfgmDemandEvents);
+        TravelTime congestedTime = congested.getLinkTravelTimes();
+        TravelDisutility congestedDisutility = new OnlyTimeDependentTravelDisutility(congested.getLinkTravelTimes());
 
         // CALCULATOR
         RouteIndicatorCalculator calc = new RouteIndicatorCalculator(trips);
 
-//        // beeline
-//        calc.beeline("beeline", ORIGIN, DESTINATION);
-//
-//        // car
-//        calc.network("car_freespeed", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,savePath);
-//        calc.network("car_congested", ORIGIN, DESTINATION, null, networkCar, carXy2l, congestedDisutility, congestedTime, null,savePath);
+        // beeline
+        calc.beeline("beeline", ORIGIN, DESTINATION);
+
+        // car
+        calc.network("car_freespeed", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,savePath);
+        calc.network("car_congested", ORIGIN, DESTINATION, null, networkCar, carXy2l, congestedDisutility, congestedTime, null,savePath);
 
          // bike
         calc.network("bike_jibe", ORIGIN, DESTINATION, bike, networkBike, networkBike, new JibeDisutility3Fast(networkBike,bike,TransportMode.bike,ttBikeFast,null), ttBikeFast, ActiveAttributes.getJibeTime(TransportMode.bike,bike),savePath);
@@ -136,8 +136,8 @@ public class RunRouter {
         calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new DistanceDisutility(), ttWalk, ActiveAttributes.getJibeDist(TransportMode.walk),savePath);
         calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, ActiveAttributes.getJibeTime(TransportMode.walk,null),savePath);
 
-//        // public transport
-//        calc.pt("pt", ORIGIN, DESTINATION, config, transitScheduleFilePath, transitNetworkFilePath);
+        // public transport
+        calc.pt("pt", ORIGIN, DESTINATION, config, transitScheduleFilePath, transitNetworkFilePath);
 //
 //        // Activity-based modelling calculations (not relevant for JIBE)
 //        calc.beeline("beeline_hs", HOME, DESTINATION);

@@ -20,8 +20,8 @@ public class LcpTree2Way implements PathTree {
 
     @Override
     public void calculate(int startNode, double startTime, StopCriterion stopCriterion) {
-        lcpTreeFwd.calculate(startNode,startTime);
-        lcpTreeRev.calculate(startNode,startTime);
+        lcpTreeFwd.calculate(startNode,startTime,stopCriterion);
+        lcpTreeRev.calculate(startNode,startTime,stopCriterion);
     }
 
     @Override

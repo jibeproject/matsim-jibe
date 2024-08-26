@@ -86,8 +86,7 @@ public class AccessibilityResources {
                 instance.fwd = null;
             } else if(input.equalsIgnoreCase("true")) {
                 instance.fwd = true;
-            }
-            else if (input.equalsIgnoreCase("false")) {
+            } else if(input.equalsIgnoreCase("false")) {
                 instance.fwd = false;
             } else {
                 throw new RuntimeException("Unknown value " + input + " given for forward property. Must be \"true\", \"false\", or left out for a two-way analysis.");

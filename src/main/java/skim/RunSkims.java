@@ -3,7 +3,6 @@ package skim;
 import gis.GpkgReader;
 import io.OmxWriter;
 import network.NetworkUtils2;
-import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.config.Config;
@@ -29,8 +28,6 @@ import java.util.*;
 
 public class RunSkims {
 
-    private final static Logger logger = Logger.getLogger(RunSkims.class);
-
     public static void main(String[] args) throws IOException, FactoryException {
 
         if(args.length != 2) {
@@ -49,7 +46,7 @@ public class RunSkims {
 
         // Create car networks
         Network networkCarInput = NetworkUtils.createNetwork();
-        new MatsimNetworkReader(networkCarInput).readFile(Resources.instance.getString(Properties.MATSIM_CAR_NETWORK));
+        new MatsimNetworkReader(networkCarInput).readFile(Resources.instance.getString(Properties.MATSIM_DEMAND_OUTPUT_NETWORK));
         Network networkCar = NetworkUtils2.extractModeSpecificNetwork(networkCarInput, TransportMode.car);
         Network carXy2l = NetworkUtils2.extractXy2LinksNetwork(networkCar, l -> !((boolean) l.getAttributes().getAttribute("motorway")));
 
