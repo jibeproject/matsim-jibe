@@ -1,5 +1,7 @@
-package network;
+package demand;
 
+import network.NetworkUtils2;
+import network.WriteNetworkGpkgSimple;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
@@ -18,10 +20,10 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 
-public class CreateMatsimNetworkVehicle {
+public class CreateVehicleNetwork {
     private final static double URBAN_NONPRIMARY_CAPACITY_REDUCTION_FACTOR = 0.25;
     private final static double URBAN_NONPRIMARY_FREESPEED_REDUCTION_FACTOR = 0.25;
-    private final static Logger log = Logger.getLogger(CreateMatsimNetworkVehicle.class);
+    private final static Logger log = Logger.getLogger(CreateVehicleNetwork.class);
     private static final List<String> PAIRS_TO_CONNECT = List.of("227825out","224795out","164749out","298027out",
             "220563out","128831out","367168out","273137out","124102out","124103out","81480out","8582out","4084out","4083out",
             "224706out","419out","206836out","8823out","349287out","13111out","409267out","409269out","58003out","58867out");
@@ -45,13 +47,14 @@ public class CreateMatsimNetworkVehicle {
         createConnectors(vehicleNetwork);
         NetworkUtils.runNetworkCleaner(vehicleNetwork);
 
-        // Double capacity of short links
         for (Link link : vehicleNetwork.getLinks().values()) {
 
+            // Double capacity of short links
             if(link.getLength() < 100.) {
                 link.setCapacity(2 * link.getCapacity());
             }
 
+            // REDUCE CAPACITY AND FREESPEED OF URBAN NON-PRIMARY LINKS
             boolean urban = (boolean) link.getAttributes().getAttribute("urban");
             boolean primary = (boolean) link.getAttributes().getAttribute("primary");
             if(urban && !primary) {
