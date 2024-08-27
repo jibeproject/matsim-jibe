@@ -98,16 +98,6 @@ public class JibeDisutility2 implements TravelDisutility {
                     marginalCostLinkStress * linkStress +
                     marginalCostJctStress * jctStress);
 
-            // Junction stress factor
-            if((boolean) link.getAttributes().getAttribute("crossVehicles")) {
-                double junctionStress = JctStress.getStress(link,mode);
-                double junctionWidth = (double) link.getAttributes().getAttribute("crossWidth");
-                if(junctionWidth > linkLength) junctionWidth = linkLength;
-                double junctionTime = linkTime * (junctionWidth / linkLength);
-
-                disutility += marginalCostJctStress * junctionTime * junctionStress;
-            }
-
             if(Double.isNaN(disutility)) {
                 throw new RuntimeException("Null JIBE disutility for link " + link.getId().toString());
             }

@@ -142,6 +142,11 @@
 			<version>21.10</version>
 		</dependency>
 		<dependency>
+			<groupId>com.github.haifengl</groupId>
+			<artifactId>smile-core</artifactId>
+			<version>3.1.1</version>
+		</dependency>
+		<dependency>
 			<groupId>omx</groupId>
 			<artifactId>omx</artifactId>
 			<version>2</version>
@@ -150,6 +155,11 @@
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-math3</artifactId>
 			<version>3.6.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>2.0.14</version>
 		</dependency>
 	</dependencies>
 	<dependencyManagement>
