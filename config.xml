@@ -63,7 +63,7 @@
 	</module>
 	<module name="strategy" >
 		<!-- fraction of iterations where innovative strategies are switched off.  Something like 0.8 should be good.  E.g. if you run from iteration 400 to iteration 500, innovation is switched off at iteration 480 -->
-		<param name="fractionOfIterationsToDisableInnovation" value="0.9" />
+		<param name="fractionOfIterationsToDisableInnovation" value="0.8" />
 		<parameterset type="strategysettings" >
 			<!-- strategyName of strategy.  Possible default names: SelectRandom BestScore KeepLastSelected ChangeExpBeta SelectExpBeta SelectPathSizeLogit      (selectors), ReRouteTimeAllocationMutatorTimeAllocationMutator_ReRouteChangeSingleTripModeChangeTripModeSubtourModeChoice (innovative strategies). -->
 			<param name="strategyName" value="ReRoute" />
