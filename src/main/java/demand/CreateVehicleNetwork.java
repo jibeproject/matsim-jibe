@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Set;
 
 public class CreateVehicleNetwork {
-    private final static double CAPACITY_REDUCTION_FACTOR = 0.25;
+    private final static double CAPACITY_REDUCTION_FACTOR = 0.3;
     private final static double FREESPEED_REDUCTION_FACTOR = 0.25;
     private final static Logger log = Logger.getLogger(CreateVehicleNetwork.class);
     private static final List<String> PAIRS_TO_CONNECT = List.of("227825out","224795out","164749out","298027out",
@@ -49,14 +49,9 @@ public class CreateVehicleNetwork {
 
         for (Link link : vehicleNetwork.getLinks().values()) {
 
-            // Double capacity of short links
-            if(link.getLength() < 100.) {
-                link.setCapacity(2 * link.getCapacity());
-            }
-
             // REDUCE CAPACITY FOR PRIMARY AND SECONDARY LINKS
+            boolean primary = (boolean) link.getAttributes().getAttribute("primary");
             String type = (String) link.getAttributes().getAttribute("type");
-            boolean primary = type != null && type.contains("primary");
             boolean secondary = type != null && type.contains("secondary");
             if(primary || secondary) {
                 link.setCapacity((1-CAPACITY_REDUCTION_FACTOR) * link.getCapacity());
