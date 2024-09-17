@@ -10,6 +10,11 @@ import resources.Resources;
 
 public class RunSimulation {
     public static void main(String[] args) {
+        if (args.length>2) {
+            throw new RuntimeException("Program requires 2 arguments:\n" +
+                    "(0) Properties file \n" +
+                    "(1) Simulation output directory [optional] \n");
+        }
 
         Resources.initializeResources(args[0]);
 
@@ -28,6 +33,11 @@ public class RunSimulation {
         double scaleFactor = Resources.instance.getDouble(Properties.MATSIM_DEMAND_SCALE_FACTOR);
         config.qsim().setFlowCapFactor(scaleFactor);
         config.qsim().setStorageCapFactor(scaleFactor);
+
+        // Set output directory
+        if(args.length == 2){
+            config.controler().setOutputDirectory(args[1]);
+        }
 
         Scenario scenario = ScenarioUtils.loadScenario(config);
         Controler controler = new Controler(scenario);
