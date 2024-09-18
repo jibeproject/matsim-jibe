@@ -1,6 +1,6 @@
 package estimation;
 
-import estimation.utilities.AbstractUtilityFunction;
+import estimation.utilities.AbstractUtilitySpecification;
 import estimation.utilities.MNL_Dynamic;
 import gis.GisUtils;
 import gis.GpkgReader;
@@ -37,14 +37,14 @@ public class RunMnlDynamic {
 
         Resources.initializeResources(args[0]);
 
-        // Read Boundary Shapefile
-        logger.info("Reading boundary shapefile...");
-        Geometry boundary = GpkgReader.readNetworkBoundary();
-
         // Read in TRADS trips from CSV
         logger.info("Reading fixed input data from ascii file...");
         LogitData logitData = new LogitData(args[1],"choice","t.ID");
         logitData.read();
+
+        // Read Boundary Shapefile
+        logger.info("Reading boundary shapefile...");
+        Geometry boundary = GpkgReader.readNetworkBoundary();
 
         // Read in TRADS trips
         logger.info("Reading person micro data from ascii file...");
@@ -75,7 +75,7 @@ public class RunMnlDynamic {
         TravelTime ttBike = bicycle.getTravelTimeFast(networkBike);
 
         // Deal with intrazonal trips – can remove after we get X/Y coordinates for TRADS)
-        Set<SimpleFeature> OAs = GisUtils.readGpkg("zones/gm_oa.gpkg");
+        Set<SimpleFeature> OAs = GisUtils.readGpkg("zones/2011/gm_oa.gpkg");
 
         // Organise classes
         int[] y = logitData.getChoices();
@@ -85,10 +85,12 @@ public class RunMnlDynamic {
         System.out.println("Identified " + k + " classes.");
 
         // Utility function
-        AbstractUtilityFunction u = new MNL_Dynamic(logitData,trip_data,OAs,networkBike,bike,ttBike,networkWalk,null,ttWalk);
+        AbstractUtilitySpecification u = new MNL_Dynamic(logitData,trip_data,OAs,networkBike,bike,ttBike,networkWalk,null,ttWalk);
+//        AbstractUtilityFunction u = new MNL_Static(logitData);
+
 
         // Start model
-        MultinomialLogit.run(u,y,k,0,1e-10,500,"dynamic_results.csv");
+        MultinomialLogit.run(u,y,k,0,1e-10,500,"dynamic6.csv");
 
         logger.info("finished estimation.");
     }

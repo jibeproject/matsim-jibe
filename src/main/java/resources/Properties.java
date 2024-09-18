@@ -29,7 +29,7 @@ public class Properties {
     public static final String MAX_BIKE_SPEED = "max.bike.speed";
     public static final String DECAY_PERCENTILE = "decay.percentile";
     
-    // TRADS Survey data
+    // Survey data attribute names
     public static final String DIARY_FILE = "diary.file";
     public static final String DIARY_DELIMITER = "diary.delimiter";
     public static final String HOUSEHOLD_ID = "diary.household.id";

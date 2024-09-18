@@ -1,6 +1,6 @@
 package estimation;
 
-import estimation.utilities.AbstractUtilityFunction;
+import estimation.utilities.AbstractUtilitySpecification;
 import smile.math.DifferentiableMultivariateFunction;
 import smile.math.MathEx;
 
@@ -9,7 +9,7 @@ import java.util.stream.IntStream;
 
 public class FlexibleMultinomialObjective implements DifferentiableMultivariateFunction {
 
-    final AbstractUtilityFunction u;
+    final AbstractUtilitySpecification u;
     final int[] y;
     final int k;
     final int p;
@@ -20,7 +20,7 @@ public class FlexibleMultinomialObjective implements DifferentiableMultivariateF
     final double[][] posterioris;
 
 
-    FlexibleMultinomialObjective(AbstractUtilityFunction u, int[] y, int k, double lambda) {
+    FlexibleMultinomialObjective(AbstractUtilitySpecification u, int[] y, int k, double lambda) {
 
         this.u = u;
         this.y = y;
@@ -91,7 +91,7 @@ public class FlexibleMultinomialObjective implements DifferentiableMultivariateF
                 for (int j = 0; j < k; j++) {
                     double err = (y[i] == j ? 1.0 : 0.0) - posteriori[j];
                     for (int l = 0; l < p; l++) {
-                        gradient[l] -= err * u.getDerivative(i,j,l);
+                        gradient[l] -= err * u.getDerivative(i,j,wAll,l);
                     }
                 }
 

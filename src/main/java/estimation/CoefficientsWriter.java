@@ -1,6 +1,6 @@
 package estimation;
 
-import estimation.utilities.AbstractUtilityFunction;
+import estimation.utilities.AbstractUtilitySpecification;
 import io.ioUtils;
 import org.apache.log4j.Logger;
 
@@ -14,8 +14,27 @@ public class CoefficientsWriter {
     private final static Logger logger = Logger.getLogger(CoefficientsWriter.class);
     private final static String SEP = ",";
 
+    static void print(AbstractUtilitySpecification u, BFGS.Results results, double[] se, double[] t, double[] pVal, String[] sig) {
+
+        logger.info("ESTIMATION RESULTS AFTER " + results.iterations + " ITERATIONS:");
+        Iterator<String> coeffNames = u.getCoeffNames().iterator();
+        double[] finalResults = u.expandCoeffs(results.xAtEachIteration.get(results.iterations));
+        String[] seAll  = u.expand(se,"%.5f");
+        String[] tAll = u.expand(t,"% .5f");
+        String[] pAll = u.expand(pVal,"%.5f");
+        String[] sigAll = u.expand(sig);
+
+        System.out.printf("| %-30s | %-10s | %-7s |  %-10s |  %-10s |%n","COEFFICIENT NAME","VALUE","STD.ERR","T.TEST","P.VAL");
+        int i = 0;
+        while(coeffNames.hasNext()) {
+            System.out.printf("| %-30s | % .7f | %-7s |  %-10s | %-7s %-3s |%n",coeffNames.next(),finalResults[i],seAll[i],tAll[i],pAll[i],sigAll[i]);
+            i++;
+        }
+
+    }
+
     // Write results to csv file
-    static void write(AbstractUtilityFunction u, BFGS.Results results, double[] se, double[] t, double[] pVal, String[] sig, String filePath) {
+    static void write(AbstractUtilitySpecification u, BFGS.Results results, double[] se, double[] t, double[] pVal, String[] sig, String filePath) {
 
         PrintWriter out = ioUtils.openFileForSequentialWriting(new File(filePath),false);
         assert out != null;
@@ -25,10 +44,18 @@ public class CoefficientsWriter {
             out.println(i + SEP + results.lAtEachIteration.get(i) + SEP + Arrays.stream(u.expandCoeffs(results.xAtEachIteration.get(i))).mapToObj(String::valueOf).collect(Collectors.joining(SEP)));
         }
 
-        out.println("std.err" + SEP + SEP + String.join(SEP,u.expand(se)));
-        out.println("t.test" + SEP + SEP + String.join(SEP,u.expand(t)));
-        out.println("p.val" + SEP + SEP + String.join(SEP,u.expand(pVal)));
-        out.println("sig" + SEP + SEP + String.join(SEP,u.expand(sig)));
+        if(se != null) {
+            out.println("std.err" + SEP + SEP + String.join(SEP,u.expand(se)));
+        }
+        if(t != null) {
+            out.println("t.test" + SEP + SEP + String.join(SEP,u.expand(t)));
+        }
+        if(pVal != null) {
+            out.println("p.val" + SEP + SEP + String.join(SEP,u.expand(pVal)));
+        }
+//        if(sig != null) {
+//            out.println("sig" + SEP + SEP + String.join(SEP,u.expand(sig)));
+//        }
 
         out.close();
         logger.info("Wrote coefficients at each iteration to " + filePath);

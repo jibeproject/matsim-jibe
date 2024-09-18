@@ -63,10 +63,10 @@ public class JibeDisutility2 implements TravelDisutility {
     }
 
     public void precalculateDisutility() {
-        logger.info("precalculating disutilities...");
         for(Link link : network.getLinks().values()) {
             disutilities[link.getId().index()] = calculateDisutility(link);
         }
+        logger.info("precalculated disutilities.");
     }
 
     private double calculateDisutility(Link link) {

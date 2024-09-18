@@ -1,4 +1,5 @@
 package estimation.utilities;
+import estimation.UtilityFunction;
 import estimation.dynamic.DynamicUtilityComponent;
 import estimation.LogitData;
 import org.apache.commons.lang3.ArrayUtils;
@@ -6,12 +7,10 @@ import org.apache.log4j.Logger;
 import smile.util.IntSet;
 
 import java.util.*;
-import java.util.function.IntToDoubleFunction;
 
-public abstract class AbstractUtilityFunction {
+public abstract class AbstractUtilitySpecification {
 
-    Logger logger = Logger.getLogger(AbstractUtilityFunction.class);
-    private final DynamicUtilityComponent dynamicUtilityComponent;
+    Logger logger = Logger.getLogger(AbstractUtilitySpecification.class);
     private final LogitData db;
     private final int allCoeffs;
     private final int varCoeffs;
@@ -22,9 +21,11 @@ public abstract class AbstractUtilityFunction {
     private final double[] starting;
     private final boolean[] fixed;
     private final boolean[][] availability;
-    private final IntToDoubleFunction[][] derivativeMatrix;
+    private UtilityFunction[] utilityVector;
+    private UtilityFunction[][] derivativeMatrix;
+    private DynamicUtilityComponent dynamicUtilityComponent;
 
-    public AbstractUtilityFunction(LogitData db, int... choiceValues) {
+    public AbstractUtilitySpecification(LogitData db, int... choiceValues) {
         this.db = db;
         this.choiceSet = new IntSet(choiceValues);
         coefficients = new HashMap<>();
@@ -68,22 +69,23 @@ public abstract class AbstractUtilityFunction {
         // COMPUTE AVAILABILITY AS MATRIX
         this.availability = computeAvailability();
 
-        // SET DERIVATIVES
-        derivativeMatrix = createDerivativeMatrix();
         logger.info("Initialised utility function with " + allCoeffs + " coefficients " +
                 "(" + fixedCoeffs.size() + " fixed).");
+    }
 
-        // SET DYNAMIC UTILITY COMPONENT (IF APPLICABLE)
+    void initialise() {
         this.dynamicUtilityComponent = dynamic();
+        this.utilityVector = utility();
+        this.derivativeMatrix = createDerivativeMatrix();
     }
 
     abstract LinkedHashMap<String,Double> coefficients();
 
     abstract List<String> fixed();
 
-    abstract double utility(int i, int choice, double[] coefficients);
+    abstract UtilityFunction[] utility();
 
-    abstract Map<String,IntToDoubleFunction[]> derivatives();
+    abstract Map<String, UtilityFunction[]> derivatives();
 
     DynamicUtilityComponent dynamic() {
         return null;
@@ -93,24 +95,24 @@ public abstract class AbstractUtilityFunction {
         return new ArrayList<>();
     }
 
-    private IntToDoubleFunction[][] createDerivativeMatrix() {
-        Map<String,IntToDoubleFunction[]> derivativesMap = derivatives();
-        IntToDoubleFunction[][] result = new IntToDoubleFunction[choiceCount][allCoeffs];
-        for(Map.Entry<String,IntToDoubleFunction[]> e : derivativesMap.entrySet()) {
-            int pos = coefficients.get(e.getKey());
+    private UtilityFunction[][] createDerivativeMatrix() {
+        Map<String, UtilityFunction[]> derivativesMap = derivatives();
+        UtilityFunction[][] result = new UtilityFunction[choiceCount][allCoeffs];
+        for(Map.Entry<String, UtilityFunction[]> e : derivativesMap.entrySet()) {
+            int coeffPos = coefficients.get(e.getKey());
             if(e.getValue().length != choiceCount) {
                 throw new RuntimeException("Incorrect number of derivatives given for coefficient: " + e.getKey());
             }
             for(int k = 0 ; k < choiceCount ; k++) {
-                result[k][pos] = e.getValue()[k];
+                result[k][coeffPos] = e.getValue()[k];
             }
         }
         return result;
     }
 
-    public double getUtility(int i, int choiceIdx, double[] c) {
+    public double getUtility(int i, int choiceIdx, double[] coeffs) {
         if(availability[choiceIdx][i]) {
-            return utility(i, choiceSet.valueOf(choiceIdx),c);
+            return utilityVector[choiceIdx].applyAsDouble(coeffs,i);//utility(i, choiceSet.valueOf(choiceIdx),c);
         } else {
             return Double.NEGATIVE_INFINITY;
         }
@@ -128,9 +130,9 @@ public abstract class AbstractUtilityFunction {
         return db.getValue(i,col);
     }
 
-    public double getDerivative(int i, int choiceIdx, int coeffIdx) {
+    public double getDerivative(int i,int choiceIdx,double[] coeffs, int coeffIdx) {
         if(availability[choiceIdx][i]) {
-            return derivativeMatrix[choiceIdx][coeffSet.valueOf(coeffIdx)].applyAsDouble(i);
+            return derivativeMatrix[choiceIdx][coeffSet.valueOf(coeffIdx)].applyAsDouble(coeffs,i);
         } else {
             return 0;
         }
@@ -200,6 +202,19 @@ public abstract class AbstractUtilityFunction {
     }
 
 
+    public String[] expand(double[] z, String format) {
+        String[] result = new String[allCoeffs];
+        for(int i = 0 ; i < allCoeffs ; i++) {
+            if(fixed[i]) {
+                result[i] = "";
+            } else {
+                result[i] = String.format(format,z[coeffSet.indexOf(i)]);
+            }
+        }
+        return result;
+    }
+
+
     public String[] expand(Object[] z) {
         String[] result = new String[allCoeffs];
         for(int i = 0 ; i < allCoeffs ; i++) {
@@ -212,15 +227,31 @@ public abstract class AbstractUtilityFunction {
         return result;
     }
 
+    protected class UtilitiesBuilder {
+
+        private final UtilityFunction[] utilities;
+
+        UtilitiesBuilder() {utilities = new UtilityFunction[choiceCount];}
+
+        void put(int choice, UtilityFunction fn) {
+            utilities[choiceSet.indexOf(choice)] = fn;
+        }
+
+        UtilityFunction[] build() {
+            return utilities;
+        }
+
+    }
+
     protected class DerivativesBuilder {
 
-        Map<String,IntToDoubleFunction[]> derivativesMap;
+        Map<String, UtilityFunction[]> derivativesMap;
 
         DerivativesBuilder() {
             derivativesMap = new HashMap<>();
         }
 
-        void put(String name, IntToDoubleFunction... derivatives) {
+        void put(String name, UtilityFunction... derivatives) {
             checkName(name);
             if(derivatives.length != choiceCount) {
                 throw new RuntimeException("Incorrect number of derivatives entered for coefficient: " + name);
@@ -228,14 +259,27 @@ public abstract class AbstractUtilityFunction {
             derivativesMap.put(name,derivatives);
         }
 
-        void putAt(String name, IntToDoubleFunction derivative, int... choices) {
+        void putAt(String name, UtilityFunction derivative, int... choices) {
             checkName(name);
-            IntToDoubleFunction[] derivatives = new IntToDoubleFunction[choiceCount];
+            UtilityFunction[] derivatives = new UtilityFunction[choiceCount];
             for(int i = 0 ; i < choiceCount ; i++) {
                 if(ArrayUtils.contains(choices,choiceSet.valueOf(i))) {
                     derivatives[i] = derivative;
                 } else {
-                    derivatives[i] = j -> 0;
+                    derivatives[i] = (a,b) -> 0;
+                }
+            }
+            derivativesMap.put(name,derivatives);
+        }
+
+        void putAt(String name, double derivative, int... choices) {
+            checkName(name);
+            UtilityFunction[] derivatives = new UtilityFunction[choiceCount];
+            for(int i = 0 ; i < choiceCount ; i++) {
+                if(ArrayUtils.contains(choices,choiceSet.valueOf(i))) {
+                    derivatives[i] = (a,b) -> derivative;
+                } else {
+                    derivatives[i] = (a,b) -> 0;
                 }
             }
             derivativesMap.put(name,derivatives);
@@ -250,7 +294,7 @@ public abstract class AbstractUtilityFunction {
             }
         }
 
-        Map<String, IntToDoubleFunction[]> build() {
+        Map<String, UtilityFunction[]> build() {
             if(!coefficients.keySet().containsAll(derivativesMap.keySet())) {
                 Set<String> coeffs = new HashSet<>(coefficients.keySet());
                 coeffs.removeAll(derivativesMap.keySet());
@@ -264,7 +308,7 @@ public abstract class AbstractUtilityFunction {
         return coefficients().keySet();
     }
 
-    public int getCoeffIdx(String coeffName) {
-        return this.coeffSet.indexOf(coefficients.get(coeffName));
+    public int getCoeffPos(String coeffName) {
+        return coefficients.get(coeffName);
     }
 }

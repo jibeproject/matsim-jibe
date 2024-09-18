@@ -18,6 +18,7 @@
 package estimation;
 
 import estimation.dynamic.DynamicUtilityComponent;
+import org.apache.log4j.Logger;
 import smile.math.DifferentiableMultivariateFunction;
 import smile.math.MultivariateFunction;
 
@@ -76,7 +77,7 @@ import static smile.math.MathEx.*;
  * @author Haifeng Li
  */
 public class BFGS {
-    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(BFGS.class);
+    private static final Logger logger = Logger.getLogger(BFGS.class);
     /** A number close to zero, between machine epsilon and its square root. */
     private static final double EPSILON = Double.parseDouble(System.getProperty("smile.bfgs.epsilon", "1E-8"));
     /** The convergence criterion on x values. */
@@ -167,12 +168,8 @@ public class BFGS {
 
         for (int iter = 1; iter <= maxIter; iter++) {
 
-            if(dynamicUtilityComponent != null) {
-                dynamicUtilityComponent.update(x);
-            }
-
             // The new function evaluation occurs in line search.
-            f = linesearch(func, x, f, g, xi, xnew, stpmax);
+            f = linesearch(func, x, f, g, xi, xnew, stpmax, dynamicUtilityComponent);
 
             logger.info(String.format("BFGS: the function value after %3d iterations: %.5f", iter, f));
 
@@ -323,7 +320,8 @@ public class BFGS {
      *
      * @return the new function value.
      */
-    private static double linesearch(MultivariateFunction func, double[] xold, double fold, double[] g, double[] p, double[] x, double stpmax) {
+    private static double linesearch(MultivariateFunction func, double[] xold, double fold, double[] g, double[] p, double[] x, double stpmax,
+                                     DynamicUtilityComponent dynamicUtilityComponent) {
         if (stpmax <= 0) {
             throw new IllegalArgumentException("Invalid upper bound of linear search step: " + stpmax);
         }
@@ -369,11 +367,18 @@ public class BFGS {
 
         double alam2 = 0.0, f2 = 0.0;
         double a, b, disc, rhs1, rhs2, tmpalam;
+        int runCount = 0;
         while (true) {
+            runCount++;
             // Evaluate the function and gradient at stp
             // and compute the directional derivative.
             for (int i = 0; i < n; i++) {
                 x[i] = xold[i] + alam * p[i];
+            }
+
+            // Update dynamic component
+            if(dynamicUtilityComponent != null) {
+                dynamicUtilityComponent.update(x);
             }
 
             double f = func.apply(x);
@@ -381,9 +386,15 @@ public class BFGS {
             // Convergence on &Delta; x.
             if (alam < alammin) {
                 System.arraycopy(xold, 0, x, 0, n);
+                logger.info("Linesearch ran " + runCount + " times, no update.");
+                // Go back to old dynamic component (unlikely)
+                if(dynamicUtilityComponent != null) {
+                    dynamicUtilityComponent.update(x);
+                }
                 return f;
             } else if (f <= fold + ftol * alam * slope) {
                 // Sufficient function decrease.
+                logger.info("Linesearch ran " + runCount + " times, completed with sufficient function decrease.");
                 return f;
             } else {
                 // Backtrack

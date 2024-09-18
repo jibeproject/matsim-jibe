@@ -1,6 +1,6 @@
 package estimation;
 
-import estimation.utilities.AbstractUtilityFunction;
+import estimation.utilities.AbstractUtilitySpecification;
 import org.apache.log4j.Logger;
 import smile.math.matrix.Matrix;
 import smile.stat.distribution.GaussianDistribution;
@@ -12,7 +12,7 @@ public class MultinomialLogit {
 
     private final static Logger logger = Logger.getLogger(MultinomialLogit.class);
 
-    public static void run(AbstractUtilityFunction u, int[] y, int k, double lambda, double tol, int maxIter, String resultsFileName) {
+    public static void run(AbstractUtilitySpecification u, int[] y, int k, double lambda, double tol, int maxIter, String resultsFileName) {
 
         if (lambda < 0.0) {
             throw new IllegalArgumentException("Invalid regularization factor: " + lambda);
@@ -34,25 +34,42 @@ public class MultinomialLogit {
         logger.info("finished estimation.");
 
         // Approximate variance-coviariance matrix (from BFGS method) – for debugging only
-        Matrix approxVarCov = Matrix.of(results.hessian);
+        // Matrix approxVarCov = Matrix.of(results.hessian);
 
         // Hessian computed as numerical jacobian of gradient
         Matrix numericalHessian = Matrix.of(Jacobian.richardson(objective,w));
         Matrix.EVD eigenvalues = numericalHessian.eigen().sort();
+        double maxEigenvalue = Arrays.stream(eigenvalues.wr).max().orElseThrow();
         logger.info("Eigenvalues: " + Arrays.stream(eigenvalues.wr).mapToObj(d -> String.format("%.5f",d)).collect(Collectors.joining(" , ")));
+        logger.info("Maximum eigenvalue: " + maxEigenvalue);
 
-        // Variance-covariance matrix computed as inverse of hessian
-        Matrix varCov = numericalHessian.inverse();
-        varCov.mul(-1);
+        // Check if matrix is singular
+        if(Arrays.stream(eigenvalues.wr).anyMatch(e -> e == 0)) {
+            logger.error("Hessian matrix is singular! Cannot compute standard errors");
+            CoefficientsWriter.write(u,results,null,null,null,null,resultsFileName);
+        } else {
 
-        // Standard errors
-        double[] se = Arrays.stream(varCov.diag()).map(Math::sqrt).toArray();
-        double[] t = tTest(w,se);
-        double[] pVal = pVal(t);
-        String[] sig = sig(t);
+            // Check convergence to saddle point (probably can still run)
+            if (maxEigenvalue > 0){
+                logger.error("Hessian is not negative definite! Convergence to saddle point!");
+            }
 
-        // Print results (to complete later...)
-        CoefficientsWriter.write(u,results,se,t,pVal,sig,resultsFileName);
+            // Variance-covariance matrix computed as inverse of hessian
+            Matrix varCov = numericalHessian.inverse();
+            varCov.mul(-1);
+
+            // Standard errors
+            double[] se = Arrays.stream(varCov.diag()).map(Math::sqrt).toArray();
+            double[] t = tTest(w,se);
+            double[] pVal = pVal(t);
+            String[] sig = sig(t);
+
+            // Print results to screen
+            CoefficientsWriter.print(u,results,se,t,pVal,sig);
+
+            // Print results to file
+            CoefficientsWriter.write(u,results,se,t,pVal,sig,resultsFileName);
+        }
     }
 
 
@@ -91,7 +108,7 @@ public class MultinomialLogit {
             } else {
                 sig = "";
             }
-            result[i] = String.format("%.4f",p[i]) + sig;
+            result[i] = sig;
         }
         return result;
     }
