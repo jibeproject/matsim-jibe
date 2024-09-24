@@ -11,6 +11,7 @@ import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.router.FastDijkstraFactory;
 import org.matsim.core.router.util.LeastCostPathCalculator;
+import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.utils.misc.Counter;
 import org.matsim.vehicles.Vehicle;
@@ -36,10 +37,11 @@ import static trip.Place.ORIGIN;
 
 public class DynamicRouter implements DynamicUtilityComponent {
 
-    private final static boolean ENABLE_DYNAMIC_ROUTING = true;
+    private final static boolean ENABLE_DYNAMIC_ROUTING = false;
     private final static Logger logger = Logger.getLogger(DynamicRouter.class);
     private final int numberOfThreads;
     final Trip[] trips;
+    final int[] tripDisutilityType;
     final String mode;
     final Network network;
     final TravelTime tt;
@@ -48,13 +50,19 @@ public class DynamicRouter implements DynamicUtilityComponent {
     final int gammaGradPos;
     final int gammaVgviPos;
     final int gammaStressLinkPos;
+    final int gammaStressLinkFemalePos;
+    final int gammaStressLinkUnder15Pos;
     final int gammaStressJctPos;
+    final int gammaStressJctFemalePos;
+    final int gammaStressJctUnder15Pos;
     final PathData pathData;
 
 
     public DynamicRouter(Trip[] trips, AbstractUtilitySpecification u, String mode, Set<SimpleFeature> zones,
                          Network network, Vehicle vehicle, TravelTime tt,
-                         String gammaGrad, String gammaVgvi, String gammaStressLink, String gammaStressJct) {
+                         String gammaGrad, String gammaVgvi,
+                         String gammaStressLink, String gammaStressLinkFemale, String gammaStressLinkUnder15,
+                         String gammaStressJct, String gammaStressJctFemale, String gammaStressJctUnder15) {
         this.trips = trips;
         this.u = u;
         this.mode = mode;
@@ -64,8 +72,24 @@ public class DynamicRouter implements DynamicUtilityComponent {
         this.gammaGradPos = u.getCoeffPos(gammaGrad);
         this.gammaVgviPos = u.getCoeffPos(gammaVgvi);
         this.gammaStressLinkPos = u.getCoeffPos(gammaStressLink);
+        this.gammaStressLinkFemalePos = u.getCoeffPos(gammaStressLinkFemale);
+        this.gammaStressLinkUnder15Pos = u.getCoeffPos(gammaStressLinkUnder15);
         this.gammaStressJctPos = u.getCoeffPos(gammaStressJct);
+        this.gammaStressJctFemalePos = u.getCoeffPos(gammaStressJctFemale);
+        this.gammaStressJctUnder15Pos = u.getCoeffPos(gammaStressJctUnder15);
         this.numberOfThreads = Resources.instance.getInt(Properties.NUMBER_OF_THREADS);
+
+        // Set disutility types
+        tripDisutilityType = new int[trips.length];
+        for(int i = 0 ; i < trips.length ; i++) {
+            if(u.value(i,"p.age_group_agg_5_14") == 1) {
+                tripDisutilityType[i] = 2;  // CHILD UNDER 15
+            } else if(u.value(i,"p.female") == 1) {
+                tripDisutilityType[i] = 1;  // FEMALE
+            } else {
+                tripDisutilityType[i] = 0;  // MALE
+            }
+        }
 
         // Sort inter/intra-zonal trips, and compute fixed results for intrazonal
         pathData = new PathData(trips.length);
@@ -130,38 +154,37 @@ public class DynamicRouter implements DynamicUtilityComponent {
 
     private void updatePathData(double[] xVarOnly) {
 
-        // Get latest coefficients
+        // GET LATEST COEFFICIENTS
         double[] x = u.expandCoeffs(xVarOnly);
-        double mGrad = x[gammaGradPos];
-        double mVgvi = x[gammaVgviPos];
-        double mStressLink = x[gammaStressLinkPos];
-        double mStressJct = x[gammaStressJctPos];
 
-        if(mGrad < 0) {
-            logger.warn("Negative gradient coefficient: " + mGrad + " Setting mGrad=0 for routing...");
-            mGrad = 0;
-        }
-        if(mVgvi < 0) {
-            logger.warn("Negative vgvi coefficient: " + mVgvi + ". Set mVgvi=0 for routing...");
-            mVgvi = 0;
-        }
-        if(mStressLink < 0) {
-            logger.warn("Negative link stress coefficient: " + mStressLink + ". Set mStressLink=0 for routing...");
-            mStressLink = 0;
-        }
-        if(mStressJct < 0) {
-            logger.warn("Negative junction stress coefficient: " + mStressJct + ". Set mStressJct=0 for routing...");
-            mStressJct = 0;
-        }
+        // Gradient & VGVI
+        double mGrad = zeroIfNegative(x[gammaGradPos],"gradient");
+        double mVgvi = zeroIfNegative(x[gammaVgviPos],"VGVI");
+
+        // Link stress + adjustments
+        double mStressLinkMale = zeroIfNegative(x[gammaStressLinkPos],"link stress (baseline)");
+        double mStressLinkFemale = zeroIfNegative(x[gammaStressLinkPos] + x[gammaStressLinkFemalePos],"link stress (female)");
+        double mStressLinkUnder15 = zeroIfNegative(x[gammaStressLinkPos] + x[gammaStressLinkUnder15Pos],"link stress (under 15)");
+
+        // Junction stress + adjustments
+        double mStressJctMale = zeroIfNegative(x[gammaStressJctPos],"junction stress (baseline)");
+        double mStressJctFemale = zeroIfNegative(x[gammaStressJctPos] + x[gammaStressJctFemalePos],"junction stress (female)");
+        double mStressJctUnder15 = zeroIfNegative(x[gammaStressJctPos] + x[gammaStressJctUnder15Pos],"junction stress (under 15)");
 
         // Update all routable trips (multithreaded)
-        JibeDisutility2 disutility = new JibeDisutility2(network, vehicle, mode, tt, mGrad, mVgvi, mStressLink, mStressJct);
-        ConcurrentLinkedQueue<Integer> tripsQueue = IntStream.range(0, trips.length).boxed().collect(Collectors.toCollection(ConcurrentLinkedQueue::new));
+        TravelDisutility disutilityMale = new JibeDisutility2(network, vehicle, mode, tt, mGrad, mVgvi, mStressLinkMale, mStressJctMale);
+        TravelDisutility disutilityFemale = new JibeDisutility2(network, vehicle, mode, tt, mGrad, mVgvi, mStressLinkFemale, mStressJctFemale);
+        TravelDisutility disutilityUnder15 = new JibeDisutility2(network, vehicle, mode, tt, mGrad, mVgvi, mStressLinkUnder15, mStressJctUnder15);
+
         Thread[] threads = new Thread[numberOfThreads];
         Counter counter = new Counter("Routed ", " / " + trips.length + " trips.");
+        ConcurrentLinkedQueue<Integer> tripsQueue = IntStream.range(0, trips.length).boxed().collect(Collectors.toCollection(ConcurrentLinkedQueue::new));
         for(int i = 0 ; i < numberOfThreads ; i++) {
-            LeastCostPathCalculator dijkstra = new FastDijkstraFactory(false).createPathCalculator(network, disutility, tt);
-            TripWorker worker = new TripWorker(tripsQueue,counter,mode,tt,vehicle,dijkstra,pathData);
+            LeastCostPathCalculator[] lcpCalculators = new LeastCostPathCalculator[3];
+            lcpCalculators[0] = new FastDijkstraFactory(false).createPathCalculator(network, disutilityMale, tt);
+            lcpCalculators[1] = new FastDijkstraFactory(false).createPathCalculator(network, disutilityFemale, tt);
+            lcpCalculators[2] = new FastDijkstraFactory(false).createPathCalculator(network, disutilityUnder15, tt);
+            TripWorker worker = new TripWorker(tripsQueue,counter,mode,tt,vehicle,lcpCalculators,tripDisutilityType,pathData);
             threads[i] = new Thread(worker,"DynamicRouteUpdate-" + i);
             threads[i].start();
         }
@@ -173,6 +196,15 @@ public class DynamicRouter implements DynamicUtilityComponent {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    private static double zeroIfNegative(double n, String name) {
+        if(n < 0) {
+            logger.warn("Negative " + name + " coefficient:" + n + ". Set to 0 for routing...");
+            return 0.;
+        } else {
+            return n;
         }
     }
 
@@ -205,20 +237,22 @@ public class DynamicRouter implements DynamicUtilityComponent {
         private final ConcurrentLinkedQueue<Integer> tripIndices;
         private final Counter counter;
         private final Vehicle vehicle;
-        private final LeastCostPathCalculator pathCalculator;
+        private final LeastCostPathCalculator[] lcpCalculators;
+        private final int[] lcpCalculatorIdx;
         private final TravelTime tt;
         private final String mode;
         private final PathData pathData;
 
 
-        public TripWorker(ConcurrentLinkedQueue<Integer> tripIndices, Counter counter, String mode,
-                          TravelTime travelTime, Vehicle vehicle, LeastCostPathCalculator pathCalculator,PathData pathData) {
+        public TripWorker(ConcurrentLinkedQueue<Integer> tripIndices, Counter counter, String mode, TravelTime travelTime, Vehicle vehicle,
+                          LeastCostPathCalculator[] lcpCalculators, int[] lcpCalculatorIdx, PathData pathData) {
             this.tripIndices = tripIndices;
             this.counter = counter;
             this.mode = mode;
             this.tt = travelTime;
             this.vehicle = vehicle;
-            this.pathCalculator = pathCalculator;
+            this.lcpCalculators = lcpCalculators;
+            this.lcpCalculatorIdx = lcpCalculatorIdx;
             this.pathData = pathData;
         }
 
@@ -231,7 +265,7 @@ public class DynamicRouter implements DynamicUtilityComponent {
                 }
                 //this.counter.incCounter();
                 if(!pathData.intrazonal[i]) {
-                    LeastCostPathCalculator.Path path = pathCalculator.calcLeastCostPath(pathData.originNodes[i], pathData.destinationNodes[i], 0., null, vehicle);
+                    LeastCostPathCalculator.Path path = lcpCalculators[lcpCalculatorIdx[i]].calcLeastCostPath(pathData.originNodes[i], pathData.destinationNodes[i], 0., null, vehicle);
                     double tripGradient = 0.;
                     double tripVgvi = 0.;
                     double tripStressLink = 0.;

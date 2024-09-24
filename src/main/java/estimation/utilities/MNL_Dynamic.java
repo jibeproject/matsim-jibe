@@ -35,9 +35,13 @@ public class MNL_Dynamic extends AbstractUtilitySpecification {
                        Network netWalk, Vehicle vehWalk, TravelTime ttWalk) {
         super(data,0,1,2,3,4);
         dynamicBike = new DynamicRouter(trips,this, TransportMode.bike,OAs,netBike,vehBike,ttBike,
-                "g_bike_grad","g_bike_vgvi","g_bike_stressLink","g_bike_stressJct");
+                "g_bike_grad","g_bike_vgvi",
+                "g_bike_stressLink","g_bike_stressLink_f","g_bike_stressLink_c",
+                "g_bike_stressJct","g_bike_stressJct_f","g_bike_stressJct_c");
         dynamicWalk = new DynamicRouter(trips,this, TransportMode.walk,OAs,netWalk,vehWalk,ttWalk,
-                "g_walk_grad","g_walk_vgvi","g_walk_stressLink","g_walk_stressJct");
+                "g_walk_grad","g_walk_vgvi",
+                "g_walk_stressLink","g_walk_stressLink_f","g_walk_stressLink_c",
+                "g_walk_stressJct","g_walk_stressJct_f","g_walk_stressJct_c");
 //        printTravelTimes(data,"activeDataStatic.csv");
 //        System.exit(-1);
         initialise();
@@ -98,16 +102,8 @@ public class MNL_Dynamic extends AbstractUtilitySpecification {
         builder.put(0,(c,i) -> sociodemographicUtility(c,i,"carD") + beta(c,"b_car_time") * value(i,"car_time"));
         builder.put(1,(c,i) -> sociodemographicUtility(c,i,"carP") + beta(c,"b_car_time") * value(i,"car_time"));
         builder.put(2,(c,i) -> sociodemographicUtility(c,i,"pt") + beta(c,"b_pt_time") * value(i,"pt_time"));
-        builder.put(3,(c,i) -> sociodemographicUtility(c,i,"bike") + beta(c,"b_bike_cost") * (dynamicBike.getTime(i) +
-                beta(c,"g_bike_grad") * dynamicBike.getGrad(i) +
-                beta(c,"g_bike_vgvi") * dynamicBike.getVgvi(i) +
-                beta(c,"g_bike_stressLink") * dynamicBike.getStressLink(i) +
-                beta(c,"g_bike_stressJct") * dynamicBike.getStressJct(i)));
-        builder.put(4,(c,i) -> sociodemographicUtility(c,i,"walk") + beta(c,"b_walk_cost") * (dynamicWalk.getTime(i) +
-                beta(c,"g_walk_grad") * dynamicWalk.getGrad(i) +
-                beta(c,"g_walk_vgvi") * dynamicWalk.getVgvi(i) +
-                beta(c,"g_walk_stressLink") * dynamicWalk.getStressLink(i) +
-                beta(c,"g_walk_stressJct") * dynamicWalk.getStressJct(i)));
+        builder.put(3,(c,i) -> sociodemographicUtility(c,i,"bike") + beta(c,"b_bike_cost") * pathCostBike(c,i));
+        builder.put(4,(c,i) -> sociodemographicUtility(c,i,"walk") + beta(c,"b_walk_cost") * pathCostWalk(c,i));
         return builder.build();
     }
 
@@ -119,6 +115,31 @@ public class MNL_Dynamic extends AbstractUtilitySpecification {
             result += beta(c,"b_" + mode + "_" + sd) * value(i,sd);
         }
         return result;
+    }
+
+    // Path cost
+    private double pathCostBike(double[] c, int i) {
+        return dynamicBike.getTime(i) +
+                beta(c,"g_bike_grad") * dynamicBike.getGrad(i) +
+                beta(c,"g_bike_vgvi") * dynamicBike.getVgvi(i) +
+                beta(c,"g_bike_stressLink") * dynamicBike.getStressLink(i) +
+                beta(c,"g_bike_stressLink_f") * dynamicBike.getStressLink(i) * value(i,"p.female") +
+                beta(c,"g_bike_stressLink_c") * dynamicBike.getStressLink(i) * value(i,"p.age_group_agg_5_14") +
+                beta(c,"g_bike_stressJct") * dynamicBike.getStressJct(i) +
+                beta(c,"g_bike_stressJct_f") * dynamicBike.getStressJct(i) * value(i,"p.female") +
+                beta(c,"g_bike_stressJct_c") * dynamicBike.getStressJct(i) * value(i,"p.age_group_agg_5_14");
+    }
+
+    private double pathCostWalk(double[] c, int i) {
+        return dynamicWalk.getTime(i) +
+                beta(c,"g_walk_grad") * dynamicWalk.getGrad(i) +
+                beta(c,"g_walk_vgvi") * dynamicWalk.getVgvi(i) +
+                beta(c,"g_walk_stressLink") * dynamicWalk.getStressLink(i) +
+                beta(c,"g_walk_stressLink_f") * dynamicWalk.getStressLink(i) * value(i,"p.female") +
+                beta(c,"g_walk_stressLink_c") * dynamicWalk.getStressLink(i) * value(i,"p.age_group_agg_5_14") +
+                beta(c,"g_walk_stressJct") * dynamicWalk.getStressJct(i) +
+                beta(c,"g_walk_stressJct_f") * dynamicWalk.getStressJct(i) * value(i,"p.female") +
+                beta(c,"g_bike_stressJct_c") * dynamicWalk.getStressJct(i) * value(i,"p.age_group_agg_5_14");
     }
 
     // DERIVATIVES
@@ -147,26 +168,26 @@ public class MNL_Dynamic extends AbstractUtilitySpecification {
         builder.putAt("b_pt_time", (c,i)->value(i,"pt_time"),2);
 
         // Bike
-        builder.putAt("b_bike_cost",(c,i)->dynamicBike.getTime(i) +
-                beta(c,"g_bike_grad") * dynamicBike.getGrad(i) +
-                beta(c,"g_bike_vgvi") * dynamicBike.getVgvi(i) +
-                beta(c,"g_bike_stressLink") * dynamicBike.getStressLink(i) +
-                beta(c,"g_bike_stressJct") * dynamicBike.getStressJct(i),3);
+        builder.putAt("b_bike_cost", this::pathCostBike,3);
         builder.putAt("g_bike_grad",(c,i)->beta(c,"b_bike_cost") * dynamicBike.getGrad(i),3);
         builder.putAt("g_bike_vgvi",(c,i)->beta(c,"b_bike_cost") * dynamicBike.getVgvi(i),3);
         builder.putAt("g_bike_stressLink",(c,i)->beta(c,"b_bike_cost") * dynamicBike.getStressLink(i),3);
+        builder.putAt("g_bike_stressLink_f",(c,i)->beta(c,"b_bike_cost") * dynamicBike.getStressLink(i) * value(i,"p.female"),3);
+        builder.putAt("g_bike_stressLink_c",(c,i)->beta(c,"b_bike_cost") * dynamicBike.getStressLink(i) * value(i,"p.age_group_agg_5_14"),3);
         builder.putAt("g_bike_stressJct",(c,i)->beta(c,"b_bike_cost") * dynamicBike.getStressJct(i),3);
+        builder.putAt("g_bike_stressJct_f",(c,i)->beta(c,"b_bike_cost") * dynamicBike.getStressJct(i) * value(i,"p.female"),3);
+        builder.putAt("g_bike_stressJct_c",(c,i)->beta(c,"b_bike_cost") * dynamicBike.getStressJct(i) * value(i,"p.age_group_agg_5_14"),3);
 
         // Walk
-        builder.putAt("b_walk_cost",(c,i)->dynamicWalk.getTime(i) +
-                beta(c,"g_walk_grad") * dynamicWalk.getGrad(i) +
-                beta(c,"g_walk_vgvi") * dynamicWalk.getVgvi(i) +
-                beta(c,"g_walk_stressLink") * dynamicWalk.getStressLink(i) +
-                beta(c,"g_walk_stressJct") * dynamicWalk.getStressJct(i),4);
+        builder.putAt("b_walk_cost", this::pathCostWalk,4);
         builder.putAt("g_walk_grad",(c,i)->beta(c,"b_walk_cost") * dynamicWalk.getGrad(i),4);
         builder.putAt("g_walk_vgvi",(c,i)->beta(c,"b_walk_cost") * dynamicWalk.getVgvi(i),4);
         builder.putAt("g_walk_stressLink",(c,i)->beta(c,"b_walk_cost") * dynamicWalk.getStressLink(i),4);
+        builder.putAt("g_walk_stressLink_f",(c,i)->beta(c,"b_walk_cost") * dynamicWalk.getStressLink(i) * value(i,"p.female"),4);
+        builder.putAt("g_walk_stressLink_c",(c,i)->beta(c,"b_walk_cost") * dynamicWalk.getStressLink(i) * value(i,"p.age_group_agg_5_14"),4);
         builder.putAt("g_walk_stressJct",(c,i)->beta(c,"b_walk_cost") * dynamicWalk.getStressJct(i),4);
+        builder.putAt("g_walk_stressJct_f",(c,i)->beta(c,"b_walk_cost") * dynamicWalk.getStressJct(i) * value(i,"p.female"),4);
+        builder.putAt("g_walk_stressJct_c",(c,i)->beta(c,"b_walk_cost") * dynamicWalk.getStressJct(i) * value(i,"p.age_group_agg_5_14"),4);
 
         // Return
         return builder.build();

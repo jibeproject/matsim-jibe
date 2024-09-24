@@ -64,11 +64,11 @@ public class MultinomialLogit {
             double[] pVal = pVal(t);
             String[] sig = sig(t);
 
-            // Print results to screen
-            CoefficientsWriter.print(u,results,se,t,pVal,sig);
+            // Print results to screen and text file
+            CoefficientsWriter.print(u,results,se,t,pVal,sig,resultsFileName + ".txt");
 
-            // Print results to file
-            CoefficientsWriter.write(u,results,se,t,pVal,sig,resultsFileName);
+            // Print iteration details to csv
+            CoefficientsWriter.write(u,results,se,t,pVal,sig,resultsFileName + ".csv");
         }
     }
 

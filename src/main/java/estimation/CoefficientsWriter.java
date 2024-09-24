@@ -14,7 +14,10 @@ public class CoefficientsWriter {
     private final static Logger logger = Logger.getLogger(CoefficientsWriter.class);
     private final static String SEP = ",";
 
-    static void print(AbstractUtilitySpecification u, BFGS.Results results, double[] se, double[] t, double[] pVal, String[] sig) {
+    static void print(AbstractUtilitySpecification u, BFGS.Results results, double[] se, double[] t, double[] pVal, String[] sig, String filePath) {
+
+        PrintWriter out = ioUtils.openFileForSequentialWriting(new File(filePath),false);
+        assert out != null;
 
         logger.info("ESTIMATION RESULTS AFTER " + results.iterations + " ITERATIONS:");
         Iterator<String> coeffNames = u.getCoeffNames().iterator();
@@ -24,13 +27,27 @@ public class CoefficientsWriter {
         String[] pAll = u.expand(pVal,"%.5f");
         String[] sigAll = u.expand(sig);
 
-        System.out.printf("| %-30s | %-10s | %-7s |  %-10s |  %-10s |%n","COEFFICIENT NAME","VALUE","STD.ERR","T.TEST","P.VAL");
+        String header = String.format("| %-30s | %-10s | %-7s |  %-10s |  %-10s |%n","COEFFICIENT NAME","VALUE","STD.ERR","T.TEST","P.VAL");
+        out.print(header);
+        System.out.print(header);
         int i = 0;
         while(coeffNames.hasNext()) {
-            System.out.printf("| %-30s | % .7f | %-7s |  %-10s | %-7s %-3s |%n",coeffNames.next(),finalResults[i],seAll[i],tAll[i],pAll[i],sigAll[i]);
+            String line = String.format("| %-30s | % .7f | %-7s |  %-10s | %-7s %-3s |%n",coeffNames.next(),finalResults[i],seAll[i],tAll[i],pAll[i],sigAll[i]);
+            out.print(line);
+            System.out.print(line);
             i++;
         }
 
+        // Print key data
+        out.println();
+        out.println();
+        out.println("Iterations: " + results.iterations);
+        out.println();
+        out.println("Start LL = " + results.llStart);
+        out.println("Final LL = " + results.llOut);
+
+        out.close();
+        logger.info("Wrote these results to " + filePath);
     }
 
     // Write results to csv file

@@ -106,6 +106,11 @@ public class LogitData {
     }
 
     public double getValue(int row, String col) {
-        return this.predictors[row][colIndex.get(col)];
+        Integer colIdx = colIndex.get(col);
+        if(colIdx != null) {
+            return this.predictors[row][colIdx];
+        } else {
+            throw new RuntimeException("Column \"" + col + "\" in utility function but not found in database!");
+        }
     }
 }

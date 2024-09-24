@@ -2,6 +2,7 @@ package estimation;
 
 import estimation.utilities.AbstractUtilitySpecification;
 import estimation.utilities.MNL_Dynamic;
+import estimation.utilities.MNL_Static;
 import gis.GisUtils;
 import gis.GpkgReader;
 import io.DiaryReader;
@@ -42,7 +43,7 @@ public class RunMnlDynamic {
         LogitData logitData = new LogitData(args[1],"choice","t.ID");
         logitData.read();
 
-        // Read Boundary Shapefile
+ /*       // Read Boundary Shapefile
         logger.info("Reading boundary shapefile...");
         Geometry boundary = GpkgReader.readNetworkBoundary();
 
@@ -75,7 +76,7 @@ public class RunMnlDynamic {
         TravelTime ttBike = bicycle.getTravelTimeFast(networkBike);
 
         // Deal with intrazonal trips – can remove after we get X/Y coordinates for TRADS)
-        Set<SimpleFeature> OAs = GisUtils.readGpkg("zones/2011/gm_oa.gpkg");
+        Set<SimpleFeature> OAs = GisUtils.readGpkg("zones/2011/gm_oa.gpkg");*/
 
         // Organise classes
         int[] y = logitData.getChoices();
@@ -85,12 +86,12 @@ public class RunMnlDynamic {
         System.out.println("Identified " + k + " classes.");
 
         // Utility function
-        AbstractUtilitySpecification u = new MNL_Dynamic(logitData,trip_data,OAs,networkBike,bike,ttBike,networkWalk,null,ttWalk);
-//        AbstractUtilityFunction u = new MNL_Static(logitData);
+//        AbstractUtilitySpecification u = new MNL_Dynamic(logitData,trip_data,OAs,networkBike,bike,ttBike,networkWalk,null,ttWalk);
+        AbstractUtilitySpecification u = new MNL_Static(logitData);
 
 
         // Start model
-        MultinomialLogit.run(u,y,k,0,1e-10,500,"dynamic6.csv");
+        MultinomialLogit.run(u,y,k,0,1e-10,500,"estimation/results/static9");
 
         logger.info("finished estimation.");
     }
