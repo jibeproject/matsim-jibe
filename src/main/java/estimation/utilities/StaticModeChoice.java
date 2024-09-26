@@ -4,24 +4,19 @@ import estimation.LogitData;
 import estimation.UtilityFunction;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
-public class MNL_Static extends AbstractUtilitySpecification {
+public abstract class StaticModeChoice extends AbstractUtilitySpecification {
 
     private final static List<String> MODES = List.of("carD","carP","pt","bike","walk");
 
-    private final static List<String> SOCIODEMOGRAPHIC_VARIABLES = List.of(
-            "p.age_group_agg_5_14","p.age_group_agg_15_24","p.age_group_agg_40_69","p.age_group_agg_70",
-            "p.female",
-            "p.occupation_worker",
-            "hh.cars_gr_0","hh.cars_gr_2","hh.cars_gr_3",
-            "hh.income_agg_high");
-
-
-    public MNL_Static(LogitData data) {
+    StaticModeChoice(LogitData data) {
         super(data,0,1,2,3,4);
         initialise();
     }
+
+    abstract List<String> sociodemographicVariables();
+
+    abstract List<String> fixed();
 
     @Override
     LinkedHashMap<String, Double> coefficients() {
@@ -29,7 +24,7 @@ public class MNL_Static extends AbstractUtilitySpecification {
 
         for(String mode : MODES) {
             coeffs.put("asc_" + mode, 0.);
-            for(String sd : SOCIODEMOGRAPHIC_VARIABLES) {
+            for(String sd : sociodemographicVariables()) {
                 coeffs.put("b_" + mode + "_" + sd,0.);
             }
         }
@@ -47,20 +42,6 @@ public class MNL_Static extends AbstractUtilitySpecification {
         coeffs.put("g_walk_stressLink_c",0.);
         coeffs.put("g_walk_stressJct_c",0.);
         return coeffs;
-    }
-
-    @Override
-    List<String> fixed() {
-        List<String> fixed = coefficients().keySet().stream().filter(s -> (s.contains("carD"))).collect(Collectors.toList());
-        fixed.add("b_carP_p.age_group_agg_5_14");
-//        fixed.add("b_carP_hh.income_agg_low");
-//        fixed.add("b_bike_hh.income_agg_high");
-//        fixed.add("b_walk_hh.income_agg_high");
-        fixed.add("g_bike_vgvi");
-        fixed.add("g_bike_stressJct");
-        fixed.add("g_walk_grad");
-        fixed.add("g_walk_stressLink");
-        return fixed;
     }
 
     // AVAILABILITY
@@ -84,7 +65,7 @@ public class MNL_Static extends AbstractUtilitySpecification {
     // Sociodemographic part of utility
     private double sociodemographicUtility(double[] c, int i, String mode) {
         double result = beta(c,"asc_" + mode);
-        for(String sd : SOCIODEMOGRAPHIC_VARIABLES) {
+        for(String sd : sociodemographicVariables()) {
             result += beta(c,"b_" + mode + "_" + sd) * value(i,sd);
         }
         return result;
@@ -123,7 +104,7 @@ public class MNL_Static extends AbstractUtilitySpecification {
         builder.putAt("asc_walk", 1,4);
 
         // Sociodemographic variables
-        for(String sd : SOCIODEMOGRAPHIC_VARIABLES) {
+        for(String sd : sociodemographicVariables()) {
             builder.putAt("b_carD_" + sd,(c,i)->value(i,sd),0);
             builder.putAt("b_carP_" + sd,(c,i)->value(i,sd),1);
             builder.putAt("b_pt_"   + sd,(c,i)->value(i,sd),2);

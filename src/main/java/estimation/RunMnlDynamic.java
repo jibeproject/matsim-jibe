@@ -1,28 +1,13 @@
 package estimation;
 
 import estimation.utilities.AbstractUtilitySpecification;
-import estimation.utilities.MNL_Dynamic;
-import estimation.utilities.MNL_Static;
-import gis.GisUtils;
-import gis.GpkgReader;
-import io.DiaryReader;
-import network.NetworkUtils2;
+import estimation.utilities.HBD_Static;
 import org.apache.log4j.Logger;
-import org.locationtech.jts.geom.Geometry;
-import org.matsim.api.core.v01.TransportMode;
-import org.matsim.api.core.v01.network.Network;
-import org.matsim.core.router.util.TravelTime;
-import org.matsim.vehicles.Vehicle;
-import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.referencing.FactoryException;
 import resources.Resources;
-import routing.Bicycle;
-import routing.travelTime.WalkTravelTime;
 import smile.classification.ClassLabels;
-import trip.Trip;
 
 import java.io.IOException;
-import java.util.*;
 
 public class RunMnlDynamic {
 
@@ -87,11 +72,10 @@ public class RunMnlDynamic {
 
         // Utility function
 //        AbstractUtilitySpecification u = new MNL_Dynamic(logitData,trip_data,OAs,networkBike,bike,ttBike,networkWalk,null,ttWalk);
-        AbstractUtilitySpecification u = new MNL_Static(logitData);
-
+        AbstractUtilitySpecification u = new HBD_Static(logitData);
 
         // Start model
-        MultinomialLogit.run(u,y,k,0,1e-10,500,"estimation/results/static9");
+        MultinomialLogit.run(u,y,k,0,1e-10,500,"estimation/results/static11");
 
         logger.info("finished estimation.");
     }
