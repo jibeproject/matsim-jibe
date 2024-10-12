@@ -1,7 +1,9 @@
 package estimation.dynamic;
 
-public interface DynamicUtilityComponent {
+public interface DynamicComponent {
 
     void update(double[] x);
+
+    String getStats();
 
 }

@@ -1,11 +1,11 @@
-package estimation.utilities;
+package estimation.specifications.manchester.old;
 
 import estimation.LogitData;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class HBD_Static extends StaticModeChoice {
+public class HBD_Static extends ManchesterStatic {
 
     private final static List<String> SOCIODEMOGRAPHIC_VARIABLES = List.of(
             "p.age_group_agg_5_14","p.age_group_agg_15_24","p.age_group_agg_40_69","p.age_group_agg_70",
@@ -26,7 +26,7 @@ public class HBD_Static extends StaticModeChoice {
     }
 
     @Override
-    List<String> fixed() {
+    protected List<String> fixed() {
         List<String> fixed = coefficients().keySet().stream().filter(s -> (s.contains("carD"))).collect(Collectors.toList());
         fixed.add("b_carP_p.age_group_agg_5_14");
         fixed.add("b_carP_hh.income_agg_high");
@@ -36,8 +36,12 @@ public class HBD_Static extends StaticModeChoice {
 //        fixed.add("b_walk_hh.income_agg_high");
         fixed.add("g_bike_vgvi");
         fixed.add("g_bike_stressJct");
+        fixed.add("g_bike_stressJct_f");
+        fixed.add("g_bike_stressJct_c");
         fixed.add("g_walk_grad");
         fixed.add("g_walk_stressLink");
+        fixed.add("g_walk_stressLink_f");
+        fixed.add("g_walk_stressJct_f");
         return fixed;
     }
 }

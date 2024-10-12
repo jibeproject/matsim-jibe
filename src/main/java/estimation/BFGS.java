@@ -17,7 +17,7 @@
 
 package estimation;
 
-import estimation.dynamic.DynamicUtilityComponent;
+import estimation.dynamic.DynamicComponent;
 import org.apache.log4j.Logger;
 import smile.math.DifferentiableMultivariateFunction;
 import smile.math.MultivariateFunction;
@@ -126,7 +126,7 @@ public class BFGS {
      *
      * @return the minimum value of the function.
      */
-    public static Results minimize(DifferentiableMultivariateFunction func,DynamicUtilityComponent dynamicUtilityComponent, double[] x, double gtol, int maxIter) {
+    public static Results minimize(DifferentiableMultivariateFunction func, DynamicComponent dynamicComponent, double[] x, double gtol, int maxIter) {
 
         List<double[]> xAtEachIteration = new ArrayList<>();
         List<Double> fAtEachIteration = new ArrayList<>();
@@ -169,7 +169,7 @@ public class BFGS {
         for (int iter = 1; iter <= maxIter; iter++) {
 
             // The new function evaluation occurs in line search.
-            f = linesearch(func, x, f, g, xi, xnew, stpmax, dynamicUtilityComponent);
+            f = linesearch(func, x, f, g, xi, xnew, stpmax, dynamicComponent);
 
             logger.info(String.format("BFGS: the function value after %3d iterations: %.5f", iter, f));
 
@@ -321,7 +321,7 @@ public class BFGS {
      * @return the new function value.
      */
     private static double linesearch(MultivariateFunction func, double[] xold, double fold, double[] g, double[] p, double[] x, double stpmax,
-                                     DynamicUtilityComponent dynamicUtilityComponent) {
+                                     DynamicComponent dynamicComponent) {
         if (stpmax <= 0) {
             throw new IllegalArgumentException("Invalid upper bound of linear search step: " + stpmax);
         }
@@ -377,8 +377,8 @@ public class BFGS {
             }
 
             // Update dynamic component
-            if(dynamicUtilityComponent != null) {
-                dynamicUtilityComponent.update(x);
+            if(dynamicComponent != null) {
+                dynamicComponent.update(x);
             }
 
             double f = func.apply(x);
@@ -388,8 +388,8 @@ public class BFGS {
                 System.arraycopy(xold, 0, x, 0, n);
                 logger.info("Linesearch ran " + runCount + " times, no update.");
                 // Go back to old dynamic component (unlikely)
-                if(dynamicUtilityComponent != null) {
-                    dynamicUtilityComponent.update(x);
+                if(dynamicComponent != null) {
+                    dynamicComponent.update(x);
                 }
                 return f;
             } else if (f <= fold + ftol * alam * slope) {

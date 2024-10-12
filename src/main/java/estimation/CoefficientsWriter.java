@@ -1,6 +1,6 @@
 package estimation;
 
-import estimation.utilities.AbstractUtilitySpecification;
+import estimation.specifications.AbstractModelSpecification;
 import io.ioUtils;
 import org.apache.log4j.Logger;
 
@@ -14,7 +14,7 @@ public class CoefficientsWriter {
     private final static Logger logger = Logger.getLogger(CoefficientsWriter.class);
     private final static String SEP = ",";
 
-    static void print(AbstractUtilitySpecification u, BFGS.Results results, double[] se, double[] t, double[] pVal, String[] sig, String filePath) {
+    static void print(AbstractModelSpecification u, BFGS.Results results, double[] se, double[] t, double[] pVal, String[] sig, String filePath) {
 
         PrintWriter out = ioUtils.openFileForSequentialWriting(new File(filePath),false);
         assert out != null;
@@ -46,12 +46,18 @@ public class CoefficientsWriter {
         out.println("Start LL = " + results.llStart);
         out.println("Final LL = " + results.llOut);
 
+        // Print stats from dynamic component (if applicable)
+        if(u.getDynamicComponent() != null) {
+            out.println();
+            out.println(u.getDynamicComponent().getStats());
+        }
+
         out.close();
         logger.info("Wrote these results to " + filePath);
     }
 
     // Write results to csv file
-    static void write(AbstractUtilitySpecification u, BFGS.Results results, double[] se, double[] t, double[] pVal, String[] sig, String filePath) {
+    static void write(AbstractModelSpecification u, BFGS.Results results, double[] se, double[] t, double[] pVal, String[] sig, String filePath) {
 
         PrintWriter out = ioUtils.openFileForSequentialWriting(new File(filePath),false);
         assert out != null;

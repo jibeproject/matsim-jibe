@@ -1,6 +1,6 @@
 package estimation;
 
-import estimation.utilities.AbstractUtilitySpecification;
+import estimation.specifications.AbstractModelSpecification;
 import org.apache.log4j.Logger;
 import smile.math.matrix.Matrix;
 import smile.stat.distribution.GaussianDistribution;
@@ -12,7 +12,7 @@ public class MultinomialLogit {
 
     private final static Logger logger = Logger.getLogger(MultinomialLogit.class);
 
-    public static void run(AbstractUtilitySpecification u, int[] y, int k, double lambda, double tol, int maxIter, String resultsFileName) {
+    public static void run(AbstractModelSpecification u, int[] y, int k, double lambda, double tol, int maxIter, String resultsFileName) {
 
         if (lambda < 0.0) {
             throw new IllegalArgumentException("Invalid regularization factor: " + lambda);
@@ -26,12 +26,15 @@ public class MultinomialLogit {
             throw new IllegalArgumentException("Invalid maximum number of iterations: " + maxIter);
         }
 
-        FlexibleMultinomialObjective objective = new FlexibleMultinomialObjective(u, y, k, lambda);
+        MultinomialLogitObjective objective = new MultinomialLogitObjective(u, y, k, lambda);
 
         // Run the optimisation algorithm
         double[] w = u.getStarting();
-        BFGS.Results results = BFGS.minimize(objective,u.getDynamicUtilityComponent(), w, tol, maxIter);
+        BFGS.Results results = BFGS.minimize(objective,u.getDynamicComponent(), w, tol, maxIter);
         logger.info("finished estimation.");
+
+        // Get overlap with fastest path
+
 
         // Approximate variance-coviariance matrix (from BFGS method) – for debugging only
         // Matrix approxVarCov = Matrix.of(results.hessian);
@@ -46,6 +49,7 @@ public class MultinomialLogit {
         // Check if matrix is singular
         if(Arrays.stream(eigenvalues.wr).anyMatch(e -> e == 0)) {
             logger.error("Hessian matrix is singular! Cannot compute standard errors");
+            CoefficientsWriter.print(u,results,null,null,null,null,resultsFileName + ".txt");
             CoefficientsWriter.write(u,results,null,null,null,null,resultsFileName);
         } else {
 

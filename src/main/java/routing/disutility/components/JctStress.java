@@ -1,11 +1,19 @@
 package routing.disutility.components;
 
-import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import static routing.disutility.components.Crossing.*;
 
 
 public class JctStress {
+
+    public static double getStressProp(Link link, String mode) {
+        double jctStress = 0;
+        if((boolean) link.getAttributes().getAttribute("crossVehicles")) {
+            double junctionWidth = Math.min(link.getLength(),(double) link.getAttributes().getAttribute("crossWidth"));
+            jctStress = (junctionWidth / link.getLength()) * JctStress.getStress(link,mode);
+        }
+        return jctStress;
+    }
 
     public static double getStress(Link link, String mode) {
 

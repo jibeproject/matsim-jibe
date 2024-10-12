@@ -1,21 +1,21 @@
-package estimation.utilities;
+package estimation.specifications.apollo;
 
 import estimation.LogitData;
 import estimation.UtilityFunction;
+import estimation.specifications.AbstractModelSpecification;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MNL_RP extends AbstractUtilitySpecification {
+public class MNL_SP extends AbstractModelSpecification {
 
-    public MNL_RP(LogitData data) {
-        super(data,1,2,3,4);
-        initialise();
+    public MNL_SP(LogitData data) {
+        super(data,true,1,2,3,4);
     }
 
     @Override
-    LinkedHashMap<String, Double> coefficients() {
+    protected LinkedHashMap<String,Double> coefficients() {
         LinkedHashMap<String,Double> coeffs = new LinkedHashMap<>();
         coeffs.put("asc_car",0.);
         coeffs.put("asc_bus",0.);
@@ -27,25 +27,26 @@ public class MNL_RP extends AbstractUtilitySpecification {
         coeffs.put("b_tt_rail",0.);
         coeffs.put("b_access",0.);
         coeffs.put("b_cost",0.);
+        coeffs.put("b_no_frills",0.);
+        coeffs.put("b_wifi",0.);
+        coeffs.put("b_food",0.);
         return coeffs;
     }
 
-    // FIXED
     @Override
-    List<String> fixed() {
-        return List.of("asc_car");
+    protected List<String> fixed() {
+        return List.of("asc_car","b_no_frills");
     }
 
-    // AVAILABILITY
+    // AVAILABILITY (OPTIONAL)
     @Override
-    List<String> availability() {
+    protected List<String> availability() {
         return List.of("av_car","av_bus","av_air","av_rail");
     }
 
-
     // UTILITY
     @Override
-    UtilityFunction[] utility() {
+    protected UtilityFunction[] utility() {
         UtilitiesBuilder builder = new UtilitiesBuilder();
         builder.put(1,(c,i) -> beta(c,"asc_car") +
                 beta(c,"b_tt_car") * value(i,"time_car") +
@@ -57,16 +58,23 @@ public class MNL_RP extends AbstractUtilitySpecification {
         builder.put(3,(c,i) -> beta(c,"asc_air") +
                 beta(c,"b_tt_air") * value(i, "time_air") +
                 beta(c,"b_access") * value(i, "access_air") +
-                beta(c,"b_cost") * value(i, "cost_air"));
+                beta(c,"b_cost") * value(i, "cost_air") +
+                beta(c,"b_no_frills") * (value(i, "service_air") == 1 ? 1 : 0) +
+                beta(c,"b_wifi") * (value(i, "service_air") == 2 ? 1 : 0) +
+                beta(c,"b_food") * (value(i, "service_air") == 3 ? 1 : 0));
         builder.put(4,(c,i) -> beta(c,"asc_rail") +
                 beta(c,"b_tt_rail") * value(i, "time_rail") +
                 beta(c,"b_access") * value(i, "access_rail") +
-                beta(c,"b_cost") * value(i, "cost_rail"));
+                beta(c,"b_cost") * value(i, "cost_rail") +
+                beta(c,"b_no_frills") * (value(i, "service_rail") == 1 ? 1 : 0) +
+                beta(c,"b_wifi") * (value(i, "service_rail") == 2 ? 1 : 0) +
+                beta(c,"b_food") * (value(i, "service_rail") == 3 ? 1 : 0));
         return builder.build();
     }
 
+    // DERIVATIVE OF UTILITY
     @Override
-    Map<String, UtilityFunction[]> derivatives() {
+    protected Map<String, UtilityFunction[]> derivatives() {
         DerivativesBuilder builder = new DerivativesBuilder();
 
         // Alternative specific constants
@@ -84,7 +92,11 @@ public class MNL_RP extends AbstractUtilitySpecification {
         // Other
         builder.put("b_access", (c,i)->0, (c,i)->value(i, "access_bus"), (c,i)->value(i,"access_air"), (c,i)-> value(i,"access_rail"));
         builder.put("b_cost", (c,i)->value(i,"cost_car"), (c,i)->value(i,"cost_bus"), (c,i)->value(i,"cost_air"), (c,i)->value(i,"cost_rail"));
+        builder.put("b_no_frills", (c,i)->0, (c,i)->0, (c,i)->(value(i,"service_air") == 1 ? 1 : 0), (c,i)->(value(i,"service_rail") == 1 ? 1 : 0));
+        builder.put("b_wifi", (c,i)->0, (c,i)->0, (c,i)->(value(i,"service_air") == 2 ? 1 : 0), (c,i)->(value(i,"service_rail") == 2 ? 1 : 0));
+        builder.put("b_food", (c,i)->0, (c,i)->0, (c,i)->(value(i,"service_air") == 3 ? 1 : 0), (c,i)->(value(i,"service_rail") == 3 ? 1 : 0));
 
+        // Build
         return builder.build();
     }
-}
+}   

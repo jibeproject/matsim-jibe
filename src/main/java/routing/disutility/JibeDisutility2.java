@@ -54,12 +54,11 @@ public class JibeDisutility2 implements TravelDisutility {
     }
 
     private void printMarginalCosts() {
-        logger.info("Initialised JIBE disutility with the following parameters:" +
-                "\nMode: " + this.mode +
-                "\nMarginal cost of gradient (/s): " + this.marginalCostGradient +
-                "\nMarginal cost of vgvi (/s): " + this.marginalCostVgvi +
-                "\nMarginal cost of link stress (/s): " + this.marginalCostLinkStress +
-                "\nMarginal cost of jct stress (/s): " + this.marginalCostJctStress);
+        logger.info("Initialised " + this.mode.toUpperCase() + " disutility with parameters" +
+                " mcGrad: " + String.format("%.5f",this.marginalCostGradient) +
+                ". mcVGVI: " + String.format("%.5f",this.marginalCostVgvi) +
+                ". mcStressLink: " + String.format("%.5f",this.marginalCostLinkStress) +
+                ". mcStressJct: " + String.format("%.5f",this.marginalCostJctStress));
     }
 
     public void precalculateDisutility() {

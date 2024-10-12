@@ -1,25 +1,23 @@
-package estimation.utilities;
+package estimation.specifications.manchester.old;
 
 import estimation.LogitData;
 import estimation.UtilityFunction;
+import estimation.specifications.AbstractModelSpecification;
 
 import java.util.*;
 
-public abstract class StaticModeChoice extends AbstractUtilitySpecification {
+public abstract class ManchesterStatic extends AbstractModelSpecification {
 
     private final static List<String> MODES = List.of("carD","carP","pt","bike","walk");
 
-    StaticModeChoice(LogitData data) {
-        super(data,0,1,2,3,4);
-        initialise();
+    ManchesterStatic(LogitData data) {
+        super(data,true,0,1,2,3,4);
     }
 
     abstract List<String> sociodemographicVariables();
 
-    abstract List<String> fixed();
-
     @Override
-    LinkedHashMap<String, Double> coefficients() {
+    protected LinkedHashMap<String, Double> coefficients() {
         LinkedHashMap<String,Double> coeffs = new LinkedHashMap<>();
 
         for(String mode : MODES) {
@@ -30,29 +28,32 @@ public abstract class StaticModeChoice extends AbstractUtilitySpecification {
         }
         coeffs.put("b_car_time",0.);
         coeffs.put("b_pt_time",0.);
-        coeffs.put("b_bike_cost",0.);
-        coeffs.put("b_walk_cost",0.);
+        coeffs.put("b_bike_cost",-.1);
+        coeffs.put("b_walk_cost",-.1);
+
         for(String activeMode : List.of("bike","walk")) {
-            for(String routeVar : List.of("grad","vgvi","stressLink","stressJct")) {
+            for(String routeVar : List.of("grad","vgvi")) {
                 coeffs.put("g_" + activeMode + "_" + routeVar,0.);
             }
+            for(String routeVar : List.of("stressLink","stressJct")) {
+                coeffs.put("g_" + activeMode + "_" + routeVar,0.);
+                coeffs.put("g_" + activeMode + "_" + routeVar + "_f",0.);
+                coeffs.put("g_" + activeMode + "_" + routeVar + "_c",0.);
+            }
         }
-        coeffs.put("g_bike_stressLink_f",0.);
-        coeffs.put("g_bike_stressLink_c",0.);
-        coeffs.put("g_walk_stressLink_c",0.);
-        coeffs.put("g_walk_stressJct_c",0.);
+
         return coeffs;
     }
 
     // AVAILABILITY
     @Override
-    List<String> availability() {
+    protected List<String> availability() {
         return List.of("av_carD","av_carP","av_pt","av_bike","av_walk");
     }
 
     // UTILITY
     @Override
-    UtilityFunction[] utility() {
+    protected UtilityFunction[] utility() {
         UtilitiesBuilder builder = new UtilitiesBuilder();
         builder.put(0,(c,i) -> sociodemographicUtility(c,i,"carD") + beta(c,"b_car_time") * value(i,"car_time"));
         builder.put(1,(c,i) -> sociodemographicUtility(c,i,"carP") + beta(c,"b_car_time") * value(i,"car_time"));
@@ -78,7 +79,9 @@ public abstract class StaticModeChoice extends AbstractUtilitySpecification {
                 beta(c,"g_bike_stressLink") * value(i,"bike_stressLink") +
                 beta(c,"g_bike_stressLink_f") * value(i,"bike_stressLink") * value(i,"p.female") +
                 beta(c,"g_bike_stressLink_c") * value(i,"bike_stressLink") * value(i,"p.age_group_agg_5_14") +
-                beta(c,"g_bike_stressJct") * value(i,"bike_stressJct");
+                beta(c,"g_bike_stressJct") * value(i,"bike_stressJct") +
+                beta(c,"g_bike_stressJct_f") * value(i,"bike_stressJct") * value(i,"p.female") +
+                beta(c,"g_bike_stressJct_c") * value(i,"bike_stressJct") * value(i,"p.age_group_agg_5_14");
     }
 
     private double pathCostWalk(double[] c, int i) {
@@ -86,14 +89,16 @@ public abstract class StaticModeChoice extends AbstractUtilitySpecification {
                 beta(c,"g_walk_grad") * value(i,"walk_grad") +
                 beta(c,"g_walk_vgvi") * value(i,"walk_vgvi") +
                 beta(c,"g_walk_stressLink") * value(i,"walk_stressLink") +
+                beta(c,"g_walk_stressLink_f") * value(i,"walk_stressLink") * value(i,"p.female") +
                 beta(c,"g_walk_stressLink_c") * value(i,"walk_stressLink") * value(i,"p.age_group_agg_5_14") +
                 beta(c,"g_walk_stressJct") * value(i,"walk_stressJct") +
+                beta(c,"g_walk_stressJct_f") * value(i,"walk_stressJct") * value(i,"p.female") +
                 beta(c,"g_walk_stressJct_c") * value(i,"walk_stressJct") * value(i,"p.age_group_agg_5_14");
     }
 
     // DERIVATIVES
     @Override
-    Map<String, UtilityFunction[]> derivatives() {
+    protected Map<String, UtilityFunction[]> derivatives() {
         DerivativesBuilder builder = new DerivativesBuilder();
 
         // Alternative-specific constants
@@ -124,14 +129,19 @@ public abstract class StaticModeChoice extends AbstractUtilitySpecification {
         builder.putAt("g_bike_stressLink_f",(c,i)->beta(c,"b_bike_cost") * value(i,"bike_stressLink") * value(i,"p.female"),3);
         builder.putAt("g_bike_stressLink_c",(c,i)->beta(c,"b_bike_cost") * value(i,"bike_stressLink") * value(i,"p.age_group_agg_5_14"),3);
         builder.putAt("g_bike_stressJct",(c,i)->beta(c,"b_bike_cost") * value(i,"bike_stressJct"),3);
+        builder.putAt("g_bike_stressJct_f",(c,i)->beta(c,"b_bike_cost") * value(i,"bike_stressJct") * value(i,"p.female"),3);
+        builder.putAt("g_bike_stressJct_c",(c,i)->beta(c,"b_bike_cost") * value(i,"bike_stressJct") * value(i,"p.age_group_agg_5_14"),3);
+
 
         // Walk
         builder.putAt("b_walk_cost",this::pathCostWalk,4);
         builder.putAt("g_walk_grad",(c,i)->beta(c,"b_walk_cost") * value(i,"walk_grad"),4);
         builder.putAt("g_walk_vgvi",(c,i)->beta(c,"b_walk_cost") * value(i,"walk_vgvi"),4);
         builder.putAt("g_walk_stressLink",(c,i)->beta(c,"b_walk_cost") * value(i,"walk_stressLink"),4);
+        builder.putAt("g_walk_stressLink_f",(c,i)->beta(c,"b_walk_cost") * value(i,"walk_stressLink") * value(i,"p.female"),4);
         builder.putAt("g_walk_stressLink_c",(c,i)->beta(c,"b_walk_cost") * value(i,"walk_stressLink") * value(i,"p.age_group_agg_5_14"),4);
         builder.putAt("g_walk_stressJct",(c,i)->beta(c,"b_walk_cost") * value(i,"walk_stressJct"),4);
+        builder.putAt("g_walk_stressJct_f",(c,i)->beta(c,"b_walk_cost") * value(i,"walk_stressJct") * value(i,"p.female"),4);
         builder.putAt("g_walk_stressJct_c",(c,i)->beta(c,"b_walk_cost") * value(i,"walk_stressJct") * value(i,"p.age_group_agg_5_14"),4);
 
         // Return

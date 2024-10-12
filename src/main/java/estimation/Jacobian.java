@@ -25,7 +25,7 @@ public class Jacobian {
         return Math.exp(2 * x);
     }
 
-    public static double[][] simple(FlexibleMultinomialObjective objective, double[] x) {
+    public static double[][] simple(MultinomialLogitObjective objective, double[] x) {
 
         int n = x.length;
 
@@ -44,7 +44,7 @@ public class Jacobian {
         return df;
     }
 
-    public static double[][] richardson(FlexibleMultinomialObjective objective, double[] x) {
+    public static double[][] richardson(MultinomialLogitObjective objective, double[] x) {
 
         int n = x.length;
 
@@ -98,7 +98,7 @@ public class Jacobian {
         return extrapolate(a_k,m+1);
     }
 
-    public static double[] evaluate(FlexibleMultinomialObjective objective, double[] x) {
+    public static double[] evaluate(MultinomialLogitObjective objective, double[] x) {
         double[] result = new double[x.length];
         objective.g(x,result);
         return result;

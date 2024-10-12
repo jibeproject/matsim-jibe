@@ -1,15 +1,15 @@
 package estimation;
 
-import estimation.utilities.AbstractUtilitySpecification;
+import estimation.specifications.AbstractModelSpecification;
 import smile.math.DifferentiableMultivariateFunction;
 import smile.math.MathEx;
 
 import java.util.Arrays;
 import java.util.stream.IntStream;
 
-public class FlexibleMultinomialObjective implements DifferentiableMultivariateFunction {
+public class MultinomialLogitObjective implements DifferentiableMultivariateFunction {
 
-    final AbstractUtilitySpecification u;
+    final AbstractModelSpecification u;
     final int[] y;
     final int k;
     final int p;
@@ -20,7 +20,7 @@ public class FlexibleMultinomialObjective implements DifferentiableMultivariateF
     final double[][] posterioris;
 
 
-    FlexibleMultinomialObjective(AbstractUtilitySpecification u, int[] y, int k, double lambda) {
+    MultinomialLogitObjective(AbstractModelSpecification u, int[] y, int k, double lambda) {
 
         this.u = u;
         this.y = y;

@@ -1,6 +1,6 @@
 package estimation;
 
-import estimation.utilities.*;
+import estimation.specifications.apollo.MNL_SP;
 import org.apache.log4j.Logger;
 import org.opengis.referencing.FactoryException;
 import resources.Resources;
