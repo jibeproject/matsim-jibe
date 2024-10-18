@@ -20,7 +20,7 @@ public class Properties {
     public static final String MATSIM_DEMAND_VEHICLES = "matsim.demand.vehicles";
     public static final String MATSIM_DEMAND_PLANS = "matsim.demand.plans";
     public static final String MATSIM_DEMAND_OUTPUT_EVENTS = "matsim.demand.output.events";
-//    public static final String MATSIM_DEMAND_OUTPUT_NETWORK = "matsim.demand.output.network";
+    public static final String MATSIM_DEMAND_OUTPUT_NETWORK = "matsim.demand.output.network";
     public static final String MATSIM_DEMAND_OUTPUT_VEHICLES = "matsim.demand.output.vehicles";
     public static final String MATSIM_DEMAND_OUTPUT_SCALE_FACTOR = "matsim.demand.output.scale.factor";
 

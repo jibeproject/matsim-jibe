@@ -163,7 +163,7 @@ public class GisUtils {
         return null;
     }
 
-    public static Coord drawRandomPointFromGeometry(Geometry g) {
+    public static Point drawRandomPointFromGeometry(Geometry g) {
         Random rnd = MatsimRandom.getLocalInstance();
         Point p;
         double x, y;
@@ -174,7 +174,7 @@ public class GisUtils {
                     + rnd.nextDouble() * (g.getEnvelopeInternal().getMaxY() - g.getEnvelopeInternal().getMinY());
             p = MGC.xy2Point(x, y);
         } while (!g.contains(p));
-        return new Coord(p.getX(), p.getY());
+        return p;
     }
 
 }

@@ -1,8 +1,8 @@
 package demand;
+import gis.GisUtils;
 import gis.GpkgReader;
 import network.NetworkUtils2;
 import org.apache.log4j.Logger;
-import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -17,14 +17,12 @@ import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.*;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.gbl.MatsimRandom;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.router.FastDijkstraFactory;
 import org.matsim.core.router.costcalculators.FreespeedTravelTimeAndDisutility;
 import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.scenario.ScenarioUtils;
-import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.core.utils.gis.ShapeFileReader;
 import org.matsim.core.utils.misc.Counter;
 import org.opengis.feature.simple.SimpleFeature;
@@ -63,7 +61,7 @@ public class GenerateManchesterPlans {
     private final TimeDistributions timeDistribution;
     private final String omxFolder;
     private Map<Integer, Geometry> shapeMap;
-
+    private Geometry regionBoundary;
     private Geometry networkBoundary;
     private LeastCostPathCalculator lcpCalculator;
 
@@ -104,6 +102,7 @@ public class GenerateManchesterPlans {
     private void run() throws IOException {
 
         // READ NETWORK BOUNDARY
+        this.regionBoundary = GpkgReader.readRegionBoundary();
         this.networkBoundary = GpkgReader.readNetworkBoundary();
 
         // READ ZONES SHAPEFILE
@@ -164,27 +163,27 @@ public class GenerateManchesterPlans {
                 int origZoneId = i+1;
                 int destZoneId = j+1;
                 TimeSampler morningTimeSampler = new MorningTimeSampler();
-                createOD(morningUc1[i][j] * 2.58,"car",morningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
-                createOD(morningUc2[i][j] * 2.58,"car",morningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
-                createOD(morningUc3[i][j] * 2.58,"car",morningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
-                createOD(morningUc4[i][j] * 2.58,"car",morningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
-                createOD(morningUc5[i][j] * 2.58 / 2.5,"truck",morningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
+                createOD(morningUc1[i][j] * 2.58,"car",morningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId,true);
+                createOD(morningUc2[i][j] * 2.58,"car",morningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId,false);
+                createOD(morningUc3[i][j] * 2.58,"car",morningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId,true);
+                createOD(morningUc4[i][j] * 2.58,"car",morningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId,false);
+                createOD(morningUc5[i][j] * 2.58 / 2.5,"truck",morningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId,false);
 //                createOD(morningUc5[i][j] * 2.58,"car",morningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
 
                 TimeSampler ipTimeSampler = new InterpeakTimeSampler();
-                createOD(interpeakUc1[i][j] * 9.159,"car",ipTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
-                createOD(interpeakUc2[i][j] * 9.159,"car",ipTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
-                createOD(interpeakUc3[i][j] * 9.159,"car",ipTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
-                createOD(interpeakUc4[i][j] * 9.159,"car",ipTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
-                createOD(interpeakUc5[i][j] * 9.159 / 2.5,"truck",ipTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
+                createOD(interpeakUc1[i][j] * 9.159,"car",ipTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId,true);
+                createOD(interpeakUc2[i][j] * 9.159,"car",ipTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId,false);
+                createOD(interpeakUc3[i][j] * 9.159,"car",ipTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId,true);
+                createOD(interpeakUc4[i][j] * 9.159,"car",ipTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId,false);
+                createOD(interpeakUc5[i][j] * 9.159 / 2.5,"truck",ipTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId,false);
 //                createOD(interpeakUc5[i][j] * 9.159,"car",ipTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
 
                 TimeSampler eveningTimeSampler = new EveningTimeSampler();
-                createOD(eveningUc1[i][j] * 2.75,"car",eveningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
-                createOD(eveningUc2[i][j] * 2.75,"car",eveningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
-                createOD(eveningUc3[i][j] * 2.75,"car",eveningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
-                createOD(eveningUc4[i][j] * 2.75,"car",eveningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
-                createOD(eveningUc5[i][j] * 2.75 / 2.5,"truck",eveningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId);
+                createOD(eveningUc1[i][j] * 2.75,"car",eveningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId,true);
+                createOD(eveningUc2[i][j] * 2.75,"car",eveningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId,false);
+                createOD(eveningUc3[i][j] * 2.75,"car",eveningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId,true);
+                createOD(eveningUc4[i][j] * 2.75,"car",eveningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId,false);
+                createOD(eveningUc5[i][j] * 2.75 / 2.5,"truck",eveningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId,false);
 //                createOD(eveningUc5[i][j] * 2.75,"car",eveningTimeSampler,origZoneId,destZoneId,origZoneId + "_" + destZoneId
             }
         }
@@ -254,43 +253,34 @@ public class GenerateManchesterPlans {
         }
     }
 
-    // Create random coordinates within a given polygon
-    private Coord drawRandomPointFromGeometry(Geometry g) {
-        Random rnd = MatsimRandom.getLocalInstance();
-        Point p;
-        double x, y;
-        do {
-            x = g.getEnvelopeInternal().getMinX()
-                    + rnd.nextDouble() * (g.getEnvelopeInternal().getMaxX() - g.getEnvelopeInternal().getMinX());
-            y = g.getEnvelopeInternal().getMinY()
-                    + rnd.nextDouble() * (g.getEnvelopeInternal().getMaxY() - g.getEnvelopeInternal().getMinY());
-            p = MGC.xy2Point(x, y);
-        } while (!g.contains(p));
-        return new Coord(p.getX(), p.getY());
-    }
-
     // Create od relations for each MSOA pair
-    private void createOD(double pop,String mode,TimeSampler timeSampler,  int origin, int destination, String toFromPrefix) {
+    private void createOD(double pop,String mode,TimeSampler timeSampler,  int origin, int destination, String toFromPrefix, boolean externalOnly) {
 
         if(pop > 0.) {
             int popInt = (int) pop;
             double remainder = pop - popInt;
 
-            // Specify the ID of these two MSOAs
-            Geometry origGeom = this.shapeMap.get(origin);
-            Geometry destGeom = this.shapeMap.get(destination);
+            // Get zone polygons
+            Geometry origZonePolygon = this.shapeMap.get(origin);
+            Geometry destZonePolygon = this.shapeMap.get(destination);
 
             int i = 0;
-            if (origGeom != null && destGeom != null) {
+            if (origZonePolygon != null && destZonePolygon != null) {
+                Point origPoint = GisUtils.drawRandomPointFromGeometry(origZonePolygon);
+                Point destPoint = GisUtils.drawRandomPointFromGeometry(destZonePolygon);
                 while (i < popInt) {
                     if (rand.nextDouble() < this.sampleSize) {
-                        createOnePerson(mode, timeSampler.sample(), drawRandomPointFromGeometry(origGeom), drawRandomPointFromGeometry(destGeom), toFromPrefix);
+                        if(!externalOnly || !regionBoundary.contains(origPoint) || !regionBoundary.contains(destPoint)) {
+                            createOnePerson(mode, timeSampler.sample(), origPoint, destPoint, toFromPrefix);
+                        }
                     }
                     i++;
                 }
                 if (rand.nextDouble() <= remainder) {
                     if (rand.nextDouble() < this.sampleSize) {
-                        createOnePerson(mode, timeSampler.sample(), drawRandomPointFromGeometry(origGeom), drawRandomPointFromGeometry(destGeom), toFromPrefix);
+                        if(!externalOnly || !regionBoundary.contains(origPoint) || !regionBoundary.contains(destPoint)) {
+                            createOnePerson(mode, timeSampler.sample(), origPoint, destPoint, toFromPrefix);
+                        }
                     }
                 }
             } else {
@@ -301,7 +291,7 @@ public class GenerateManchesterPlans {
     }
 
     // Create plan for each commuter
-    private void createOnePerson( String mode, double time, Coord origCoord, Coord destCoord, String toFromPrefix) {
+    private void createOnePerson( String mode, double time, Point origPoint, Point destPoint, String toFromPrefix) {
 
         totalTrips.incCounter();
 
@@ -310,13 +300,17 @@ public class GenerateManchesterPlans {
 
         Plan plan = scenario.getPopulation().getFactory().createPlan();
 
+        // Convert points to coords
+        Coord origCoord = new Coord(origPoint.getX(),origPoint.getY());
+        Coord destCoord = new Coord(destPoint.getX(),destPoint.getY());
+
         // Create activities
         Activity origin = scenario.getPopulation().getFactory().createActivityFromCoord("loc", origCoord);
         Activity destination = scenario.getPopulation().getFactory().createActivityFromCoord("loc", destCoord);
 
         // Origin Link
         Link originLink;
-        if (networkBoundary.contains(GEOMETRY_FACTORY.createPoint(new Coordinate(origCoord.getX(), origCoord.getY())))) {
+        if (networkBoundary.contains(origPoint)) {
             originLink = NetworkUtils.getNearestLinkExactly(internalNetwork, origCoord);
         } else {
             originLink = NetworkUtils.getNearestLinkExactly(entryNetwork, origCoord);
@@ -325,7 +319,7 @@ public class GenerateManchesterPlans {
 
         // Destination link
         Link destinationLink;
-        if (networkBoundary.contains(GEOMETRY_FACTORY.createPoint(new Coordinate(destCoord.getX(), destCoord.getY())))) {
+        if (networkBoundary.contains(destPoint)) {
             destinationLink = NetworkUtils.getNearestLinkExactly(internalNetwork, destCoord);
         } else {
             destinationLink = NetworkUtils.getNearestLinkExactly(exitNetwork, destCoord);

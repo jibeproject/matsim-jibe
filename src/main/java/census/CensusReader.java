@@ -3,6 +3,7 @@ package census;
 import gis.GisUtils;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Point;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.TransportMode;
 import trip.Place;
@@ -68,9 +69,9 @@ public class CensusReader {
                             if(Math.random() <= scaleFactor) {
                                 commutersRead++;
                                 // Specify the home location randomly
-                                Coord homeCoord = GisUtils.drawRandomPointFromGeometry(home);
+                                Point homePoint = GisUtils.drawRandomPointFromGeometry(home);
                                 // Specify the working location randomly
-                                Coord workCoord = GisUtils.drawRandomPointFromGeometry(work);
+                                Point workPoint = GisUtils.drawRandomPointFromGeometry(work);
 
                                 // Store zone for each commuter
                                 Map<Place,String> MSOAs = new HashMap<>(2);
@@ -79,8 +80,8 @@ public class CensusReader {
 
                                 // Store coords for each commuter
                                 Map<Place,Coord> coords = new HashMap<>(2);
-                                coords.put(Place.HOME,homeCoord);
-                                coords.put(Place.DESTINATION,workCoord);
+                                coords.put(Place.HOME,new Coord(homePoint.getX(), homePoint.getY()));
+                                coords.put(Place.DESTINATION,new Coord(workPoint.getX(),workPoint.getY()));
 
                                 // Coords in boundary (always true)
                                 Map<Place,Boolean> coordsInBoundary = new HashMap<>(2);
