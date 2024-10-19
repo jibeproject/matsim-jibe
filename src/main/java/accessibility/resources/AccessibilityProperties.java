@@ -32,8 +32,6 @@ public class AccessibilityProperties {
 
     // For Intervention
     public static final String POPULATION = "population";
-    public static final String CURRENT_DESTINATIONS = "current.destinations";
-    public static final String NEW_DESTINATION_WEIGHT = "new.destination.weight";
 
     // Termination Criteria todo: add others
     public static final String MAX_DESTINATIONS = "max.destinations";

@@ -24,6 +24,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class RunIntervention {
 
@@ -77,11 +79,34 @@ public class RunIntervention {
         Vehicle veh = AccessibilityResources.instance.getVehicle();
         TravelDisutility td = AccessibilityResources.instance.getTravelDisutility();
         DecayFunction df = DecayFunctions.getFromProperties(network,networkBoundary);
+        if(df == null) {
+            log.error("No decay function. Skipping all accessibility calculations.");
+            return;
+        }
 
-        // Input files
+        // Existing destinations
+        List<String> destinationFilenames = AccessibilityResources.instance.getStringList(AccessibilityProperties.END_LOCATIONS);
+        List<String> destinationDescriptions = AccessibilityResources.instance.getStringList(AccessibilityProperties.END_DESCRIPTION);
+        List<Double> destinationAlphas = AccessibilityResources.instance.getStringList(AccessibilityProperties.END_ALPHA).stream().map(Double::parseDouble).collect(Collectors.toList());
+
+        // Checks
+        int destTypeCount = destinationFilenames.size();
+        if(destinationFilenames.size() == 0) {
+            log.error("No end locations given. Skipping all accessibility calculations.");
+            return;
+        }
+        if(destTypeCount != destinationDescriptions.size()) {
+            log.error("Number of end locations does not match number of end descriptions.");
+            return;
+        }
+        if(destTypeCount != destinationAlphas.size()) {
+            log.error("Number of end locations does not match number of alpha parameters.");
+            return;
+        }
+
+        // Other input files
         String developmentAreasFile = AccessibilityResources.instance.getString(AccessibilityProperties.DEVELOPMENT_AREAS);
         String populationFile = AccessibilityResources.instance.getString(AccessibilityProperties.POPULATION);
-        String currentDestinationsFile = AccessibilityResources.instance.getString(AccessibilityProperties.CURRENT_DESTINATIONS);
 
         // Output files
         String destinationsOutputFile = AccessibilityResources.instance.getString(AccessibilityProperties.DESTINATION_OUTPUT);
@@ -92,134 +117,140 @@ public class RunIntervention {
         int maxDestinations = AccessibilityResources.instance.getInt(AccessibilityProperties.MAX_DESTINATIONS);
         assert maxDestinations > 0;
 
+        // READ INPUTS
+
         // Read population
         LocationData populationData = new LocationData(null,populationFile,regionBoundary);
         populationData.estimateNetworkNodes(network);
         IdMap<Node,String> populationNodeIdMap = populationData.getNodeIdMap();
-        IdMap<Node,Double> populationNodeWtMap = populationData.getNodeWeightMap();
-        Set<Id<Node>> populationNodes = populationNodeWtMap.keySet();
+        IdMap<Node,Double> population = populationData.getNodeWeightMap();
+        Set<Id<Node>> populationNodes = population.keySet();
 
-        // Read current destinations
-        LocationData currentDestinations = new LocationData(null,currentDestinationsFile,networkBoundary);
-        currentDestinations.estimateNetworkNodes(network);
-        IdMap<Node,Double> destinationNodeWtMap = currentDestinations.getNodeWeightMap();
+        // Read destinations
+        List<LocationData> destinationDataList = new ArrayList<>(destTypeCount);
+        double[] newDestinationWeight = new double[destTypeCount];
+        for(int i = 0 ; i < destTypeCount ; i++) {
+            LocationData endData = new LocationData(destinationDescriptions.get(i),destinationFilenames.get(i),networkBoundary);
+            endData.estimateNetworkNodes(network);
+            endData.transformWeights(destinationAlphas.get(i));
+            destinationDataList.add(endData);
+            Map<String,Double> weights = endData.getWeights();
+            int destCount = weights.size();
+            newDestinationWeight[i] = weights.values().stream().sorted(Double::compare).collect(Collectors.toList()).get(destCount / 2);
+            log.info("DESTINATION TYPE: " + endData.getDescription().toUpperCase() + " COUNT: " + destCount + " MEDIAN WEIGHT: " + newDestinationWeight[i]);
+        }
+
+
 
         // Get candidate nodes for new destinations
+        log.info("Reading candidate development areas...");
         Set<SimpleFeature> developmentAreas = new HashSet<>(GisUtils.readGpkg(developmentAreasFile));
         developmentAreas.removeIf(area -> ((Geometry) area.getDefaultGeometry()).isEmpty());
         IdMap<Node,String> candidateNodeIdMap = GisUtils.getCandidateNodes(regionBoundary,developmentAreas,network);
         assert candidateNodeIdMap.size() > 0;
 
-        // Dataset of new destinations
-        Map<Id<Node>,Double> newDestinations = new LinkedHashMap<>();
-
-        // New destination weight todo: make weight vary depending on available space in brownfield area
-        double newDestinationWeight = AccessibilityResources.instance.getDouble(AccessibilityProperties.NEW_DESTINATION_WEIGHT);
-        if(Double.isNaN(newDestinationWeight)) {
-            log.warn("No destination weights specified in properties. Using mean weight of existing locations.");
-            newDestinationWeight = currentDestinations.getWeights().values().stream().mapToDouble(v -> v).average().orElseThrow();
-        }
-        log.info("New destinations will be assigned a weight of " + newDestinationWeight);
-
         // Supply and demand results
-        List<Map<Id<Node>,Double>> supply = new ArrayList<>();
-        List<Map<Id<Node>,Double>> demand = new ArrayList<>();
+        List<Map<Id<Node>,double[]>> supply = new ArrayList<>();
+        List<Map<Id<Node>,double[]>> demand = new ArrayList<>();
+        List<List<Id<Node>>> newDestinations = new ArrayList<>();
+
 
         // Initialise calculator
         InterventionCalculator calc = new InterventionCalculator(network,tt,td,veh,df);
 
         // Calculate supply-side accessibility
-        supply.add(0,calc.calculate(populationNodes,destinationNodeWtMap));
+        supply.add(0,calc.calculate(populationNodes,destinationDataList,null));
 
-        // Initialise
-        Map<Id<Node>,Double> populationWeights = new HashMap<>(populationNodes.size());
-
+        // Main loop
         int i = 0;
+        do {
 
-        while(true) {
+            // Get current supply
+            Map<Id<Node>, double[]> currSupply = supply.get(i);
 
-            // Update weights
-            log.info("Updating weights...");
-            Map<Id<Node>,Double> currSupply = supply.get(i);
-            double minSupply = currSupply.values().stream().filter(v -> v > 0).min(Double::compare).orElseThrow() / 2;
-            log.info("Min supply = " + minSupply);
-            for(Id<Node> node : populationNodes) {
-                double supplyValue = Math.max(currSupply.get(node), minSupply);
-                populationWeights.put(node, populationNodeWtMap.get(node) / supplyValue);
-            }
+            // Compute demand for all candidate nodes
+            log.info("Calculating demand for candidate nodes...");
+            demand.add(i, calc.calculateDemand(candidateNodeIdMap.keySet(), population, currSupply, newDestinationWeight));
 
             // Select candidate with the highest demand
-            log.info("Calculating demand for candidate nodes...");
-            demand.add(i,calc.calculate(candidateNodeIdMap.keySet(),populationWeights));
-
-            Id<Node> selected = null;
-            double highest = Double.MIN_VALUE;
-            for(Map.Entry<Id<Node>, Double> e : demand.get(i).entrySet()) {
-                if(e.getValue() > highest) {
-                    selected = e.getKey();
-                    highest = e.getValue();
+            List<Id<Node>> currDestinations = new ArrayList<>();
+            for (int j = 0; j < destTypeCount; j++) {
+                Id<Node> selected = null;
+                double highest = Double.MIN_VALUE;
+                for (Map.Entry<Id<Node>, double[]> e : demand.get(i).entrySet()) {
+                    double value = e.getValue()[j];
+                    if (value > highest) {
+                        selected = e.getKey();
+                        highest = value;
+                    }
                 }
+                assert selected != null;
+                currDestinations.add(j,selected);
+                log.info(destinationDescriptions.get(j) + " No " + i + " placed at node " + selected + ". Demand = " + highest);
             }
-            assert selected != null;
-            newDestinations.put(selected,newDestinationWeight);
-            log.info("Destination " + i + " placed at node " + selected + ". Demand = " + highest);
+            newDestinations.add(currDestinations);
 
             // Increment iteration number
             i++;
 
-            // Update supply-side accessibility results
+            // Update population accessibility
             log.info("Updating supply...");
-            Map<Id<Node>,Double> newSupply = new HashMap<>(populationNodes.size());
-            Map<Id<Node>,Double> increase = calc.calculateSingle(populationNodes,selected,newDestinationWeight);
-            for(Id<Node> node : populationNodes) {
-                newSupply.put(node,currSupply.get(node) + increase.get(node));
-            }
+            Map<Id<Node>, double[]> increase = calc.calculateReverse(currDestinations, newDestinationWeight, populationNodes);
+            Map<Id<Node>, double[]> newSupply = new HashMap<>(populationNodes.size());
+            populationNodes.forEach(nodeId -> newSupply.put(nodeId,IntStream.range(0, destTypeCount).mapToDouble(j -> (currSupply.get(nodeId))[j] + (increase.get(nodeId))[j]).toArray()));
 
             // Store current supply
-            supply.add(i,newSupply);
+            supply.add(i, newSupply);
 
             // Termination criteria
-            if (i >= maxDestinations) {
-                break;
-            }
-        }
+        } while (i < maxDestinations);
 
         // Write new node locations
         log.info("Writing new node locations...");
-        printNewDestinations(destinationsOutputFile, network, candidateNodeIdMap, demand, newDestinations);
+        printNewDestinations(destinationsOutputFile, network, candidateNodeIdMap, demand, newDestinations, newDestinationWeight, destinationDescriptions);
 
         // Write changes in population accessibility
         if(demandOutputFile != null) {
             log.info("Writing demand-side output for each (potential) destination node...");
-            writeEachIteration(demandOutputFile, network, candidateNodeIdMap, demand);
+            writeEachIteration(demandOutputFile, network, candidateNodeIdMap, demand, destinationDescriptions);
         }
 
         if(supplyOutputFile != null) {
             log.info("Writing supply-side output for each population location and iteration...");
-            writeEachIteration(supplyOutputFile, network, populationNodeIdMap, supply);
+            writeEachIteration(supplyOutputFile, network, populationNodeIdMap, supply, destinationDescriptions);
         }
     }
 
-    private static void printNewDestinations(String outputFile, Network network, IdMap<Node,String> nodes, List<Map<Id<Node>,Double>> demand, Map<Id<Node>,Double> results) {
+
+    // Prints new destinations and details
+    private static void printNewDestinations(String outputFile, Network network, IdMap<Node,String> nodes,
+                                             List<Map<Id<Node>,double[]>> demand, List<List<Id<Node>>> newNodes,
+                                             double[] newWeights,
+                                             List<String> destinationDescriptions) {
         PrintWriter out = ioUtils.openFileForSequentialWriting(new File(outputFile),false);
         assert out != null;
 
         // Write header
-        out.println("n" + SEP + "id" + SEP + "nodeId" + SEP + "x" + SEP + "y" + SEP + "weight" + SEP + "demand");
+        out.println("type" + SEP + "n" + SEP + "id" + SEP + "nodeId" + SEP + "x" + SEP + "y" + SEP + "weight" + SEP + "demand");
 
         // Write rows
         int i = 0;
-        for(Id<Node> nodeId : results.keySet()) {
-            Coord coord = network.getNodes().get(nodeId).getCoord();
-            String line = Integer.toString(i) + SEP + nodes.get(nodeId) + SEP + nodeId.toString() + SEP +
-                    coord.getX() + SEP + coord.getY() + SEP + results.get(nodeId) + SEP + demand.get(i).get(nodeId);
-            out.println(line);
+        for(List<Id<Node>> iteration : newNodes) {
+            int j = 0;
+            for(Id<Node> nodeId : iteration) {
+                Coord coord = network.getNodes().get(nodeId).getCoord();
+                String line = destinationDescriptions.get(j) + SEP + i + SEP + nodes.get(nodeId) + SEP + nodeId.toString() + SEP +
+                        coord.getX() + SEP + coord.getY() + SEP + newWeights[j] + SEP + demand.get(i).get(nodeId)[j];
+                out.println(line);
+                j++;
+            }
             i++;
         }
         out.close();
     }
 
-    private static void writeEachIteration(String outputFile, Network network, IdMap<Node,String> nodes, List<Map<Id<Node>,Double>> results) {
+    private static void writeEachIteration(String outputFile, Network network, IdMap<Node,String> nodes, List<Map<Id<Node>,double[]>> results,
+                                           List<String> destinationDescriptions) {
         PrintWriter out = ioUtils.openFileForSequentialWriting(new File(outputFile),false);
         assert out != null;
 
@@ -227,7 +258,7 @@ public class RunIntervention {
 
         // Write header
         StringBuilder builder = new StringBuilder();
-        builder.append("id").append(SEP).append("node").append(SEP).append("x").append(SEP).append("y");
+        builder.append("id").append(SEP).append("node").append(SEP).append("x").append(SEP).append("y").append(SEP).append("type");
         for(int i = 0 ; i < iterations ; i++) {
             builder.append(SEP).append("it_").append(i);
         }
@@ -235,13 +266,15 @@ public class RunIntervention {
 
         // Write rows
         for(Map.Entry<Id<Node>,String> e : nodes.entrySet()) {
-            builder = new StringBuilder();
             Coord coord = network.getNodes().get(e.getKey()).getCoord();
-            builder.append(e.getValue()).append(SEP).append(e.getKey()).append(SEP).append(coord.getX()).append(SEP).append(coord.getY());
-            for(int i = 0 ; i < iterations ; i++) {
-                builder.append(SEP).append(results.get(i).get(e.getKey()));
+            for (int j = 0; j < destinationDescriptions.size(); j++) {
+                builder = new StringBuilder();
+                builder.append(e.getValue()).append(SEP).append(e.getKey()).append(SEP).append(coord.getX()).append(SEP).append(coord.getY()).append(SEP).append(destinationDescriptions.get(j));
+                for (int i = 0; i < iterations; i++) {
+                    builder.append(SEP).append(results.get(i).get(e.getKey())[j]);
+                }
+                out.println(builder);
             }
-            out.println(builder);
         }
         out.close();
     }

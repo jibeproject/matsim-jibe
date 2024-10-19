@@ -128,7 +128,8 @@ public class RunAnalysis {
             // Run node accessibility calculation
             log.info("Running node accessibility calculation...");
             long startTime = System.currentTimeMillis();
-            nodeResults = NodeCalculator.calculate(network, startNodes, endDataList, fwd, tt, td, veh, df);
+            NodeCalculator calc = new NodeCalculator(network,tt, td, veh, df);
+            nodeResults = calc.calculate(startNodes, endDataList, fwd);
             long endTime = System.currentTimeMillis();
             log.info("Calculation time: " + (endTime - startTime));
 

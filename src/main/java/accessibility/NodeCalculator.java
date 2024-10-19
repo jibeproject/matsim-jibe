@@ -25,20 +25,30 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 // Based on the skim matrix calculations from the MATSim SBB Extensions
-public final class NodeCalculator {
+public class NodeCalculator {
+    private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
+    final SpeedyGraph routingGraph;
+    final DecayFunction decayFunction;
+    final int numberOfThreads;
 
-    private NodeCalculator() {
+    public NodeCalculator(Network routingNetwork, TravelTime travelTime, TravelDisutility travelDisutility,
+                          Vehicle vehicle, DecayFunction decayFunction) {
+        this.routingGraph = new SpeedyGraph(routingNetwork,travelTime,travelDisutility,PERSON,vehicle);
+        this.decayFunction = decayFunction;
+        this.numberOfThreads = Resources.instance.getInt(Properties.NUMBER_OF_THREADS);
     }
 
-    private final static Person PERSON = PopulationUtils.getFactory().createPerson(Id.create("thePerson", Person.class));
+    public Map<Id<Node>,double[]> fill(Set<Id<Node>> startNodes, int arraySize) {
+        Map<Id<Node>,double[]> result = new HashMap<>();
+        for(Id<Node> nodeId : startNodes) {
+            double[] array = new double[arraySize];
+            Arrays.fill(array,1);
+            result.put(nodeId,array);
+        }
+        return result;
+    }
 
-    public static Map<Id<Node>,double[]> calculate(Network routingNetwork, Set<Id<Node>> startNodes,
-                                                 List<LocationData> endData,
-                                                 Boolean fwd, TravelTime travelTime, TravelDisutility travelDisutility,
-                                                 Vehicle vehicle, DecayFunction decayFunction) {
-
-        int numberOfThreads = Resources.instance.getInt(Properties.NUMBER_OF_THREADS);
-        SpeedyGraph routingGraph = new SpeedyGraph(routingNetwork,travelTime,travelDisutility,PERSON,vehicle);
+    public Map<Id<Node>,double[]> calculate(Set<Id<Node>> startNodes, List<LocationData> endData, Boolean fwd) {
 
         // prepare calculation
         ConcurrentHashMap<Id<Node>,double[]> accessibilityResults = new ConcurrentHashMap<>(startNodes.size());
@@ -49,8 +59,7 @@ public final class NodeCalculator {
         Counter counter = new Counter("Calculating accessibility node ", " / " + startNodes.size());
         Thread[] threads = new Thread[numberOfThreads];
         for (int i = 0; i < numberOfThreads; i++) {
-            NodeWorker worker = new NodeWorker(startNodesQueue, endData, fwd,
-                    routingGraph, accessibilityResults, decayFunction, counter);
+            NodeWorker worker = new NodeWorker(startNodesQueue, endData, fwd, routingGraph, accessibilityResults, decayFunction, counter);
             threads[i] = new Thread(worker, "Accessibility-" + i);
             threads[i].start();
         }
@@ -67,7 +76,7 @@ public final class NodeCalculator {
         return Collections.unmodifiableMap(new HashMap<>(accessibilityResults));
     }
 
-    private static class NodeWorker implements Runnable {
+    protected static class NodeWorker implements Runnable {
         private final ConcurrentLinkedQueue<Id<Node>> startNodes;
         private final List<LocationData> endDataList;
         private final Boolean fwd;
