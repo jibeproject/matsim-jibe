@@ -1,7 +1,10 @@
 package estimation;
 
 import estimation.specifications.AbstractModelSpecification;
+import estimation.specifications.manchester.HBA;
 import estimation.specifications.manchester.HBD;
+import estimation.specifications.manchester.NHBO;
+import estimation.specifications.manchester.NHBW;
 import gis.GisUtils;
 import gis.GpkgReader;
 import io.DiaryReader;
@@ -18,6 +21,7 @@ import resources.Resources;
 import routing.Bicycle;
 import routing.travelTime.WalkTravelTime;
 import smile.classification.ClassLabels;
+import trip.Place;
 import trip.Trip;
 
 import java.io.IOException;
@@ -89,13 +93,13 @@ public class RunMnlManchester {
             TravelTime ttWalk = new WalkTravelTime();
             TravelTime ttBike = bicycle.getTravelTimeFast(networkBike);
 
-            // Deal with intrazonal trips – can remove after we get X/Y coordinates for TRADS)
-            Set<SimpleFeature> OAs = GisUtils.readGpkg("zones/2011/gm_oa.gpkg");
+            // Deal with intrazonal trips – can remove after we get X/Y coordinates for TRADS
+            Set<SimpleFeature> OAs = GisUtils.readGpkg("zones/2011/gm_oa_buf.gpkg");
 
             // Initialise utility specification
-            u = new HBD(logitData,trip_data,OAs,networkBike,bike,ttBike,networkWalk,null,ttWalk);
+            u = new NHBO(logitData,trip_data,OAs,networkBike,bike,ttBike,networkWalk,null,ttWalk);
         } else {
-            u = new HBD(logitData,null,null,null,null,null,null,null,null);
+            u = new NHBO(logitData,null,null,null,null,null,null,null,null);
         }
 
         // Start model

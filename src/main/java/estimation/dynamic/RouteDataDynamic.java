@@ -34,7 +34,7 @@ import static trip.Place.ORIGIN;
 
 public class RouteDataDynamic implements RouteData, DynamicComponent {
 
-    private final static boolean ENABLE_DYNAMIC_ROUTING = false;
+    private final static boolean ENABLE_DYNAMIC_ROUTING = true;
     private final static Logger logger = Logger.getLogger(RouteDataDynamic.class);
     private final int numberOfThreads;
     final int tripCount;
@@ -215,7 +215,7 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
     }
 
     public void update(double[] xVarOnly) {
-        if(ENABLE_DYNAMIC_ROUTING) {
+        if(ENABLE_DYNAMIC_ROUTING && !attributes.isEmpty()) {
             updatePathData(xVarOnly);
             computeRouteStats();
         }
@@ -392,7 +392,7 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
 
         // Determine set of links for each zone
         Map<SimpleFeature, IdSet<Link>> linksPerFeature = GisUtils.calculateLinksIntersectingZones(zones,net);
-        Map<String,IdSet<Link>> linksPerZone = linksPerFeature.entrySet().stream().collect(Collectors.toMap(e -> ((String) e.getKey().getAttribute("geo_code")), Map.Entry::getValue));
+        Map<String,IdSet<Link>> linksPerZone = linksPerFeature.entrySet().stream().collect(Collectors.toMap(e -> ((String) e.getKey().getAttribute("OA11CD")), Map.Entry::getValue));
 
         // Identify intrazonal trips
         int intrazonalTripCount = 0;
@@ -410,7 +410,12 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
                 }
                 double totLength = 0;
                 double[] totAttributes = new double[attributes.size()];
-                for(Id<Link> linkId : linksPerZone.get(trips[i].getZone(Place.ORIGIN))) {
+                IdSet<Link> linkIds = linksPerZone.get(trips[i].getZone(ORIGIN));
+                if(linkIds == null) {
+                    throw new RuntimeException("No zone data for intrazonal trip, household " + trips[i].getHouseholdId() +
+                            " person " + trips[i].getPersonId() + " trip " + trips[i].getTripId());
+                }
+                for(Id<Link> linkId : linkIds) {
                     Link link = net.getLinks().get(linkId);
                     double linkLength = link.getLength();
                     totLength += linkLength;

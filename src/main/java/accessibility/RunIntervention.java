@@ -3,6 +3,7 @@ package accessibility;
 import accessibility.decay.*;
 import accessibility.resources.AccessibilityProperties;
 import accessibility.resources.AccessibilityResources;
+import com.google.common.math.LongMath;
 import gis.GisUtils;
 import gis.GpkgReader;
 import io.ioUtils;
@@ -207,40 +208,52 @@ public class RunIntervention {
 
         // Write new node locations
         log.info("Writing new node locations...");
-        printNewDestinations(destinationsOutputFile, network, candidateNodeIdMap, demand, newDestinations, newDestinationWeight, destinationDescriptions);
+        printNewDestinations(destinationsOutputFile, network, candidateNodeIdMap, population, supply, demand, newDestinations, newDestinationWeight, destinationDescriptions);
 
         // Write changes in population accessibility
         if(demandOutputFile != null) {
             log.info("Writing demand-side output for each (potential) destination node...");
-            writeEachIteration(demandOutputFile, network, candidateNodeIdMap, demand, destinationDescriptions);
+            writeEachIteration(demandOutputFile, network, candidateNodeIdMap, demand, destinationDescriptions,false);
         }
 
         if(supplyOutputFile != null) {
             log.info("Writing supply-side output for each population location and iteration...");
-            writeEachIteration(supplyOutputFile, network, populationNodeIdMap, supply, destinationDescriptions);
+            writeEachIteration(supplyOutputFile, network, populationNodeIdMap, supply, destinationDescriptions,true);
         }
     }
 
 
     // Prints new destinations and details
-    private static void printNewDestinations(String outputFile, Network network, IdMap<Node,String> nodes,
-                                             List<Map<Id<Node>,double[]>> demand, List<List<Id<Node>>> newNodes,
-                                             double[] newWeights,
+    private static void printNewDestinations(String outputFile, Network network, IdMap<Node,String> nodes, IdMap<Node,Double> population,
+                                             List<Map<Id<Node>, double[]>> supply, List<Map<Id<Node>,double[]>> demand,
+                                             List<List<Id<Node>>> newNodes, double[] newWeights,
                                              List<String> destinationDescriptions) {
         PrintWriter out = ioUtils.openFileForSequentialWriting(new File(outputFile),false);
         assert out != null;
 
         // Write header
-        out.println("type" + SEP + "n" + SEP + "id" + SEP + "nodeId" + SEP + "x" + SEP + "y" + SEP + "weight" + SEP + "demand");
+        out.println("type" + SEP + "n" + SEP + "id" + SEP + "nodeId" + SEP + "x" + SEP + "y" + SEP + "weight" + SEP + "demand" + SEP + "supply" + SEP + "supplyRatio");
 
         // Write rows
         int i = 0;
         for(List<Id<Node>> iteration : newNodes) {
             int j = 0;
-            for(Id<Node> nodeId : iteration) {
-                Coord coord = network.getNodes().get(nodeId).getCoord();
-                String line = destinationDescriptions.get(j) + SEP + i + SEP + nodes.get(nodeId) + SEP + nodeId.toString() + SEP +
-                        coord.getX() + SEP + coord.getY() + SEP + newWeights[j] + SEP + demand.get(i).get(nodeId)[j];
+            for(Id<Node> destNodeId : iteration) {
+                Coord coord = network.getNodes().get(destNodeId).getCoord();
+                double supplyRatio = 0;
+                double supplyTotal = 0;
+                for(Map.Entry<Id<Node>,Double> e : population.entrySet()) {
+                    Id<Node> popNodeId = e.getKey();
+                    double pop = e.getValue();
+                    double supplyAtNode = supply.get(i+1).get(popNodeId)[j];
+                    if(supplyAtNode > 0) {
+                        supplyTotal += pop * supplyAtNode;
+                        supplyRatio += pop * (1 - supply.get(0).get(popNodeId)[j] / supplyAtNode);
+                    }
+                }
+                String line = destinationDescriptions.get(j) + SEP + i + SEP + nodes.get(destNodeId) + SEP + destNodeId.toString() + SEP +
+                        coord.getX() + SEP + coord.getY() + SEP + newWeights[j] + SEP + demand.get(i).get(destNodeId)[j] + SEP +
+                        supplyTotal + SEP + supplyRatio;
                 out.println(line);
                 j++;
             }
@@ -250,7 +263,7 @@ public class RunIntervention {
     }
 
     private static void writeEachIteration(String outputFile, Network network, IdMap<Node,String> nodes, List<Map<Id<Node>,double[]>> results,
-                                           List<String> destinationDescriptions) {
+                                           List<String> destinationDescriptions, boolean sparse) {
         PrintWriter out = ioUtils.openFileForSequentialWriting(new File(outputFile),false);
         assert out != null;
 
@@ -260,7 +273,9 @@ public class RunIntervention {
         StringBuilder builder = new StringBuilder();
         builder.append("id").append(SEP).append("node").append(SEP).append("x").append(SEP).append("y").append(SEP).append("type");
         for(int i = 0 ; i < iterations ; i++) {
-            builder.append(SEP).append("it_").append(i);
+            if(i == 0 || LongMath.isPowerOfTwo(i) || !sparse) {
+                builder.append(SEP).append("it_").append(i);
+            }
         }
         out.println(builder);
 
@@ -271,7 +286,9 @@ public class RunIntervention {
                 builder = new StringBuilder();
                 builder.append(e.getValue()).append(SEP).append(e.getKey()).append(SEP).append(coord.getX()).append(SEP).append(coord.getY()).append(SEP).append(destinationDescriptions.get(j));
                 for (int i = 0; i < iterations; i++) {
-                    builder.append(SEP).append(results.get(i).get(e.getKey())[j]);
+                    if(i == 0 || LongMath.isPowerOfTwo(i) || !sparse) {
+                        builder.append(SEP).append(results.get(i).get(e.getKey())[j]);
+                    }
                 }
                 out.println(builder);
             }
