@@ -1,5 +1,6 @@
 package skim;
 
+import demand.volumes.DailyVolumeEventHandler;
 import estimation.RouteAttribute;
 import gis.GpkgReader;
 import io.OmxWriter;
@@ -38,7 +39,7 @@ import java.util.*;
 
 public class RunSkims {
 
-    public static final String FILE_PATH_PREFIX = "intervention/cycling/";
+    public static final String FILE_PATH_PREFIX = "skims/";
 
     public static void main(String[] args) throws IOException, FactoryException {
 
@@ -62,18 +63,22 @@ public class RunSkims {
         Network networkCar = NetworkUtils2.extractModeSpecificNetwork(networkCarInput, TransportMode.car);
         Network carXy2l = NetworkUtils2.extractXy2LinksNetwork(networkCar, l -> !((boolean) l.getAttributes().getAttribute("motorway")));
 
-//        Car freespeed & congested travel time
+        // Car freespeed & congested travel time
         String tfgmDemandEvents = Resources.instance.getString(Properties.MATSIM_DEMAND_OUTPUT_EVENTS);
         TravelTimeCalculator.Builder builder = new TravelTimeCalculator.Builder(networkCar);
         TravelTimeCalculator congested = builder.build();
+        DailyVolumeEventHandler dailyVolumeEventHandler = new DailyVolumeEventHandler(Resources.instance.getString(Properties.MATSIM_DEMAND_OUTPUT_VEHICLES));
         EventsManager events = EventsUtils.createEventsManager();
         events.addHandler(congested);
+        events.addHandler(dailyVolumeEventHandler);
         (new MatsimEventsReader(events)).readFile(tfgmDemandEvents);
         TravelTime congestedTime = congested.getLinkTravelTimes();
         TravelDisutility congestedDisutility = new OnlyTimeDependentTravelDisutility(congested.getLinkTravelTimes());
 
         // Create active mode networks
         Network network = NetworkUtils2.readFullNetwork();
+        NetworkUtils2.addSimulationVolumes(dailyVolumeEventHandler,network);
+        NetworkUtils2.addCrossingAttributes(network);
         Network networkWalk = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.walk);
         Network networkBike = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.bike);
 

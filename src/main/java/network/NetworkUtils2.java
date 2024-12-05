@@ -2,6 +2,7 @@ package network;
 
 // Additional utils beyond NetworkUtils
 
+import demand.volumes.DailyVolumeEventHandler;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -31,6 +32,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class NetworkUtils2 {
 
@@ -55,6 +58,111 @@ public class NetworkUtils2 {
         new TransportModeNetworkFilter(network).filter(modeSpecificNetwork, Collections.singleton(transportMode));
         NetworkUtils.runNetworkCleaner(modeSpecificNetwork);
         return modeSpecificNetwork;
+    }
+
+
+    public static void addSimulationVolumes(DailyVolumeEventHandler dailyVolumeEventHandler, Network network) {
+
+        // Get scale factor
+        log.info("Adding volumes from events...");
+        int scaleFactor = (int) (1 / Resources.instance.getDouble(Properties.MATSIM_DEMAND_OUTPUT_SCALE_FACTOR));
+        log.info("Multiplying all volumes from events file by a factor of " + scaleFactor);
+
+        // Add forward AADT
+        network.getLinks().forEach((id,link) -> link.getAttributes().putAttribute("aadtFwd_car", dailyVolumeEventHandler.getCarVolumes().getOrDefault(id,0) * scaleFactor));
+        network.getLinks().forEach((id,link) -> link.getAttributes().putAttribute("aadtFwd_truck", dailyVolumeEventHandler.getTruckVolumes().getOrDefault(id,0) * scaleFactor));
+        network.getLinks().forEach((id,link) -> link.getAttributes().putAttribute("aadtFwd", dailyVolumeEventHandler.getAdjVolumes().getOrDefault(id,0) * scaleFactor));
+
+        // Add forward + opposing AADT
+        for(Link link : network.getLinks().values()) {
+            int aadtFwd = (int) link.getAttributes().getAttribute("aadtFwd");
+            int aadtOpp = 0;
+            Link oppositeLink = NetworkUtils.findLinkInOppositeDirection(link);
+            if(oppositeLink != null) {
+                aadtOpp = (int) oppositeLink.getAttributes().getAttribute("aadtFwd");
+            }
+            link.getAttributes().putAttribute("aadt",aadtFwd + aadtOpp);
+        }
+    }
+
+    public static void addCrossingAttributes(Network net) {
+        Map<Node, List<Link>> linksTo = net.getNodes().values().stream().collect(Collectors.toMap(n -> n, n -> new ArrayList<>()));
+        Map<Node,List<Link>> linksFrom = net.getNodes().values().stream().collect(Collectors.toMap(n -> n, n -> new ArrayList<>()));
+        Map<Node,Boolean> isJunction = net.getNodes().values().stream().collect(Collectors.toMap(n -> n, n -> false));
+
+        // List links arriving at each node
+        for (Link link : net.getLinks().values()) {
+            linksTo.get(link.getToNode()).add(link);
+            linksFrom.get(link.getFromNode()).add(link);
+        }
+
+        // Check whether each link is a junction (i.e. there are more than 2 links connected to node)
+        for (Node node : net.getNodes().values()) {
+            boolean junction = Stream.concat(linksFrom.get(node).stream(),linksTo.get(node).stream())
+                    .mapToInt(l -> (int) l.getAttributes().getAttribute("edgeID"))
+                    .distinct()
+                    .count() > 2;
+            isJunction.put(node,junction);
+        }
+
+        for (Link link : net.getLinks().values()) {
+
+            boolean endsAtJct = isJunction.get(link.getToNode());
+            boolean crossVehicles = false;
+            double crossAadt = Double.NaN;
+            double crossWidth = Double.NaN;
+            double crossLanes = Double.NaN;
+            double crossSpeedLimit = Double.NaN;
+            double cross85PercSpeed = Double.NaN;
+
+            if(endsAtJct) {
+                int osmID = (int) link.getAttributes().getAttribute("osmID");
+                String name = (String) link.getAttributes().getAttribute("name");
+                Set<Link> crossingLinks = linksTo.get(link.getToNode())
+                        .stream()
+                        .filter(l -> (boolean) l.getAttributes().getAttribute("allowsCarFwd"))
+                        .filter(l -> !isMatchingRoad(l,osmID,name))
+                        .collect(Collectors.toSet());
+
+                if(!crossingLinks.isEmpty()) {
+
+                    crossVehicles = true;
+                    crossWidth = crossingLinks.stream()
+                            .mapToDouble(l -> (double) l.getAttributes().getAttribute("width"))
+                            .sum();
+                    crossLanes = crossingLinks.stream()
+                            .mapToDouble(Link::getNumberOfLanes)
+                            .sum();
+                    crossAadt = crossingLinks.stream()
+                            .mapToInt(l -> (int) l.getAttributes().getAttribute("aadtFwd"))
+                            .sum();
+                    crossSpeedLimit = crossingLinks.stream()
+                            .mapToDouble(l -> (double) l.getAttributes().getAttribute("speedLimitMPH"))
+                            .max().getAsDouble();
+                    cross85PercSpeed = crossingLinks.stream()
+                            .mapToDouble(l -> (double) l.getAttributes().getAttribute("veh85percSpeedKPH"))
+                            .max().getAsDouble();
+                }
+            }
+
+            link.getAttributes().putAttribute("endsAtJct",endsAtJct);
+            link.getAttributes().putAttribute("crossVehicles",crossVehicles);
+            link.getAttributes().putAttribute("crossWidth",crossWidth);
+            link.getAttributes().putAttribute("crossLanes",crossLanes);
+            link.getAttributes().putAttribute("crossAadt",crossAadt);
+            link.getAttributes().putAttribute("crossSpeedLimitMPH",crossSpeedLimit);
+            link.getAttributes().putAttribute("cross85PercSpeed",cross85PercSpeed);
+        }
+    }
+
+    private static boolean isMatchingRoad(Link link, int osmID, String name) {
+        boolean osmIdMatch = link.getAttributes().getAttribute("osmID").equals(osmID);
+        boolean nameMatch = link.getAttributes().getAttribute("name").equals(name);
+        if(!name.equals("")) {
+            return nameMatch || osmIdMatch;
+        } else {
+            return osmIdMatch;
+        }
     }
 
     public static void extractFromNodes(Network network, Set<Id<Node>> nodeIds) {
