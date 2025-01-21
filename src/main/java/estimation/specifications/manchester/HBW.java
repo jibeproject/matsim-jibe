@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 public class HBW extends MNL_Manchester {
 
     private final static List<String> SOCIODEMOGRAPHIC_VARIABLES = List.of(
-            "p.age_group_agg_15_24","p.age_group_agg_40_54","p.age_group_agg_55",
+            "p.age_group_agg_15_24","p.age_group_agg_40_54","p.age_55up",
             "p.female",
             "hh.cars_gr_0","hh.cars_gr_2","hh.cars_gr_3",
             "hh.income_agg_high");
@@ -41,7 +41,6 @@ public class HBW extends MNL_Manchester {
 //        bike.add(new RouteAttribute("g_bike_vgvi", l -> Math.max(0.,0.81 - LinkAmbience.getVgviFactor(l))));
         bike.add(new RouteAttribute("g_bike_stressLink", l -> LinkStress.getStress(l,TransportMode.bike)));
         bike.add(new RouteAttribute("g_bike_stressLink_f","g_bike_stressLink", i -> value(i,"p.female") == 1));
-//        bike.add(new BuiltEnvironmentAttribute("stressLink_c",l -> LinkStress.getStress(l,TransportMode.bike),p -> (boolean) p.getAttributes().getAttribute("p.under15")));
         return bike;
     }
 
@@ -60,9 +59,9 @@ public class HBW extends MNL_Manchester {
     protected List<String> fixed() {
         List<String> fixed = coefficients().keySet().stream().filter(s -> (s.contains("carD"))).collect(Collectors.toList());
 //        fixed.add("b_carP_hh.income_agg_low");
-        fixed.add("b_carP_p.age_group_agg_55");
+        fixed.add("b_carP_p.age_55up");
         fixed.add("b_walk_p.age_group_agg_40_54");
-        fixed.add("b_walk_p.age_group_agg_55");
+        fixed.add("b_walk_p.age_55up");
 //        fixed.add("b_carP_t.full_purpose_HBO");
 //        fixed.add("b_bike_p.age_group_agg_40_69");
 //        fixed.add("b_bike_hh.income_agg_high");

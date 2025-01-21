@@ -45,7 +45,7 @@ public class RunRouter {
     public static void main(String[] args) throws IOException, FactoryException {
 
         if(args.length != 3) {
-            throw new RuntimeException("Program requires 2 arguments: \n" +
+            throw new RuntimeException("Program requires 3 arguments: \n" +
                     "(0) Properties file \n" +
                     "(1) Route data output (.csv) \n" +
                     "(2) Link data output (specify .gpkg OR write \"true\" to include links in csv file. Otherwise write \"false\") \n");

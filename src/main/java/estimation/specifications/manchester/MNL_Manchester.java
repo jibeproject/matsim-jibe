@@ -40,7 +40,6 @@ public abstract class MNL_Manchester extends AbstractModelSpecification {
             bikeRouteData = new RouteDataDynamic(data.getIds(), trips,this, TransportMode.bike,OAs,netBike,vehBike,ttBike,attributesBike);
             walkRouteData = new RouteDataDynamic(data.getIds(), trips,this, TransportMode.walk,OAs,netWalk,vehWalk,ttWalk,attributesWalk);
         }
-//        System.exit(-1);
         initialiseDynamicUtilDeriv();
     }
 

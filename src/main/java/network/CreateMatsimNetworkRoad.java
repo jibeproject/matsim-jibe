@@ -63,11 +63,11 @@ public class CreateMatsimNetworkRoad {
         // Create network links
         edges.forEach((id,edge) -> addLinkToNetwork(id,edge,net,fac));
 
-//        // Add volumes from events file
-//        NetworkUtils2.addSimulationVolumes(readSimulationVolumes(),net);
-//
-//        // Write crossing attributes
-//        NetworkUtils2.addCrossingAttributes(net);
+        // Add volumes from events file
+        NetworkUtils2.addSimulationVolumes(readSimulationVolumes(),net);
+
+        // Write crossing attributes
+        NetworkUtils2.addCrossingAttributes(net);
 
         // Identify disconnected links
         NetworkUtils2.identifyDisconnectedLinks(net,walk);

@@ -285,11 +285,6 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
                 .sorted().toArray();
         overlapStats = mode.toUpperCase() + " OVERLAP: " + getSummaryStats(overlap);
         logger.info(overlapStats);
-
-        // Runtime (for debugging only)
-        long endTime= System.currentTimeMillis();
-        double runtime = (endTime - startTime) / 1000.;
-        logger.info(mode.toUpperCase() + " Route stats computation runtime (s) = " + runtime);
     }
 
     public String getStats() {

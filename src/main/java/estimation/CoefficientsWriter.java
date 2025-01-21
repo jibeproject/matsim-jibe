@@ -14,7 +14,7 @@ public class CoefficientsWriter {
     private final static Logger logger = Logger.getLogger(CoefficientsWriter.class);
     private final static String SEP = ",";
 
-    static void print(AbstractModelSpecification u, BFGS.Results results, double[] se, double[] t, double[] pVal, String[] sig, String filePath) {
+    static void print(AbstractModelSpecification u, BFGS.Results results,double ll0, double[] se, double[] t, double[] pVal, String[] sig, String filePath) {
 
         PrintWriter out = ioUtils.openFileForSequentialWriting(new File(filePath),false);
         assert out != null;
@@ -43,6 +43,7 @@ public class CoefficientsWriter {
         out.println();
         out.println("Iterations: " + results.iterations);
         out.println();
+        out.println("LL0 = " + ll0);
         out.println("Start LL = " + results.llStart);
         out.println("Final LL = " + results.llOut);
 

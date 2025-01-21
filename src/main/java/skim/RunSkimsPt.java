@@ -36,13 +36,14 @@ public class RunSkimsPt {
 
         CalculateSkimMatrices skims = new CalculateSkimMatrices("/",numberOfThreads);
         skims.loadSamplingPointsFromFile(zonesFilename);
-        PTSkimMatrices.PtIndicators<String> ptIndicators = skims.calculatePTMatrices(transitNetworkFilePath,transitScheduleFilePath,28800,30600,config,(a,b) -> false);
+        PTSkimMatrices.PtIndicators<String> ptIndicators = skims.calculatePTMatrices(transitNetworkFilePath,transitScheduleFilePath,28800,30600,config,(a,b) -> b.getTransportMode().equals("bus"));
 
         // Choose which matrices to write
         Map<String, FloatMatrix<String>> matricesToWrite = new LinkedHashMap<>();
         matricesToWrite.put("travelTime",ptIndicators.travelTimeMatrix);
         matricesToWrite.put("accessTime",ptIndicators.accessTimeMatrix);
         matricesToWrite.put("egressTime",ptIndicators.egressTimeMatrix);
+        matricesToWrite.put("busTimeShare",ptIndicators.trainTravelTimeShareMatrix);
 
         // Write matrices
         OmxWriter.createOmxSkimMatrix(outputFile,skims.getCoordsPerZone().keySet(),matricesToWrite);

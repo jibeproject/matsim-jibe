@@ -26,15 +26,18 @@ public class MultinomialLogit {
             throw new IllegalArgumentException("Invalid maximum number of iterations: " + maxIter);
         }
 
-        MultinomialLogitObjective objective = new MultinomialLogitObjective(u, y, k, lambda);
-
-        // Run the optimisation algorithm
+        // Get starting values
         double[] w = u.getStarting();
+
+        // Create test objective just to check LL0
+        MultinomialLogitObjective test = new MultinomialLogitObjective(u, y, k, lambda);
+        double ll0 = test.f(new double[w.length]);
+        logger.info("LL0 = " + ll0);
+
+        // Run BFGS algrorithm
+        MultinomialLogitObjective objective = new MultinomialLogitObjective(u, y, k, lambda);
         BFGS.Results results = BFGS.minimize(objective,u.getDynamicComponent(), w, tol, maxIter);
         logger.info("finished estimation.");
-
-        // Get overlap with fastest path
-
 
         // Approximate variance-coviariance matrix (from BFGS method) – for debugging only
         // Matrix approxVarCov = Matrix.of(results.hessian);
@@ -49,7 +52,7 @@ public class MultinomialLogit {
         // Check if matrix is singular
         if(Arrays.stream(eigenvalues.wr).anyMatch(e -> e == 0)) {
             logger.error("Hessian matrix is singular! Cannot compute standard errors");
-            CoefficientsWriter.print(u,results,null,null,null,null,resultsFileName + ".txt");
+            CoefficientsWriter.print(u,results,ll0,null,null,null,null,resultsFileName + ".txt");
             CoefficientsWriter.write(u,results,null,null,null,null,resultsFileName);
         } else {
 
@@ -69,7 +72,7 @@ public class MultinomialLogit {
             String[] sig = sig(t);
 
             // Print results to screen and text file
-            CoefficientsWriter.print(u,results,se,t,pVal,sig,resultsFileName + ".txt");
+            CoefficientsWriter.print(u,results,ll0,se,t,pVal,sig,resultsFileName + ".txt");
 
             // Print iteration details to csv
             CoefficientsWriter.write(u,results,se,t,pVal,sig,resultsFileName + ".csv");

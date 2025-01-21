@@ -1,10 +1,7 @@
 package estimation;
 
 import estimation.specifications.AbstractModelSpecification;
-import estimation.specifications.manchester.HBA;
-import estimation.specifications.manchester.HBD;
-import estimation.specifications.manchester.NHBO;
-import estimation.specifications.manchester.NHBW;
+import estimation.specifications.manchester.*;
 import gis.GisUtils;
 import gis.GpkgReader;
 import io.DiaryReader;
@@ -21,7 +18,6 @@ import resources.Resources;
 import routing.Bicycle;
 import routing.travelTime.WalkTravelTime;
 import smile.classification.ClassLabels;
-import trip.Place;
 import trip.Trip;
 
 import java.io.IOException;

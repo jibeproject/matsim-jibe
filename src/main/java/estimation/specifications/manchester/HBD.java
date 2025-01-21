@@ -42,9 +42,9 @@ public class HBD extends MNL_Manchester {
     List<RouteAttribute> streetEnvironmentAttributesBike() {
         List<RouteAttribute> bike = new ArrayList<>();
         bike.add(new RouteAttribute("g_bike_grad", l -> Math.max(Math.min(Gradient.getGradient(l),0.5),0.)));
-        bike.add(new RouteAttribute("g_bike_vgvi", l -> Math.max(0.,0.81 - LinkAmbience.getVgviFactor(l))));
+//        bike.add(new RouteAttribute("g_bike_vgvi", l -> Math.max(0.,0.81 - LinkAmbience.getVgviFactor(l))));
         bike.add(new RouteAttribute("g_bike_stressLink", l -> LinkStress.getStress(l, TransportMode.bike)));
-        bike.add(new RouteAttribute("g_bike_stressLink_f","g_bike_stressLink", i -> value(i,"p.female") == 1));
+//        bike.add(new RouteAttribute("g_bike_stressLink_f","g_bike_stressLink", i -> value(i,"p.female") == 1));
         bike.add(new RouteAttribute("g_bike_stressLink_c","g_bike_stressLink", i -> value(i,"p.age_group_agg_5_14") == 1));
 //        bike.add(new RouteAttribute("g_bike_stressLink_o","g_bike_stressLink",i -> value(i,"p.age_65up") == 1));
         return bike;
@@ -54,13 +54,15 @@ public class HBD extends MNL_Manchester {
         List<RouteAttribute> walk = new ArrayList<>();
 //        bike.add(new BuiltEnvironmentAttribute("grad",l -> Math.max(Math.min(Gradient.getGradient(l),0.5),0.),p -> true));
         walk.add(new RouteAttribute("g_walk_vgvi", l -> Math.max(0.,0.81 - LinkAmbience.getVgviFactor(l))));
+//        walk.add(new RouteAttribute("g_walk_vgvi_c", "g_walk_vgvi", i -> value(i,"p.age_group_agg_5_14") == 1));
+//        walk.add(new RouteAttribute("g_walk_vgvi_o", "g_walk_vgvi", i -> value(i,"p.age_65up") == 1));
         walk.add(new RouteAttribute("g_walk_stressJct", l -> JctStress.getStressProp(l,TransportMode.walk)));
 //        walk.add(new RouteAttribute("g_walk_stressJct_c", "g_walk_stressJct", i -> value(i,"p.age_group_agg_5_14") == 1));
 //        walk.add(new RouteAttribute("g_walk_stressJct_o", "g_walk_stressJct", i -> value(i,"p.age_65up") == 1));
         walk.add(new RouteAttribute("g_walk_speed", l -> Math.min(1.,l.getFreespeed() / 22.35)));
         walk.add(new RouteAttribute("g_walk_speed_c", "g_walk_speed", i -> value(i,"p.age_group_agg_5_14") == 1));
         walk.add(new RouteAttribute("g_walk_speed_o", "g_walk_speed", i -> value(i,"p.age_65up") == 1));
-        walk.add(new RouteAttribute("g_walk_aadt", l -> Math.min(1.,((int) l.getAttributes().getAttribute("aadt")) * 0.865/6000.)));
+//        walk.add(new RouteAttribute("g_walk_aadt", l -> Math.min(1.,((int) l.getAttributes().getAttribute("aadt")) * 0.865/6000.)));
 //        walk.add(new RouteAttribute("g_walk_aadt_c", "g_walk_aadt", i -> value(i,"p.age_group_agg_5_14") == 1));
 //        walk.add(new RouteAttribute("g_walk_aadt_o", "g_walk_aadt", i -> value(i,"p.age_65up") == 1));
 
