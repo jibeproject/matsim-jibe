@@ -39,18 +39,18 @@ import java.util.*;
 
 public class RunSkims {
 
-    public static final String FILE_PATH_PREFIX = "skims/";
-
     public static void main(String[] args) throws IOException, FactoryException {
 
-        if(args.length != 2) {
-            throw new RuntimeException("Program requires 2 arguments: \n" +
+        if(args.length != 3) {
+            throw new RuntimeException("Program requires 3 arguments: \n" +
                     "(0) Properties file \n" +
-                    "(1) Zone geometries (.gpkg)");
+                    "(1) Zone geometries (.gpkg)" +
+                    "(2) File path prefix");
         }
 
         Resources.initializeResources(args[0]);
         String zonesFilename = args[1];
+        String filePathPrefix = args[2];
 
         // Create bicycle travel time
         Config config = ConfigUtils.createConfig();
@@ -97,18 +97,18 @@ public class RunSkims {
         calc.calculate("dist",networkCar,carXy2l,freespeed,new DistanceDisutility(),null);
         calc.calculate("free",networkCar,carXy2l,freespeed,freespeed,null);
         calc.calculate("congested",networkCar,carXy2l,congestedTime,congestedDisutility,null);
-        OmxWriter.createOmxSkimMatrix(FILE_PATH_PREFIX + "skimCar.omx",calc.getResults(),calc.getId2index());
+        OmxWriter.createOmxSkimMatrix(filePathPrefix + "skimCar.omx",calc.getResults(),calc.getId2index());
         calc.clearResults();
 
         // Bike skims
         calc.calculate("dist",networkBike,networkBike,ttBike,new DistanceDisutility(),bike);
         calc.calculate("time",networkBike,networkBike,ttBike,new OnlyTimeDependentTravelDisutility(ttBike),bike);
-        OmxWriter.createOmxSkimMatrix(FILE_PATH_PREFIX + "skimBike.omx",calc.getResults(),calc.getId2index());
+        OmxWriter.createOmxSkimMatrix(filePathPrefix + "skimBike.omx",calc.getResults(),calc.getId2index());
 
         // Walk skims
         calc.calculate("dist",networkWalk,networkWalk,ttWalk,new DistanceDisutility(),null);
         calc.calculate("time",networkWalk,networkWalk,ttWalk,new OnlyTimeDependentTravelDisutility(ttWalk),null);
-        OmxWriter.createOmxSkimMatrix(FILE_PATH_PREFIX + "skimWalk.omx",calc.getResults(),calc.getId2index());
+        OmxWriter.createOmxSkimMatrix(filePathPrefix + "skimWalk.omx",calc.getResults(),calc.getId2index());
 
         // PURPOSE-SPECIFIC MATRICES, FOR IMPLEMENTING IN MITO
         // Bike attributes
@@ -129,7 +129,7 @@ public class RunSkims {
         calc.calculate("bike",networkBike,networkBike,ttBike,tdBikeHBW,bike);
         calc.calculate("bike_female",networkBike,networkBike,ttBike,tdBikeHBW_f,bike);
         calc.calculate("walk",networkWalk,networkWalk,ttWalk,tdWalkHBW,null);
-        OmxWriter.createOmxSkimMatrix(FILE_PATH_PREFIX + "HBW.omx",calc.getResults(),calc.getId2index());
+        OmxWriter.createOmxSkimMatrix(filePathPrefix + "HBW.omx",calc.getResults(),calc.getId2index());
         calc.clearResults();
 
         // Home-based Education (HBE)
@@ -137,7 +137,7 @@ public class RunSkims {
         TravelDisutility tdWalkHBE = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0,0,1.0037846});
         calc.calculate("bike",networkBike,networkBike,ttBike,tdBikeHBE,bike);
         calc.calculate("walk",networkWalk,networkWalk,ttWalk,tdWalkHBE,null);
-        OmxWriter.createOmxSkimMatrix(FILE_PATH_PREFIX + "HBE.omx",calc.getResults(),calc.getId2index());
+        OmxWriter.createOmxSkimMatrix(filePathPrefix + "HBE.omx",calc.getResults(),calc.getId2index());
         calc.clearResults();
 
         // Home-based Discretionary (HBD)
@@ -151,19 +151,19 @@ public class RunSkims {
         calc.calculate("walk",networkWalk,networkWalk,ttWalk,tdWalkHBD,null);
         calc.calculate("walk_child",networkWalk,networkWalk,ttWalk,tdWalkHBD_c,null);
         calc.calculate("walk_elderly",networkWalk,networkWalk,ttWalk,tdWalkHBD_o,null);
-        OmxWriter.createOmxSkimMatrix(FILE_PATH_PREFIX + "HBD.omx",calc.getResults(),calc.getId2index());
+        OmxWriter.createOmxSkimMatrix(filePathPrefix + "HBD.omx",calc.getResults(),calc.getId2index());
         calc.clearResults();
 
         // Home-based Accompany (HBA)
         TravelDisutility tdWalkHBA = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0.6908324,0,0});
         calc.calculate("walk",networkWalk,networkWalk,ttWalk,tdWalkHBA,null);
-        OmxWriter.createOmxSkimMatrix(FILE_PATH_PREFIX + "HBA.omx",calc.getResults(),calc.getId2index());
+        OmxWriter.createOmxSkimMatrix(filePathPrefix + "HBA.omx",calc.getResults(),calc.getId2index());
         calc.clearResults();
 
         // Non home-based other (NHBO)
         TravelDisutility tdWalkNHBO = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0,3.4485883,0});
         calc.calculate("walk",networkWalk,networkWalk,ttWalk,tdWalkNHBO,null);
-        OmxWriter.createOmxSkimMatrix(FILE_PATH_PREFIX + "NHBO.omx",calc.getResults(),calc.getId2index());
+        OmxWriter.createOmxSkimMatrix(filePathPrefix + "NHBO.omx",calc.getResults(),calc.getId2index());
         calc.clearResults();
 
     }

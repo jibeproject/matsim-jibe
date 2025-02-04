@@ -147,6 +147,7 @@ public class WriteNetworkGpkg {
         builder.add("bikeStressJct",Double.class);
 //        builder.add("walkStress",Double.class);
         builder.add("walkStressJct",Double.class);
+        builder.add("walkStressJctProp",Double.class);
 
         return builder.buildFeatureType();
     }
@@ -304,6 +305,7 @@ public class WriteNetworkGpkg {
             featureBuilder.add(JctStress.getStress(link,TransportMode.bike));
 //            featureBuilder.add(LinkStress.getStress(link,TransportMode.walk));
             featureBuilder.add(JctStress.getStress(link,TransportMode.walk));
+            featureBuilder.add(JctStress.getStressProp(link,TransportMode.walk));
             SimpleFeature feature = featureBuilder.buildFeature(null);
             collection.add(feature);
         }
