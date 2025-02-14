@@ -41,16 +41,18 @@ public class RunSkims {
 
     public static void main(String[] args) throws IOException, FactoryException {
 
-        if(args.length != 3) {
-            throw new RuntimeException("Program requires 3 arguments: \n" +
+        if(args.length != 4) {
+            throw new RuntimeException("Program requires 4 arguments: \n" +
                     "(0) Properties file \n" +
-                    "(1) Zone geometries (.gpkg)" +
-                    "(2) File path prefix");
+                    "(1) Zone geometries (.gpkg) \n" +
+                    "(2) Zone ID attribute \n" +
+                    "(4) File path prefix");
         }
 
         Resources.initializeResources(args[0]);
         String zonesFilename = args[1];
-        String filePathPrefix = args[2];
+        String zoneIdAttribute = args[2];
+        String filePathPrefix = args[3];
 
         // Create bicycle travel time
         Config config = ConfigUtils.createConfig();
@@ -88,7 +90,7 @@ public class RunSkims {
         TravelTime ttWalk = new WalkTravelTime();
 
         // Create zone-coord map and remove spaces
-        Map<Integer,SimpleFeature> features = GpkgReader.readFeatures(new File(zonesFilename),"zoneID");
+        Map<Integer,SimpleFeature> features = GpkgReader.readFeatures(new File(zonesFilename),zoneIdAttribute);
 
         // Initiate custom disutility
         SkimCalculator calc = new SkimCalculator(features);
@@ -97,18 +99,18 @@ public class RunSkims {
         calc.calculate("dist",networkCar,carXy2l,freespeed,new DistanceDisutility(),null);
         calc.calculate("free",networkCar,carXy2l,freespeed,freespeed,null);
         calc.calculate("congested",networkCar,carXy2l,congestedTime,congestedDisutility,null);
-        OmxWriter.createOmxSkimMatrix(filePathPrefix + "skimCar.omx",calc.getResults(),calc.getId2index());
+        OmxWriter.createOmxSkimMatrix(filePathPrefix + "car.omx",calc.getResults(),calc.getId2index());
         calc.clearResults();
 
         // Bike skims
         calc.calculate("dist",networkBike,networkBike,ttBike,new DistanceDisutility(),bike);
         calc.calculate("time",networkBike,networkBike,ttBike,new OnlyTimeDependentTravelDisutility(ttBike),bike);
-        OmxWriter.createOmxSkimMatrix(filePathPrefix + "skimBike.omx",calc.getResults(),calc.getId2index());
+        OmxWriter.createOmxSkimMatrix(filePathPrefix + "bike.omx",calc.getResults(),calc.getId2index());
 
         // Walk skims
         calc.calculate("dist",networkWalk,networkWalk,ttWalk,new DistanceDisutility(),null);
         calc.calculate("time",networkWalk,networkWalk,ttWalk,new OnlyTimeDependentTravelDisutility(ttWalk),null);
-        OmxWriter.createOmxSkimMatrix(filePathPrefix + "skimWalk.omx",calc.getResults(),calc.getId2index());
+        OmxWriter.createOmxSkimMatrix(filePathPrefix + "walk.omx",calc.getResults(),calc.getId2index());
 
         // PURPOSE-SPECIFIC MATRICES, FOR IMPLEMENTING IN MITO
         // Bike attributes
