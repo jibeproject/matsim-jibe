@@ -21,8 +21,8 @@ public class CreateMatsimNetworkPt {
         if(args.length != 8) {
             throw new RuntimeException("Program requires 5 arguments: \n" +
                     "(0) Properties file \n" +
-                    "(1) GTFS directory for bus/tram \n" +
-                    "(2) GTFS directory for rail \n" +
+                    "(1) GTFS zip filepath for bus/tram \n" +
+                    "(2) GTFS zip filepath for rail \n" +
                     "(3) Unmapped schedule file \n" +
                     "(4) Config file");
         }

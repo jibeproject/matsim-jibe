@@ -18,7 +18,7 @@ import org.matsim.core.utils.misc.Counter;
 import org.matsim.vehicles.Vehicle;
 import org.opengis.referencing.FactoryException;
 import resources.Resources;
-import routing.disutility.JibeDisutility;
+import routing.disutility.JibeDisutility3;
 import routing.travelTime.WalkTravelTime;
 import io.TripRouteWriter;
 import trip.Place;
@@ -33,6 +33,8 @@ import java.util.stream.Collectors;
 import static trip.Place.DESTINATION;
 import static trip.Place.ORIGIN;
 
+// Similar to RunNodeRouter, but with different disutility function for different trips
+
 public class RunNodeRouter2 {
 
     private final static Logger log = Logger.getLogger(RunNodeRouter2.class);
@@ -42,7 +44,6 @@ public class RunNodeRouter2 {
     private static final String ORIGIN_NODE = "originNode";
     private static final String DESTINATION_NODE = "destinationNode";
 
-    // Router in which disutility function is different for different trips
 
     public static void main(String[] args) throws IOException, FactoryException {
 
@@ -113,15 +114,15 @@ public class RunNodeRouter2 {
             Trip trip = new Trip("na",(int) counter.getCounter(),0,0,mode,null,null,null,coords,coordsInBoundary);
             trips.add(trip);
 
-            JibeDisutility tdJibe = new JibeDisutility(mode,tt,mcAmbience,mcStress);
+            JibeDisutility3 tdJibe = new JibeDisutility3(mode,tt,true,mcAmbience,mcStress);
             LeastCostPathCalculator dijkstraJibe = new FastDijkstraFactory(false).
                     createPathCalculator(modeNetwork, tdJibe, tt);
 
             LeastCostPathCalculator.Path pathFast = dijkstraFast.calcLeastCostPath(modeNetwork.getNodes().get(origin), modeNetwork.getNodes().get(destination), 0., null, veh);
             LeastCostPathCalculator.Path pathJibe = dijkstraJibe.calcLeastCostPath(modeNetwork.getNodes().get(origin), modeNetwork.getNodes().get(destination), 0., null, veh);
 
-            storeResults("fast",trip,pathFast,tdFast);
-            storeResults("jibe",trip,pathJibe,tdJibe);
+            storeResults("fast",trip,pathFast);
+            storeResults("jibe",trip,pathJibe);
         }
 
         TripRouteWriter.write(trips, modeNetwork, outputFile, false, Set.of("mc_ambience","mc_stress","cost","time","dist"));
@@ -140,14 +141,8 @@ public class RunNodeRouter2 {
         return ind;
     }
 
-    private static void storeResults(String route, Trip trip, LeastCostPathCalculator.Path path, TravelDisutility td) {
+    private static void storeResults(String route, Trip trip, LeastCostPathCalculator.Path path) {
         Map<String,Object> results = new LinkedHashMap<>();
-
-        // If JibeDisutility, get marginal costs
-        if(td instanceof JibeDisutility) {
-            results.put("mc_ambience", ((JibeDisutility) td).getMarginalCostAmbience_m());
-            results.put("mc_stress", ((JibeDisutility) td).getMarginalCostStress_m());
-        }
 
         // Set cost and time
         results.put("cost",path.travelCost);

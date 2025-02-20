@@ -24,9 +24,7 @@ import org.matsim.core.utils.misc.Counter;
 import org.matsim.vehicles.Vehicle;
 import resources.Properties;
 import resources.Resources;
-import routing.disutility.JibeDisutility;
 import routing.disutility.JibeDisutility3;
-import routing.disutility.JibeDisutility3Fast;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -279,14 +277,8 @@ public class NetworkUtils2 {
         for(Link link : network.getLinks().values()) {
             counter.incCounter();
             double linkDisutility = disutility.getLinkTravelDisutility(link,time,person,vehicle);
-            if(disutility instanceof JibeDisutility) {
-                linkDisutility -= ((JibeDisutility) disutility).getJunctionComponent(link);
-            }
             if(disutility instanceof JibeDisutility3) {
                 linkDisutility -= ((JibeDisutility3) disutility).getJunctionComponent(link,vehicle);
-            }
-            if(disutility instanceof JibeDisutility3Fast) {
-                linkDisutility -= ((JibeDisutility3Fast) disutility).getJunctionComponent(link);
             }
             marginalDisutilities.put(link.getId(), linkDisutility / link.getLength());
         }

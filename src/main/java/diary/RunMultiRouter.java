@@ -1,5 +1,6 @@
 package diary;
 
+import estimation.RouteAttribute;
 import gis.GpkgReader;
 import io.ioUtils;
 import network.NetworkUtils2;
@@ -18,7 +19,7 @@ import org.opengis.referencing.FactoryException;
 import resources.Resources;
 import routing.Bicycle;
 import routing.Gradient;
-import routing.disutility.JibeDisutility2;
+import routing.disutility.JibeDisutility4;
 import routing.disutility.components.JctStress;
 import routing.disutility.components.LinkAmbience;
 import routing.disutility.components.LinkStress;
@@ -127,11 +128,17 @@ public class RunMultiRouter {
         // ESTIMATE PATHS
         logger.info("Estimating paths...");
 
+        List<RouteAttribute> disutilityComponents = new ArrayList<>();
+        disutilityComponents.add(new RouteAttribute("grad",l -> Math.max(Math.min(Gradient.getGradient(l),0.5),0.)));
+        disutilityComponents.add(new RouteAttribute("vgvi", l -> Math.max(0.,0.81 - LinkAmbience.getVgviFactor(l))));
+        disutilityComponents.add(new RouteAttribute("stressLink", l -> LinkStress.getStress(l,mode)));
+        disutilityComponents.add(new RouteAttribute("stressJct", l -> JctStress.getStressProp(l,mode)));
+
         LogitDataCalculator calc = new LogitDataCalculator(selectedTrips);
         for (int i = 0 ; i < SAMPLES ; i++) {
             logger.info("Estimating path for sample " + (i+1) + "...");
-            JibeDisutility2 disutility = new JibeDisutility2(network,veh,mode,tt,mcGradient[i],
-                    mcVgvi[i],mcStressLink[i],mcStressJct[i]);
+            JibeDisutility4 disutility = new JibeDisutility4(network,veh,mode,tt,disutilityComponents,
+                    new double[] {mcGradient[i],mcVgvi[i],mcStressLink[i],mcStressJct[i]});
             calc.calculate(veh,network,disutility,tt);
             int thisPathCount = selectedTrips.stream().mapToInt(t -> t.getPaths().size()).sum();
             newPathCount[i] = thisPathCount - currPathCount;

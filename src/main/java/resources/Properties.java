@@ -51,33 +51,4 @@ public class Properties {
     public static final String ORIGIN_Y = "diary.origin.y";
     public static final String DESTINATION_X = "diary.destination.x";
     public static final String DESTINATION_Y = "diary.destination.y";
-
-    // Parameters for JIBE routing (generic)
-    public static final String TIME = "time";
-    public static final String DISTANCE = "dist";
-    public static final String GRADIENT = "gradient";
-    public static final String COMFORT = "comfort";
-    public static final String AMBIENCE = "ambience";
-    public static final String STRESS = "stress";
-    
-    // Parameters for walk JIBE routing
-    private static final String MC_WALK = "mc.walk.";
-    public static final String MC_WALK_TIME = MC_WALK + TIME;
-    public static final String MC_WALK_DIST = MC_WALK + DISTANCE;
-    public static final String MC_WALK_GRADIENT = MC_WALK + GRADIENT;
-    public static final String MC_WALK_COMFORT = MC_WALK + COMFORT;
-    public static final String MC_WALK_AMBIENCE = MC_WALK + AMBIENCE;
-    public static final String MC_WALK_STRESS = MC_WALK + STRESS;
-
-
-    // Parameters for bike JIBE routing
-    private static final String MC_BIKE = "mc.bike.";
-    public static final String MC_BIKE_TIME = MC_BIKE + TIME;
-    public static final String MC_BIKE_DIST = MC_BIKE + DISTANCE;
-    public static final String MC_BIKE_GRADIENT = MC_BIKE + GRADIENT;
-    public static final String MC_BIKE_COMFORT = MC_BIKE + COMFORT;
-    public static final String MC_BIKE_AMBIENCE = MC_BIKE + AMBIENCE;
-    public static final String MC_BIKE_STRESS = MC_BIKE + STRESS;
-
-
 }

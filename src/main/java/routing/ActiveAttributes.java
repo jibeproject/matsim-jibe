@@ -3,7 +3,6 @@ package routing;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
-import routing.disutility.JibeDisutility;
 import routing.disutility.components.JctStress;
 import routing.disutility.components.LinkAmbience;
 import routing.disutility.components.LinkComfort;
@@ -25,18 +24,6 @@ public class ActiveAttributes {
         attributes.put("ambience", (l,td,tt) -> LinkAmbience.getDayAmbience(l) * l.getLength());
         attributes.put("stressLink",(l,td,tt) -> LinkStress.getStress(l,mode) * l.getLength());
         attributes.put("stressJct",(l,td,tt) -> JctStress.getStress(l,mode));
-        return attributes;
-    }
-
-    public static LinkedHashMap<String,TravelAttribute> getJibe(String mode, Vehicle veh) {
-        LinkedHashMap<String,TravelAttribute> attributes = get(mode);
-        attributes.put("c_time",(l,td,tt) -> ((JibeDisutility) td).getTimeComponent(l,0.,null,veh));
-        attributes.put("c_dist",(l,td,tt) -> ((JibeDisutility) td).getDistanceComponent(l));
-        attributes.put("c_grad",(l,td,tt) -> ((JibeDisutility) td).getGradientComponent(l));
-        attributes.put("c_surf",(l,td,tt) -> ((JibeDisutility) td).getSurfaceComponent(l));
-        attributes.put("c_attr",(l,td,tt) -> ((JibeDisutility) td).getAmbienceComponent(l));
-        attributes.put("c_stress",(l,td,tt) -> ((JibeDisutility) td).getStressComponent(l));
-        attributes.put("c_jct",(l,td,tt) -> ((JibeDisutility) td).getJunctionComponent(l));
         return attributes;
     }
 

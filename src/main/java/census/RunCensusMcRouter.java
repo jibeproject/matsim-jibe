@@ -14,7 +14,7 @@ import org.opengis.referencing.FactoryException;
 import resources.Resources;
 import routing.Bicycle;
 import routing.disutility.DistanceDisutility;
-import routing.disutility.JibeDisutility;
+import routing.disutility.JibeDisutility3;
 import routing.travelTime.WalkTravelTime;
 import diary.calculate.RouteIndicatorCalculator;
 import trip.Trip;
@@ -30,9 +30,9 @@ public class RunCensusMcRouter {
 
     private final static Logger logger = Logger.getLogger(RunCensusMcRouter.class);
 
-    // Parameters for MC Simulation
-    private final static double MAX_MC_AMBIENCE = 5e-3; // based on avg travel time and rounded up
-    private final static double MAX_MC_STRESS = 5e-3; // based on average travel time and rounded up
+    // Parameters for Monte Carlo Simulation
+    private final static double MAX_MC_AMBIENCE = 5;
+    private final static double MAX_MC_STRESS = 5;
 
     public static void main(String[] args) throws IOException, FactoryException {
         if (args.length != 5) {
@@ -92,7 +92,7 @@ public class RunCensusMcRouter {
             double mcAttr = r.nextDouble() * MAX_MC_AMBIENCE;
             double mcStress = r.nextDouble() * MAX_MC_STRESS;
 
-            JibeDisutility disutilty = new JibeDisutility(mode, tt, mcAttr, mcStress);
+            JibeDisutility3 disutilty = new JibeDisutility3(mode, tt, true, mcAttr, mcStress);
 
             calc.network(mode + "_jibe_" + i,HOME,DESTINATION,veh,modeSpecificNetwork,modeSpecificNetwork,disutilty,tt,null,false);
         }

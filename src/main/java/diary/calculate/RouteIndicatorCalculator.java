@@ -20,7 +20,6 @@ import org.matsim.core.router.TeleportationRoutingModule;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.facilities.ActivityFacilitiesFactoryImpl;
 import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
-import routing.disutility.JibeDisutility;
 import trip.Place;
 import trip.Trip;
 
@@ -49,16 +48,8 @@ public class RouteIndicatorCalculator {
 
         logger.info("Calculating network indicators for route " + route);
 
-        // Specify attribute names
-        List<String> attributeNames = new ArrayList<>();
-
-        // JIBE Disutility details
-        if(travelDisutility instanceof JibeDisutility) {
-            attributeNames.addAll(List.of("mc_ambience","mc_stress"));
-        }
-
         // Standard attributes
-        attributeNames.addAll(List.of("cost","time","dist"));
+        List<String> attributeNames = new ArrayList<>(List.of("cost", "time", "dist"));
 
         // Specify additional attributes
         if(additionalAttributes != null) {

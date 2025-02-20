@@ -8,8 +8,6 @@ import org.matsim.api.core.v01.population.Person;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
-import resources.Properties;
-import resources.Resources;
 import routing.Gradient;
 import routing.disutility.components.JctStress;
 import routing.disutility.components.LinkAmbience;
@@ -24,6 +22,16 @@ import java.util.Objects;
  */
 public class JibeDisutility3 implements TravelDisutility {
 
+    private final static double DEFAULT_MARGINAL_COST_WALK_GRADIENT = 4;
+    private final static double DEFAULT_MARGINAL_COST_WALK_COMFORT = 0;
+    private final static double DEFAULT_MARGINAL_COST_WALK_AMBIENCE = 3;
+    private final static double DEFAULT_MARGINAL_COST_WALK_STRESS = 1;
+
+    private final static double DEFAULT_MARGINAL_COST_BIKE_GRADIENT = 15;
+    private final static double DEFAULT_MARGINAL_COST_BIKE_COMFORT = 0.15;
+    private final static double DEFAULT_MARGINAL_COST_BIKE_AMBIENCE = 1;
+    private final static double DEFAULT_MARGINAL_COST_BIKE_STRESS = 3;
+
     private final static Logger logger = Logger.getLogger(JibeDisutility3.class);
     private final String mode;
     private final double marginalCostOfGradient_s;
@@ -31,26 +39,8 @@ public class JibeDisutility3 implements TravelDisutility {
     private final double marginalCostAmbience_s;
     private final double marginalCostStress_s;
     private final TravelTime timeCalculator;
-    private Boolean dayNightOverride;
+    private final Boolean dayNightOverride;
 
-    // Default parameters
-    public JibeDisutility3(String mode, TravelTime tt, Boolean dayNightOverride) {
-
-        if(!mode.equals(TransportMode.bike) && !mode.equals(TransportMode.walk)) {
-            throw new RuntimeException("Mode " + mode + " not supported for JIBE disutility.");
-        }
-
-        this.mode = mode;
-        this.timeCalculator = tt;
-        this.dayNightOverride = dayNightOverride;
-        this.marginalCostOfGradient_s = Resources.instance.getMarginalCost(mode,Properties.GRADIENT);
-        this.marginalCostOfComfort_s = Resources.instance.getMarginalCost(mode,Properties.COMFORT);
-        this.marginalCostAmbience_s = Resources.instance.getMarginalCost(mode,Properties.AMBIENCE);
-        this.marginalCostStress_s = Resources.instance.getMarginalCost(mode,Properties.STRESS);
-        printMarginalCosts();
-    }
-
-    // Custom parameters
     public JibeDisutility3(String mode, TravelTime tt, Boolean dayNightOverride,
                            double marginalCostOfGradient_s, double marginalCostOfComfort_s,
                            double marginalCostAmbience_s, double marginalCostStress_s) {
@@ -64,6 +54,44 @@ public class JibeDisutility3 implements TravelDisutility {
         this.dayNightOverride = dayNightOverride;
         this.marginalCostOfGradient_s = marginalCostOfGradient_s;
         this.marginalCostOfComfort_s = marginalCostOfComfort_s;
+        this.marginalCostAmbience_s = marginalCostAmbience_s;
+        this.marginalCostStress_s = marginalCostStress_s;
+        printMarginalCosts();
+    }
+
+    // Default parameters
+    public JibeDisutility3(String mode, TravelTime tt, Boolean dayNightOverride) {
+
+        if(!mode.equals(TransportMode.bike) && !mode.equals(TransportMode.walk)) {
+            throw new RuntimeException("Mode " + mode + " not supported for JIBE disutility.");
+        }
+        this.mode = mode;
+        this.timeCalculator = tt;
+        this.dayNightOverride = dayNightOverride;
+
+        boolean walk = mode.equals(TransportMode.walk);
+        this.marginalCostOfGradient_s = walk ? DEFAULT_MARGINAL_COST_WALK_GRADIENT : DEFAULT_MARGINAL_COST_BIKE_GRADIENT;
+        this.marginalCostOfComfort_s = walk ? DEFAULT_MARGINAL_COST_WALK_COMFORT : DEFAULT_MARGINAL_COST_BIKE_COMFORT;
+        this.marginalCostAmbience_s = walk ? DEFAULT_MARGINAL_COST_WALK_AMBIENCE : DEFAULT_MARGINAL_COST_BIKE_AMBIENCE;
+        this.marginalCostStress_s = walk ? DEFAULT_MARGINAL_COST_WALK_STRESS : DEFAULT_MARGINAL_COST_BIKE_STRESS;
+        printMarginalCosts();
+    }
+
+    // Custom parameters ambience and stress only
+    public JibeDisutility3(String mode, TravelTime tt, Boolean dayNightOverride,
+                           double marginalCostAmbience_s, double marginalCostStress_s) {
+
+        if(!mode.equals(TransportMode.bike) && !mode.equals(TransportMode.walk)) {
+            throw new RuntimeException("Mode " + mode + " not supported for JIBE disutility.");
+        }
+
+        this.mode = mode;
+        this.timeCalculator = tt;
+        this.dayNightOverride = dayNightOverride;
+
+        boolean walk = mode.equals(TransportMode.walk);
+        this.marginalCostOfGradient_s = walk ? DEFAULT_MARGINAL_COST_WALK_GRADIENT : DEFAULT_MARGINAL_COST_BIKE_GRADIENT;
+        this.marginalCostOfComfort_s = walk ? DEFAULT_MARGINAL_COST_WALK_COMFORT : DEFAULT_MARGINAL_COST_BIKE_COMFORT;
         this.marginalCostAmbience_s = marginalCostAmbience_s;
         this.marginalCostStress_s = marginalCostStress_s;
         printMarginalCosts();
@@ -98,7 +126,7 @@ public class JibeDisutility3 implements TravelDisutility {
             boolean day = Objects.requireNonNullElseGet(dayNightOverride, () -> (time >= 21600 && time < 72000));
 
             // Ambience
-            double ambience = day ? LinkAmbience.getDayAmbience(link) : LinkAmbience.getNightAmbience(link);;
+            double ambience = day ? LinkAmbience.getDayAmbience(link) : LinkAmbience.getNightAmbience(link);
 
             // Stress factors
             double linkStress = LinkStress.getStress(link,mode);

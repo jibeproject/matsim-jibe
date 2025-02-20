@@ -59,7 +59,7 @@ and passing this in as an argument to the router.
 ### RunCorridors.java
 
 Calculates corridors for each diary trip, using the methodology described in Zhang et al. 2024 (https://doi.org/10.17863/CAM.107588).
-This computers all links a person could feasibly use for their journey up to a specified detour treshold. Not this is computationally intensive,
+This computes all links a person could feasibly use for their journey up to a specified detour threshold. Not this is computationally intensive,
 recommend detour threshold does not exceed 10%.
 
 ### RunRubberBandingAnalysis.java
@@ -70,6 +70,55 @@ Useful for preparing activity-based models. Requires the 'main' activity to be s
 ## Accessibility package (src/main/java/accessibility)
 
 This package contains tools and methods for calculating accessibility. See accessibility/README.md for further details.
+
+## Skim package (src/main/java/skim)
+Package for generating skim matrices for MITO in .omx format
+
+### RunSkims.java
+Creates various skims for car, bike, and walk.
+Includes purpose-specific generalised time skims for MITO.
+
+### RunSkimsPt.java
+Creates skim matrices for public transport
+
+## Estimation package (src/main/java/estimation)
+This package contains a tool for empirical mode choice estimation incorporating the street-level environment.
+The estimation currently supports only multinomial logit models estimated using the BGFS algorithm.
+This is based on the estimation tools in Smile (https://haifengl.github.io) and Apollo (http://www.apollochoicemodelling.com).
+
+### RunMnl.java
+Example model applying the SP and RP examples in Apollo (http://www.apollochoicemodelling.com/examples.html). 
+ results should match the Apollo examples
+
+### RunMnlManchester.java
+Script to run models for Manchester. The estimation requires two diary datasets.
+First, the dataset containing fixed non-route-based predictors (e.g., sociodemographic attributes). 
+Second, the dataset used for routing (see Routing package), includes origin and destination locations for each trip.
+The fixed predictors dataset is passed in as an argument, while the routing dataset is specified in the _diary.file_ property. 
+The network must also be specified in the _matsim.road.network_ property.
+Every record in the travel diary should correspond to a record in the routing dataset 
+(based on the ID variable in the predictor dataset and the household/person/trip ID in the routing dataset, see lines 70-76).
+
+Dynamic updating of route estimates can be enabled or disabled using _ENABLE_DYNAMIC_ROUTING_ in dynamic/RouteDataDynamic.java (line 37).
+Otherwise, the fastest route is computed once and used over all iterations of the estimation.
+
+For a quick estimation, the routine can be also run with pre-calculated fastest route data from the previous run.
+This can be enabled by setting _COMPUTE_ROUTE_DATA_ to false in RunMnlManchester.java (line 28).
+This quicker option is not possible with dynamic updating.
+
+## Demand package
+Package for setting up and running MATSim simulation using travel demand data provided by TfGM in OMX format.
+The most important methods are
+
+### CreateVehicleNetwork.java
+Creates a vehicle network for the MATSim simulation, based on the network previously created in network/CreateMatsimNetworkRoad.java.
+The vehicle network uses adapts link freespeed and capacity for the simulation based on calibration work by Mahsa Abdollahyar at RMIT
+
+### GenerateManchesterPlans.java
+Creates a MATSim plans file using origin-destination demand data from TfGM's transport model.
+
+### RunSimulation.java
+Runs the simulation. The exampleConfig.xml and exampleVehicles.xml are useful templates for this.
 
 ## Other methods
 ### gis/CreateGrid.java

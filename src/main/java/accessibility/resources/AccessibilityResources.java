@@ -112,23 +112,10 @@ public class AccessibilityResources {
             case "jibe_day":
                 dayOverride = true;
             case "jibe_night":
-                double mcGrad = getMarginalCostOrDefault(mode, resources.Properties.GRADIENT);
-                double mcComfort = getMarginalCostOrDefault(mode, resources.Properties.COMFORT);
-                double mcAmbience = getMarginalCostOrDefault(mode, resources.Properties.AMBIENCE);
-                double mcStress = getMarginalCostOrDefault(mode, resources.Properties.STRESS);
-                td = new JibeDisutility3(mode,tt,dayOverride,mcGrad,mcComfort,mcAmbience,mcStress);
+                td = new JibeDisutility3(mode,tt,dayOverride);
                 break;
             default:
                 throw new RuntimeException("Disutility type " + type + " not recognised for mode " + mode);
-        }
-    }
-
-    private synchronized double getMarginalCostOrDefault(String mode, String type) {
-        String value = properties.getProperty("mc." + type);
-        if(value != null) {
-            return Double.parseDouble(value);
-        } else {
-            return resources.Resources.instance.getMarginalCost(mode,type);
         }
     }
 

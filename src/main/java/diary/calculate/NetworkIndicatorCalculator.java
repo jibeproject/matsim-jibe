@@ -14,7 +14,6 @@ import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.vehicles.Vehicle;
-import routing.disutility.JibeDisutility;
 import trip.Trip;
 
 import java.util.LinkedHashMap;
@@ -82,12 +81,6 @@ public class NetworkIndicatorCalculator implements Runnable {
 
                 // Calculate least cost path
                 LeastCostPathCalculator.Path path = pathCalculator.calcLeastCostPath(nOrig, nDest, trip.getStartTime(), null, vehicle);
-
-                // If JibeDisutility, get marginal costs todo: update this for new Jibe Disutility
-                if(travelDisutility instanceof JibeDisutility) {
-                    results.put("mc_ambience", ((JibeDisutility) travelDisutility).getMarginalCostAmbience_m());
-                    results.put("mc_stress", ((JibeDisutility) travelDisutility).getMarginalCostStress_m());
-                }
 
                 // Set cost and time
                 results.put("cost",path.travelCost);

@@ -15,7 +15,7 @@ import org.opengis.referencing.FactoryException;
 import resources.Resources;
 import routing.Bicycle;
 import routing.disutility.DistanceDisutility;
-import routing.disutility.JibeDisutility;
+import routing.disutility.JibeDisutility3;
 import routing.travelTime.WalkTravelTime;
 import trip.Trip;
 
@@ -78,7 +78,7 @@ public class RunCensusVolumeRouter {
         // Run short and fast routing (for reference)
         calc.calculate(mode + "_short", HOME, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new DistanceDisutility(), tt);
         calc.calculate(mode + "_fast", HOME, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new OnlyTimeDependentTravelDisutility(tt), tt);
-        calc.calculate(mode + "_jibe", HOME, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new JibeDisutility(mode,tt), tt);
+        calc.calculate(mode + "_jibe", HOME, DESTINATION, veh, modeSpecificNetwork, modeSpecificNetwork, new JibeDisutility3(mode,tt,true), tt);
 
 
         // Write results

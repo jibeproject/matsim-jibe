@@ -14,7 +14,7 @@ import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 import resources.Resources;
 import routing.Bicycle;
-import routing.disutility.JibeDisutility;
+import routing.disutility.JibeDisutility3;
 import routing.travelTime.WalkTravelTime;
 
 import java.io.*;
@@ -25,8 +25,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RunNodeDetourCalculator {
 
     public static final Logger log = Logger.getLogger(RunNodeDetourCalculator.class);
-    private final static double MAX_MC_AMBIENCE = 5e-3; // based on avg travel time and rounded up
-    private final static double MAX_MC_STRESS = 5e-3; // based on average travel time and rounded up
+    private final static double MAX_MC_AMBIENCE = 5;
+    private final static double MAX_MC_STRESS = 5;
     private final static int AMBIENCE_SAMPLES = 5;
     private final static int STRESS_SAMPLES = 5;
 
@@ -90,7 +90,7 @@ public class RunNodeDetourCalculator {
             double mcAmbience = intervalAmbience * i;
             for(int j = 0 ; j <= STRESS_SAMPLES ; j++) {
                 double mcStress = intervalStress * j;
-                TravelDisutility td = new JibeDisutility(mode,tt,mcAmbience,mcStress);
+                TravelDisutility td = new JibeDisutility3(mode,tt,true,mcAmbience,mcStress);
 
                 // Run calculation
                 calc = new NodeDetourCalculator();
