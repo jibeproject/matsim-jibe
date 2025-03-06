@@ -70,8 +70,7 @@ public class BicycleLinkSpeedCalculatorDefaultImpl implements BicycleLinkSpeedCa
         return factor;
     }
 
-    // TODO combine this with comfort
-    private double computeSurfaceFactor(Link link) {
+    public double computeSurfaceFactor(Link link) {
         if (hasNotAttribute(link, BicycleUtils.WAY_TYPE)
                 || BicycleUtils.CYCLEWAY.equals(link.getAttributes().getAttribute(BicycleUtils.WAY_TYPE))
                 || hasNotAttribute(link, BicycleUtils.SURFACE)

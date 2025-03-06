@@ -18,10 +18,11 @@ public class RunSkimsPt {
     public static void main(String[] args) throws IOException, FactoryException {
 
         if(args.length != 3) {
-            throw new RuntimeException("Program requires at least 4 arguments: \n" +
-                    "(0) Properties file \n" +
-                    "(1) Zone centroids (.csv) \n" +
-                    "(2) Output file path (.omx)");
+            throw new RuntimeException("""
+                    Program requires at least 3 arguments:\s
+                    (0) Properties file\s
+                    (1) Zone centroids (.csv)\s
+                    (2) Output file path (.omx)""");
         }
 
         Resources.initializeResources(args[0]);

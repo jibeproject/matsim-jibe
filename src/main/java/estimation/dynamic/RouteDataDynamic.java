@@ -4,6 +4,7 @@ import estimation.RouteAttribute;
 import estimation.specifications.AbstractModelSpecification;
 import gis.GisUtils;
 import org.apache.log4j.Logger;
+import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.IdSet;
 import org.matsim.api.core.v01.network.Link;
@@ -14,6 +15,7 @@ import org.matsim.core.router.FastDijkstraFactory;
 import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
+import org.matsim.core.utils.geometry.CoordUtils;
 import org.matsim.core.utils.misc.Counter;
 import org.matsim.vehicles.Vehicle;
 import org.opengis.feature.simple.SimpleFeature;
@@ -34,7 +36,7 @@ import static trip.Place.ORIGIN;
 
 public class RouteDataDynamic implements RouteData, DynamicComponent {
 
-    private final static boolean ENABLE_DYNAMIC_ROUTING = true;
+    private final static boolean ENABLE_DYNAMIC_ROUTING = false;
     private final static Logger logger = Logger.getLogger(RouteDataDynamic.class);
     private final int numberOfThreads;
     final int tripCount;
@@ -161,7 +163,7 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
 
         // Sort inter/intra-zonal trips, and compute fixed results for intrazonal
         pathData = new PathData(trips.length);
-        computeIntrazonalTripData(pathData,trips,u,zones,baseAttributes,network,mode);
+        computeVeryShortTripData(pathData,trips,zones,u,baseAttributes,network,mode);
 
         // Origin and destination nodes
         computeOriginAndDestinationNodes(pathData,trips,network);
@@ -183,7 +185,7 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
     private static void computeOriginAndDestinationNodes(PathData pathData,Trip[] trips,Network network) {
         for (int i = 0; i < trips.length; i++) {
             Trip trip = trips[i];
-            if (!pathData.intrazonal[i]) {
+            if (!pathData.tooShort[i]) {
                 if (trip.routable(ORIGIN, DESTINATION)) {
                     pathData.originNodes[i] = getNode(trip, ORIGIN, network);
                     pathData.destinationNodes[i] = getNode(trip, DESTINATION, network);
@@ -269,17 +271,15 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
     }
 
     private void computeRouteStats() {
-        long startTime = System.currentTimeMillis();
-
         // Detour vs Fastest path
-        double[] detours = IntStream.range(0,tripCount).filter(i -> !(pathData.intrazonal[i]))
+        double[] detours = IntStream.range(0,tripCount).filter(i -> !(pathData.tooShort[i]))
                 .mapToDouble(i -> pathData.path[i].travelTime / initialPath[i].travelTime)
                 .sorted().toArray();
         detourStats = mode.toUpperCase() + " DETOURS: " + getSummaryStats(detours);
         logger.info(detourStats);
 
         // Overlap vs Fastest path
-        double[] overlap = IntStream.range(0,tripCount).filter(i -> !(pathData.intrazonal[i]))
+        double[] overlap = IntStream.range(0,tripCount).filter(i -> !(pathData.tooShort[i]))
                 .mapToDouble(i -> pathData.path[i].links.stream().filter(initialPath[i].links::contains)
                         .mapToDouble(l -> tt.getLinkTravelTime(l,0.,null,null)).sum() / initialPath[i].travelTime)
                 .sorted().toArray();
@@ -304,7 +304,7 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
 
     public static class PathData {
         final int length;
-        final boolean[] intrazonal;
+        final boolean[] tooShort;
         final Node[] originNodes;
         final Node[] destinationNodes;
         final double[] time;
@@ -313,7 +313,7 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
 
         public PathData(int length) {
             this.length = length;
-            this.intrazonal = new boolean[length];
+            this.tooShort = new boolean[length];
             this.originNodes = new Node[length];
             this.destinationNodes = new Node[length];
             this.time = new double[length];
@@ -354,7 +354,7 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
                     return;
                 }
 //                this.counter.incCounter();
-                if(!pathData.intrazonal[i]) {
+                if(!pathData.tooShort[i]) {
                     LeastCostPathCalculator.Path path = lcpCalculators[lcpCalculatorIdx[i]].calcLeastCostPath(pathData.originNodes[i], pathData.destinationNodes[i], 0., null, vehicle);
                     double[] pathAttributes = new double[attributes.size()];
                     for(Link link : path.links) {
@@ -371,9 +371,11 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
         }
     }
 
-    private static void computeIntrazonalTripData(PathData pathData, Trip[] trips, AbstractModelSpecification u,
-                                                  Set<SimpleFeature> zones, List<RouteAttribute> attributes,
-                                                  Network net, String mode) {
+    private static void computeVeryShortTripData(PathData pathData, Trip[] trips, Set<SimpleFeature> zones,
+                                                 AbstractModelSpecification u, List<RouteAttribute> attributes,
+                                                 Network net, String mode) {
+
+        int veryShortTrips = 0;
 
         // Fix average speed (m/s)
         double averageSpeed;
@@ -385,32 +387,57 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
             throw new RuntimeException("Mode " + mode + " not supported!");
         }
 
-        // Determine set of links for each zone
-        Map<SimpleFeature, IdSet<Link>> linksPerFeature = GisUtils.calculateLinksIntersectingZones(zones,net);
-        Map<String,IdSet<Link>> linksPerZone = linksPerFeature.entrySet().stream().collect(Collectors.toMap(e -> ((String) e.getKey().getAttribute("OA11CD")), Map.Entry::getValue));
+        // Determine set of links for each zone (if zone data available)
+        Map<String,IdSet<Link>> linksPerZone = null;
+        if(zones != null) {
+            Map<SimpleFeature, IdSet<Link>> linksPerFeature = GisUtils.calculateLinksIntersectingZones(zones,net);
+            linksPerZone = linksPerFeature.entrySet().stream().collect(Collectors.toMap(e -> ((String) e.getKey().getAttribute("geo_code")), Map.Entry::getValue));
+        }
 
-        // Identify intrazonal trips
-        int intrazonalTripCount = 0;
-
-        // Compute values for intrazonal trips
         for(int i = 0 ; i < trips.length ; i++) {
-            if(trips[i].getZone(Place.ORIGIN).equals(trips[i].getZone(Place.DESTINATION))) {
-                pathData.intrazonal[i] = true;
-                intrazonalTripCount++;
-                double tripLength = u.value(i,"dist");
-                if(tripLength == 0) {
-                    logger.warn("Zero trip distance for household " + trips[i].getHouseholdId() + " person " + trips[i].getPersonId() +
+            String zOrig = trips[i].getZone(ORIGIN);
+            String zDest = trips[i].getZone(DESTINATION);
+            Coord cOrig = trips[i].getCoord(ORIGIN);
+            Coord cDest = trips[i].getCoord(DESTINATION);
+            Link lOrig = NetworkUtils.getNearestLinkExactly(net, cOrig);
+            Link lDest = NetworkUtils.getNearestLinkExactly(net, cDest);
+            Node nOrig = lOrig.getToNode();
+            Node nDest = lDest.getToNode();
+
+            if(nOrig.equals(nDest)) {
+                pathData.tooShort[i] = true;
+                veryShortTrips++;
+
+                // Trip length estimate
+                double tripLength;
+                try {
+                    tripLength = u.value(i,"dist");
+                } catch (NullPointerException e) {
+                    tripLength = CoordUtils.calcEuclideanDistance(cOrig,cDest) * 1.2;
+                }
+                if(tripLength < 50) {
+                    logger.warn("Trip distance under 50m for household " + trips[i].getHouseholdId() + " person " + trips[i].getPersonId() +
                             " trip " + trips[i].getTripId() + "! Setting to 50m");
                     tripLength = 50;
                 }
+
+                // Set of links to use as reference
+                IdSet<Link> refLinks;
+                if(zones != null && zOrig != null && zOrig.equals(zDest)) {
+                    // If zone system available, use this
+                    refLinks = linksPerZone.get(zOrig);
+                } else {
+                    // Otherwise, use nearest link(s)
+                    refLinks = new IdSet<>(Link.class);
+                    refLinks.add(lOrig.getId());
+                    if(!lOrig.equals(lDest)) {
+                        refLinks.add(lDest.getId());
+                    }
+                }
+
                 double totLength = 0;
                 double[] totAttributes = new double[attributes.size()];
-                IdSet<Link> linkIds = linksPerZone.get(trips[i].getZone(ORIGIN));
-                if(linkIds == null) {
-                    throw new RuntimeException("No zone data for intrazonal trip, household " + trips[i].getHouseholdId() +
-                            " person " + trips[i].getPersonId() + " trip " + trips[i].getTripId());
-                }
-                for(Id<Link> linkId : linkIds) {
+                for(Id<Link> linkId : refLinks) {
                     Link link = net.getLinks().get(linkId);
                     double linkLength = link.getLength();
                     totLength += linkLength;
@@ -420,7 +447,7 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
                 }
                 if(tripLength > totLength) {
                     logger.warn("Trip distance for household " + trips[i].getHouseholdId() + " person " + trips[i].getPersonId() + " trip " + trips[i].getTripId() +
-                            " (" + tripLength + "m) exceeds total length of all links intersecting zone " + trips[i].getZone(Place.ORIGIN) + " (" + totLength +
+                            " (" + tripLength + "m) exceeds total length of all reference links " + trips[i].getZone(Place.ORIGIN) + " (" + totLength +
                             "m) . Setting to total length.");
                     tripLength = totLength;
                 }
@@ -433,6 +460,7 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
                 pathData.attributes[i] = totAttributes;
             }
         }
-        logger.info("Identified " + intrazonalTripCount + " intrazonal " + mode + " trips.");
+        logger.info("Identified " + veryShortTrips + " " + mode + " trips which start and end long the same link. Used properties of the nearest link.");
     }
+
 }

@@ -110,7 +110,7 @@ public class LogitData {
         if(colIdx != null) {
             return this.predictors[row][colIdx];
         } else {
-            throw new RuntimeException("Column \"" + col + "\" in utility function but not found in database!");
+            throw new NullPointerException("Column \"" + col + "\" queried but not found in database!");
         }
     }
 }
