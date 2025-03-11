@@ -121,7 +121,7 @@ public class RunSkims {
         // Walk attributes
         List<RouteAttribute> walkAttributes = new ArrayList<>();
         walkAttributes.add(new RouteAttribute("vgvi", l -> Math.max(0.,0.81 - LinkAmbience.getVgviFactor(l))));
-        walkAttributes.add(new RouteAttribute("speed", l -> Math.min(1.,l.getFreespeed() / 22.35)));
+        walkAttributes.add(new RouteAttribute("speed", l -> Math.min(1.,((double) l.getAttributes().getAttribute("speedLimitMPH")) / 50.)));
         walkAttributes.add(new RouteAttribute("stressJct", l -> JctStress.getStressProp(l,TransportMode.walk)));
 
         // Home-based Work (HBW)

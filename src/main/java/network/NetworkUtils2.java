@@ -7,10 +7,7 @@ import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
-import org.matsim.api.core.v01.Coord;
-import org.matsim.api.core.v01.Id;
-import org.matsim.api.core.v01.IdMap;
-import org.matsim.api.core.v01.IdSet;
+import org.matsim.api.core.v01.*;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.NetworkFactory;
@@ -54,7 +51,6 @@ public class NetworkUtils2 {
     public static Network extractModeSpecificNetwork(Network network, String transportMode) {
         Network modeSpecificNetwork = NetworkUtils.createNetwork();
         new TransportModeNetworkFilter(network).filter(modeSpecificNetwork, Collections.singleton(transportMode));
-        NetworkUtils.runNetworkCleaner(modeSpecificNetwork);
         return modeSpecificNetwork;
     }
 
@@ -232,6 +228,14 @@ public class NetworkUtils2 {
             boolean disconnected = false;
             if (link.getAllowedModes().contains(transportMode)) {
                 disconnected = !modeSpecificNetwork.getLinks().containsKey(link.getId());
+                if(disconnected) {
+                    Set<String> allowedModes = new HashSet<>(link.getAllowedModes());
+                    allowedModes.remove(transportMode);
+                    if(transportMode.equals(TransportMode.car)) {
+                        allowedModes.remove(TransportMode.truck);
+                    }
+                    link.setAllowedModes(allowedModes);
+                }
             }
             link.getAttributes().putAttribute("disconnected_" + transportMode, disconnected);
         }

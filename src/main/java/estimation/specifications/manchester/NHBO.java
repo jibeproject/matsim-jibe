@@ -49,9 +49,9 @@ public class NHBO extends MNL_Manchester {
         List<RouteAttribute> walk = new ArrayList<>();
 //        walk.add(new RouteAttribute("g_walk_vgvi", l -> Math.max(0.,0.81 - LinkAmbience.getVgviFactor(l))));
 //        walk.add(new RouteAttribute("g_walk_stressJct", l -> JctStress.getStressProp(l,TransportMode.walk)));
-        walk.add(new RouteAttribute("g_walk_speed", l -> Math.min(1.,l.getFreespeed() / 22.35)));
+        walk.add(new RouteAttribute("g_walk_speed", l -> Math.min(1.,((double) l.getAttributes().getAttribute("speedLimitMPH")) / 50.)));
 //        walk.add(new RouteAttribute("g_walk_aadt", l -> Math.min(1.,((int) l.getAttributes().getAttribute("aadt")) * 0.865/6000.)));
-//        walk.add(new RouteAttribute("g_walk_speed_aadt", l -> Math.min(1.,l.getFreespeed() / 22.35) * Math.min(1.,((int) l.getAttributes().getAttribute("aadt")) * 0.865/6000.)));
+//        walk.add(new RouteAttribute("g_walk_speed_aadt", l -> Math.min(1.,((double) l.getAttributes().getAttribute("speedLimitMPH")) / 50.) * Math.min(1.,((int) l.getAttributes().getAttribute("aadt")) * 0.865/6000.)));
         return walk;
     }
 

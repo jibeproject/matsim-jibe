@@ -50,14 +50,14 @@ public class NHBW extends MNL_Manchester {
 //        bike.add(new BuiltEnvironmentAttribute("grad",l -> Math.max(Math.min(Gradient.getGradient(l),0.5),0.),p -> true));
 //        walk.add(new RouteAttribute("g_walk_vgvi", l -> Math.max(0.,0.81 - LinkAmbience.getVgviFactor(l))));
 //        walk.add(new RouteAttribute("g_walk_stressJct", l -> JctStress.getStressProp(l,TransportMode.walk)));
-//        walk.add(new RouteAttribute("g_walk_speed", l -> Math.min(1.,l.getFreespeed() / 22.35)));
+//        walk.add(new RouteAttribute("g_walk_speed", l -> Math.min(1.,((double) l.getAttributes().getAttribute("speedLimitMPH")) / 50.)));
 //        walk.add(new RouteAttribute("g_walk_speed_c", "g_walk_speed", i -> value(i,"p.age_group_agg_5_14") == 1));
 //        walk.add(new RouteAttribute("g_walk_speed_o", "g_walk_speed", i -> value(i,"p.age_65up") == 1));
 //        walk.add(new RouteAttribute("g_walk_aadt", l -> Math.min(1.,((int) l.getAttributes().getAttribute("aadt")) * 0.865/6000.)));
 //        walk.add(new RouteAttribute("g_walk_aadt_c", "g_walk_aadt", i -> value(i,"p.age_group_agg_5_14") == 1));
 //        walk.add(new RouteAttribute("g_walk_aadt_o", "g_walk_aadt", i -> value(i,"p.age_65up") == 1));
 
-//        walk.add(new RouteAttribute("g_walk_speed_aadt", l -> Math.min(1.,l.getFreespeed() / 22.35) * Math.min(1.,((int) l.getAttributes().getAttribute("aadt")) * 0.865/6000.)));
+//        walk.add(new RouteAttribute("g_walk_speed_aadt", l -> Math.min(1.,((double) l.getAttributes().getAttribute("speedLimitMPH")) / 50.) * Math.min(1.,((int) l.getAttributes().getAttribute("aadt")) * 0.865/6000.)));
         return walk;
     }
 

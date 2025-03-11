@@ -2,7 +2,6 @@ package demand;
 
 import demand.volumes.HourlyVolumeEventHandler;
 import io.ioUtils;
-import network.CreateMatsimNetworkRoad;
 import network.NetworkUtils2;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.network.Link;
@@ -18,7 +17,7 @@ import java.io.PrintWriter;
 
 public class WriteHourlyVolumes {
 
-    private final static Logger log = Logger.getLogger(CreateMatsimNetworkRoad.class);
+    private final static Logger log = Logger.getLogger(WriteHourlyVolumes.class);
 
     public static void main(String[] args) {
 

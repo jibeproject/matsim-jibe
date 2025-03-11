@@ -18,7 +18,7 @@ import org.matsim.api.core.v01.population.*;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
-import org.matsim.core.network.io.MatsimNetworkReader;
+import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
 import org.matsim.core.router.FastDijkstraFactory;
 import org.matsim.core.router.costcalculators.FreespeedTravelTimeAndDisutility;
 import org.matsim.core.router.util.LeastCostPathCalculator;
@@ -34,6 +34,9 @@ import resources.Resources;
 
 import java.io.IOException;
 import java.util.*;
+
+import static org.matsim.api.core.v01.TransportMode.car;
+import static org.matsim.api.core.v01.TransportMode.truck;
 
 public class GenerateManchesterPlans {
     private static final Logger logger = Logger.getLogger(GenerateManchesterPlans.class);
@@ -109,8 +112,9 @@ public class GenerateManchesterPlans {
         this.shapeMap = readShapeFile(zonesFilepath, "HW1075");
 
         // READ NETWORK
+        Network net = NetworkUtils2.readFullNetwork();
         Network vehicleNetwork = NetworkUtils.createNetwork();
-        new MatsimNetworkReader(vehicleNetwork).readFile(Resources.instance.getString(Properties.MATSIM_CAR_NETWORK));
+        new TransportModeNetworkFilter(net).filter(vehicleNetwork, Set.of(car,truck));
 
         // Create relevant networks
         this.internalNetwork = NetworkUtils2.extractXy2LinksNetwork(vehicleNetwork,l -> !((boolean) l.getAttributes().getAttribute("motorway")));

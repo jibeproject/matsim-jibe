@@ -31,7 +31,7 @@ public class CreateConfig {
         config.controler().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
 
         // Specify input network file
-        config.network().setInputFile(Resources.instance.getString(Properties.MATSIM_CAR_NETWORK));
+        config.network().setInputFile(Resources.instance.getString(Properties.MATSIM_ROAD_NETWORK));
 
         // Specify vehicles file
         config.vehicles().setVehiclesFile("/home/corin/IdeaProjects/matsim-jibe/src/main/java/demand/mode-vehicles.xml");

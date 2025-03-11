@@ -16,7 +16,7 @@ The runnable methods are described below.
 
 The relevant inputs, outputs, and parameters are specified in a properties file which is passed in as the first argument to all runnable code. A template for this properties file is located in src/main/java/resources/example.properties. All paths given in this properties file are relative from the working directory which can be specified in each run configuration.
 
-Most code requires the MATSim road network to run. The MATSim road network can be created by running src/main/java/network/CreateMatsimNetworkRoad.java, and it will be saved to the location specified by "matsim.road.network" in the properties file.
+Most code requires the MATSim vehicle/bike/walk network to run. This network can be created with src/main/java/network/CreateMatsimNetwork[area].java, and it will be saved to the location specified by "matsim.road.network" in the properties file.
 
 Some code also requires the PT network, which can be generated using src/main/java/network/CreateMatsimNetworkPt.java.
 
@@ -24,13 +24,17 @@ Some code also requires the PT network, which can be generated using src/main/ja
 
 This package contains tools for creating, converting, and writing the MATSim network
 
-### CreateMatsimNetworkRoad.java
+### CreateMatsimNetworkManchester.java
 
-Creates a MATSim network (.xml) using the edges and nodes .gpkg files.
+Creates the MATSim network for the Greater Manchester study area. Requires nodes and edges files in .gpkg format.
 
-### CreateMatsimNetworkSingleMode.java
+### CreateMatsimNetworkMelbourne.java
 
-Simple method to produce a single-mode matsim network (e.g. a car, walk, or cycle network).
+Creates the MATSim network for the Greater Melbourne study area. Requires nodes and edges files in .gpkg format.
+
+### WriteNetworkXmlSingleMode.java
+
+Writes a single-mode matsim network (e.g. car, walk, or cycle network).
 
 ### CreateMatsimNetworkPt.java
 
@@ -109,10 +113,6 @@ This quicker option is not possible with dynamic updating.
 ## Demand package
 Package for setting up and running MATSim simulation using travel demand data provided by TfGM in OMX format.
 The most important methods are
-
-### CreateVehicleNetwork.java
-Creates a vehicle network for the MATSim simulation, based on the network previously created in network/CreateMatsimNetworkRoad.java.
-The vehicle network uses adapts link freespeed and capacity for the simulation based on calibration work by Mahsa Abdollahyar at RMIT
 
 ### GenerateManchesterPlans.java
 Creates a MATSim plans file using origin-destination demand data from TfGM's transport model.

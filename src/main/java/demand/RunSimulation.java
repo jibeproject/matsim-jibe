@@ -21,7 +21,7 @@ public class RunSimulation {
         Config config = ConfigUtils.loadConfig(Resources.instance.getString(Properties.MATSIM_DEMAND_CONFIG));
 
         // Set network, plans, vehicles
-        config.network().setInputFile(Resources.instance.getString(Properties.MATSIM_CAR_NETWORK));
+        config.network().setInputFile(Resources.instance.getString(Properties.MATSIM_ROAD_NETWORK));
         config.plans().setInputFile(Resources.instance.getString(Properties.MATSIM_DEMAND_PLANS));
         config.vehicles().setVehiclesFile(Resources.instance.getString(Properties.MATSIM_DEMAND_VEHICLES));
 

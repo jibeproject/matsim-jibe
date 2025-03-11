@@ -8,6 +8,7 @@ import org.locationtech.jts.geom.Point;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
+import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.NetworkFactory;
@@ -18,34 +19,22 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.events.EventsManagerImpl;
 import org.matsim.core.events.EventsUtils;
 import org.matsim.core.network.NetworkUtils;
-import org.matsim.core.network.io.NetworkWriter;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.opengis.feature.simple.SimpleFeature;
 import resources.Properties;
 import resources.Resources;
 
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.matsim.api.core.v01.TransportMode.*;
 
-// Script to create a MATSim Road network .xml file using the Edges and Nodes from JIBE WP2
 // Compatible with JIBE Manchester Network v3.13 and Melbourne Network
 
-public class CreateMatsimNetworkRoad {
+public class NetworkGpkgToMatsim {
 
-    private final static Logger log = Logger.getLogger(CreateMatsimNetworkRoad.class);
+    private final static Logger log = Logger.getLogger(NetworkGpkgToMatsim.class);
 
-    public static void main(String[] args) {
-
-        if (args.length != 1) {
-            throw new RuntimeException("Program requires 1 argument: Properties file");
-        }
-
-        Resources.initializeResources(args[0]);
-
-        final String networkFile = Resources.instance.getString(Properties.MATSIM_ROAD_NETWORK);
+    public static Network convertNetwork(boolean includeSimulationResults, List<String> vehicleConnectors) {
 
         // Read nodes and edges
         Map<Integer, SimpleFeature> nodes = GpkgReader.readNodes();
@@ -63,19 +52,27 @@ public class CreateMatsimNetworkRoad {
         // Create network links
         edges.forEach((id,edge) -> addLinkToNetwork(id,edge,net,fac));
 
-        // Add volumes from events file
-        NetworkUtils2.addSimulationVolumes(readSimulationVolumes(),net);
+        // Add volumes from events file and crossing attributes
+        if(includeSimulationResults) {
+            NetworkUtils2.addSimulationVolumes(readSimulationVolumes(),net);
+            NetworkUtils2.addCrossingAttributes(net);
+        }
 
-        // Write crossing attributes
-        NetworkUtils2.addCrossingAttributes(net);
+        // Add vehicle mode connectors
+        if(vehicleConnectors != null) {
+            createVehicleConnectors(net,vehicleConnectors);
+        }
 
-        // Identify disconnected links
+        // Clean network
+        NetworkUtils.runNetworkCleaner(net);
+
+        // Identify disconnected links for each mode
         NetworkUtils2.identifyDisconnectedLinks(net,walk);
         NetworkUtils2.identifyDisconnectedLinks(net,bike);
         NetworkUtils2.identifyDisconnectedLinks(net,car);
 
         // Write network
-        new NetworkWriter(net).write(networkFile);
+        return(net);
     }
 
     private static void addNodeToNetwork(int nodeID, SimpleFeature point, Network net, NetworkFactory fac) {
@@ -331,6 +328,33 @@ public class CreateMatsimNetworkRoad {
             if(!l2.getAllowedModes().isEmpty()) {
                 net.addLink(l2);
             }
+        }
+    }
+
+    public static void createVehicleConnectors(Network net, List<String> linksToConnect) {
+        NetworkFactory fac = net.getFactory();
+
+        for(int i = 0 ; i < linksToConnect.size() ; i += 2) {
+            Link linkOut = net.getLinks().get(Id.createLinkId(linksToConnect.get(i)));
+            Link linkIn = net.getLinks().get(Id.createLinkId(linksToConnect.get(i+1)));
+
+            Node fromNode = linkOut.getToNode();
+            Node toNode = linkIn.getFromNode();
+
+            Link connector = fac.createLink(Id.createLinkId(linksToConnect.get(i) + "_" + linksToConnect.get(i+1)),linkOut.getToNode(),linkIn.getFromNode());
+            connector.setLength(NetworkUtils.getEuclideanDistance(fromNode.getCoord(),toNode.getCoord()));
+            connector.setFreespeed(Math.max(linkIn.getFreespeed(),linkOut.getFreespeed()));
+            connector.setCapacity(Math.max(linkIn.getCapacity(),linkOut.getCapacity()));
+            connector.setNumberOfLanes(Math.max(linkIn.getNumberOfLanes(),linkOut.getNumberOfLanes()));
+            connector.getAttributes().putAttribute("motorway",true);
+            connector.getAttributes().putAttribute("trunk",true);
+            connector.getAttributes().putAttribute("primary",true);
+            connector.getAttributes().putAttribute("urban",false);
+            connector.getAttributes().putAttribute("fwd",true);
+            connector.getAttributes().putAttribute("edgeID",-1);
+            connector.setAllowedModes(Set.of(TransportMode.car,TransportMode.truck));
+
+            net.addLink(connector);
         }
     }
 
