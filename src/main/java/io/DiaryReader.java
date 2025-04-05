@@ -26,6 +26,10 @@ public class DiaryReader {
     private final static Logger logger = Logger.getLogger(DiaryReader.class);
 
     public static Set<Trip> readTrips(Geometry geometry) throws IOException {
+        return readTrips(geometry,null);
+    }
+
+    public static Set<Trip> readTrips(Geometry geometry, DiaryRecordTester tester) throws IOException {
         Set<Trip> trips = new LinkedHashSet<>();
         String recString;
         Counter counter = new Counter("Processed " + "travel diary records.");
@@ -73,6 +77,12 @@ public class DiaryReader {
             String householdId = lineElements[posHouseholdId];
             int personId = Integer.parseInt(lineElements[posPersonId]);
             int tripId = Integer.parseInt(lineElements[posTripId]);
+
+            if(tester != null) {
+                if(!tester.test(householdId,personId,tripId)) {
+                    continue;
+                }
+            }
 
             // Read start time if available, otherwise assume 8am
             int startTime;
@@ -173,6 +183,12 @@ public class DiaryReader {
         return trips;
     }
 
+    public interface DiaryRecordTester {
+
+        boolean test(String hhid, int persid, int tripid);
+
+    }
+
     private static int findPositionInArray (String property, String[] array) {
         String string = Resources.instance.getString(property);
         if (string == null) {
@@ -194,59 +210,45 @@ public class DiaryReader {
     }
 
     private static String getTransportMode(String mode) {
-        switch(mode) {
-            case "Walk":
-            case "Walking":
-                return TransportMode.walk;
-            case "Bicycle":
-                return TransportMode.bike;
-            case "Motorcycle":
-            case "Motorcycle, scooter, moped":
-                return TransportMode.motorcycle;
-            case "Car or van driver":
-            case "Vehicle Driver":
-                return TransportMode.car;
-            case "Train":
-            case "2+ Train":
-                return TransportMode.train;
-            case "Taxi":
-            case "Taxi, minicab":
-                return TransportMode.taxi;
-            case "Public Bus":
-            case "School Bus":
-            case "Tram":
-                return TransportMode.pt;
-            default:
-                return TransportMode.other;
-        }
+        return switch (mode) {
+            case "Walk", "Walking" -> TransportMode.walk;
+            case "Bicycle" -> TransportMode.bike;
+            case "Motorcycle", "Motorcycle, scooter, moped" -> TransportMode.motorcycle;
+            case "Car or van driver", "Vehicle Driver" -> TransportMode.car;
+            case "Train", "2+ Train" -> TransportMode.train;
+            case "Taxi", "Taxi, minicab" -> TransportMode.taxi;
+            case "Public Bus", "School Bus", "Tram" -> TransportMode.pt;
+            default -> TransportMode.other;
+        };
     }
 
     // todo: generalise to also work for melbourne
     private static Purpose getPurpose(String purpose) {
-        switch(purpose) {
-            case "Home": return HOME;
-            case "Usual place of work": return WORK;
-            case "Education as pupil, student": return EDUCATION;
-            case "Visit friends or relatives": return VISIT_FRIENDS_OR_FAMILY;
-            case "Shopping Food": return SHOPPING_FOOD;
-            case "Shopping Non food": return SHOPPING_NON_FOOD;
-            case "Escorting to place of work, pick-up, drop-off": return ESCORT_WORK;
-            case "Escorting to place of education, pick-up, drop-off": return ESCORT_EDUCATION;
-            case "Childcare  taking or collecting child to or from babysitter, nursery etc": return ESCORT_CHILDCARE;
-            case "Accompanying or giving lift to other person, not school, or work": return ESCORT_OTHER;
-            case "Use Services, Personal Business, bank, hairdresser, library etc": return PERSONAL_BUSINESS;
-            case "Health or medical visit": return MEDICAL;
-            case "Social - Entertainment, recreation, Participate in sport, pub, restaurant": return SOCIAL;
-            case "Work - Business, other": return BUSINESS_TRIP;
-            case "Moving people or goods in connection with employment": return BUSINESS_TRANSPORT;
-            case "Worship or religious observance": return WORSHIP;
-            case "Round trip walk, cycle, drive for enjoyment": return RECREATIONAL_ROUND_TRIP;
-            case "Unpaid, voluntary work": return VOLUNTEERING;
-            case "Tourism, sightseeing": return TOURISM;
-            case "Staying at hotel or other temporary accommodation": return TEMPORARY_ACCOMMODATION;
-            case "Other": return OTHER;
-            case "NR": return NO_RESPONSE;
-            default: throw new RuntimeException("Purpose " + purpose + " not accounted for! Please update list of purposes");
-        }
+        return switch (purpose) {
+            case "Home" -> HOME;
+            case "Usual place of work" -> WORK;
+            case "Education as pupil, student" -> EDUCATION;
+            case "Visit friends or relatives" -> VISIT_FRIENDS_OR_FAMILY;
+            case "Shopping Food" -> SHOPPING_FOOD;
+            case "Shopping Non food" -> SHOPPING_NON_FOOD;
+            case "Escorting to place of work, pick-up, drop-off" -> ESCORT_WORK;
+            case "Escorting to place of education, pick-up, drop-off" -> ESCORT_EDUCATION;
+            case "Childcare  taking or collecting child to or from babysitter, nursery etc" -> ESCORT_CHILDCARE;
+            case "Accompanying or giving lift to other person, not school, or work" -> ESCORT_OTHER;
+            case "Use Services, Personal Business, bank, hairdresser, library etc" -> PERSONAL_BUSINESS;
+            case "Health or medical visit" -> MEDICAL;
+            case "Social - Entertainment, recreation, Participate in sport, pub, restaurant" -> SOCIAL;
+            case "Work - Business, other" -> BUSINESS_TRIP;
+            case "Moving people or goods in connection with employment" -> BUSINESS_TRANSPORT;
+            case "Worship or religious observance" -> WORSHIP;
+            case "Round trip walk, cycle, drive for enjoyment" -> RECREATIONAL_ROUND_TRIP;
+            case "Unpaid, voluntary work" -> VOLUNTEERING;
+            case "Tourism, sightseeing" -> TOURISM;
+            case "Staying at hotel or other temporary accommodation" -> TEMPORARY_ACCOMMODATION;
+            case "Other" -> OTHER;
+            case "NR" -> NO_RESPONSE;
+            default ->
+                    throw new RuntimeException("Purpose " + purpose + " not accounted for! Please update list of purposes");
+        };
     }
 }

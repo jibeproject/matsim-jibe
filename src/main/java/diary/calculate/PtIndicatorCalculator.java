@@ -56,7 +56,7 @@ public class PtIndicatorCalculator implements Runnable {
                 Coord cOrig = trip.getCoord(origin);
                 Coord cDest = trip.getCoord(destination);
 
-                int departureTime = trip.getStartTime();
+                int departureTime = trip.getStartTime() % 86400;
                 int earliestDepartureTime = Math.max(departureTime - 900, 0);
                 int latestDepartureTime = Math.min(departureTime + 900, 86399);
 

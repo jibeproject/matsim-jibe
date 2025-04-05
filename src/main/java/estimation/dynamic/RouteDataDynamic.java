@@ -36,7 +36,7 @@ import static trip.Place.ORIGIN;
 
 public class RouteDataDynamic implements RouteData, DynamicComponent {
 
-    private final static boolean ENABLE_DYNAMIC_ROUTING = false;
+    private final static boolean ENABLE_DYNAMIC_ROUTING = true;
     private final static Logger logger = Logger.getLogger(RouteDataDynamic.class);
     private final int numberOfThreads;
     final int tripCount;
@@ -197,7 +197,7 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
         }
     }
     private static Node getNode(Trip trip, Place place, Network net) {
-        if(trip.getZone(place).equals("E00030420")) {
+        if("E00030420".equals(trip.getZone(place))) {
             return net.getNodes().get(Id.createNodeId(173563));
         } else {
             return net.getNodes().get(NetworkUtils.getNearestLinkExactly(net, trip.getCoord(place)).getToNode().getId());
@@ -246,7 +246,7 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
             disutilitities[k] = new JibeDisutility4(network, vehicle, mode, tt, baseAttributes, weights);
         }
 
-        // Setup miltithreaded...
+        // Setup multithreaded...
         Thread[] threads = new Thread[numberOfThreads];
         Counter counter = new Counter("Routed ", " / " + tripCount + " trips.");
         ConcurrentLinkedQueue<Integer> tripsQueue = IntStream.range(0, tripCount).boxed().collect(Collectors.toCollection(ConcurrentLinkedQueue::new));
@@ -415,10 +415,10 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
                 } catch (NullPointerException e) {
                     tripLength = CoordUtils.calcEuclideanDistance(cOrig,cDest) * 1.2;
                 }
-                if(tripLength < 50) {
-                    logger.warn("Trip distance under 50m for household " + trips[i].getHouseholdId() + " person " + trips[i].getPersonId() +
-                            " trip " + trips[i].getTripId() + "! Setting to 50m");
-                    tripLength = 50;
+                if(tripLength < 10) {
+                    logger.warn("Trip distance under 10m for household " + trips[i].getHouseholdId() + " person " + trips[i].getPersonId() +
+                            " trip " + trips[i].getTripId() + "! Setting to 10m");
+                    tripLength = 10;
                 }
 
                 // Set of links to use as reference
