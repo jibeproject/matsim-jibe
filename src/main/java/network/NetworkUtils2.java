@@ -224,6 +224,7 @@ public class NetworkUtils2 {
 
     public static void identifyDisconnectedLinks(Network network, String transportMode) {
         Network modeSpecificNetwork = extractModeSpecificNetwork(network, transportMode);
+        NetworkUtils.runNetworkCleaner(modeSpecificNetwork);
         for(Link link : network.getLinks().values()) {
             boolean disconnected = false;
             if (link.getAllowedModes().contains(transportMode)) {

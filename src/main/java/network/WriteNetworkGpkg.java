@@ -113,9 +113,9 @@ public class WriteNetworkGpkg {
         builder.add("trunk",Boolean.class);
         builder.add("primary",Boolean.class);
         builder.add("dismount",Boolean.class);
-//        builder.add("disconnected_car",Boolean.class);
-//        builder.add("disconnected_bike",Boolean.class);
-//        builder.add("disconnected_walk",Boolean.class);
+        builder.add("disconnected_car",Boolean.class);
+        builder.add("disconnected_bike",Boolean.class);
+        builder.add("disconnected_walk",Boolean.class);
         builder.add("gradient",Double.class);
         builder.add("bikeProtectionType",String.class);
         builder.add("endsAtJct",Boolean.class);
@@ -196,96 +196,97 @@ public class WriteNetworkGpkg {
                 log.info("Processing link " + counter + " / " + network.getLinks().size());
             }
             int edgeID = (int) link.getAttributes().getAttribute("edgeID");
-            boolean fwd = (boolean) link.getAttributes().getAttribute("fwd");
-            Coord fromNode = link.getFromNode().getCoord();
-            Coord toNode = link.getToNode().getCoord();
-            SimpleFeature edge = edges.get(edgeID);
-            Coordinate[] coords = new Coordinate[0];
-            try {
-                coords = ((LineString) edge.getDefaultGeometry()).getCoordinates().clone();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            if(edgeID != -1) {
+                boolean fwd = (boolean) link.getAttributes().getAttribute("fwd");
+                Coord fromNode = link.getFromNode().getCoord();
+                Coord toNode = link.getToNode().getCoord();
+                SimpleFeature edge = edges.get(edgeID);
+                Coordinate[] coords = new Coordinate[0];
+                try {
+                    coords = ((LineString) edge.getDefaultGeometry()).getCoordinates().clone();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
 
-            // Check direction matches from/to node and reverse if necessary
-            Coordinate fromCoord = coords[0];
-            Coordinate toCoord = coords[coords.length - 1];
-            Coordinate fromNodeCoord = new Coordinate(fromNode.getX(),fromNode.getY());
-            Coordinate toNodeCoord = new Coordinate(toNode.getX(),toNode.getY());
-            if ((fwd && fromCoord.equals2D(fromNodeCoord) && toCoord.equals2D(toNodeCoord)) ||
-                    (!fwd && fromCoord.equals2D(toNodeCoord) && toCoord.equals2D(fromNodeCoord))) {
-                forwardLinks++;
-            } else if ((fwd && fromCoord.equals2D(toNodeCoord) && toCoord.equals2D(fromNodeCoord)) ||
-                    (!fwd && fromCoord.equals2D(fromNodeCoord) && toCoord.equals2D(toNodeCoord))) {
-                backwardLinks++;
-                ArrayUtils.reverse(coords);
-            } else {
-                log.warn("ERROR! Edge " + edgeID + " doesn't match its from and to nodes! Skipping this link...");
-                continue;
-            }
+                // Check direction matches from/to node and reverse if necessary
+                Coordinate fromCoord = coords[0];
+                Coordinate toCoord = coords[coords.length - 1];
+                Coordinate fromNodeCoord = new Coordinate(fromNode.getX(), fromNode.getY());
+                Coordinate toNodeCoord = new Coordinate(toNode.getX(), toNode.getY());
+                if ((fwd && fromCoord.equals2D(fromNodeCoord) && toCoord.equals2D(toNodeCoord)) ||
+                        (!fwd && fromCoord.equals2D(toNodeCoord) && toCoord.equals2D(fromNodeCoord))) {
+                    forwardLinks++;
+                } else if ((fwd && fromCoord.equals2D(toNodeCoord) && toCoord.equals2D(fromNodeCoord)) ||
+                        (!fwd && fromCoord.equals2D(fromNodeCoord) && toCoord.equals2D(toNodeCoord))) {
+                    backwardLinks++;
+                    ArrayUtils.reverse(coords);
+                } else {
+                    log.warn("ERROR! Edge " + edgeID + " doesn't match its from and to nodes! Skipping this link...");
+                    continue;
+                }
 
-            // Length, travelTime, travelDisutility
-            double length = link.getLength();
-            double cycleTime = ttBike.getLinkTravelTime(link,0,null,bike);
-            double walkTime = ttWalk.getLinkTravelTime(link,0,null,null);
+                // Length, travelTime, travelDisutility
+                double length = link.getLength();
+                double cycleTime = ttBike.getLinkTravelTime(link, 0, null, bike);
+                double walkTime = ttWalk.getLinkTravelTime(link, 0, null, null);
 
-            // Reverse if not in forward direction
-            if(!fwd) {
-                ArrayUtils.reverse(coords);
-            }
+                // Reverse if not in forward direction
+                if (!fwd) {
+                    ArrayUtils.reverse(coords);
+                }
 
-            // Allows certain modes
-            boolean allowsCar = link.getAllowedModes().contains(TransportMode.car);
-            boolean allowsBike = link.getAllowedModes().contains(TransportMode.bike);
-            boolean allowsWalk = link.getAllowedModes().contains(TransportMode.walk);
+                // Allows certain modes
+                boolean allowsCar = link.getAllowedModes().contains(TransportMode.car);
+                boolean allowsBike = link.getAllowedModes().contains(TransportMode.bike);
+                boolean allowsWalk = link.getAllowedModes().contains(TransportMode.walk);
 
-            // Geometry
-            featureBuilder.add(geometryFactory.createLineString(coords));
+                // Geometry
+                featureBuilder.add(geometryFactory.createLineString(coords));
 
-            // Other attributes
-            featureBuilder.add(edgeID);
-            featureBuilder.add(link.getAttributes().getAttribute("osmID"));
-            featureBuilder.add(link.getAttributes().getAttribute("name"));
-            featureBuilder.add(link.getId().toString());
-            featureBuilder.add(fwd);
-            featureBuilder.add(length);
-            featureBuilder.add(cycleTime);
-            featureBuilder.add(walkTime);
-            featureBuilder.add(link.getFreespeed());
-            featureBuilder.add(link.getAttributes().getAttribute("speedLimitMPH"));
-            featureBuilder.add(link.getAttributes().getAttribute("veh85percSpeedKPH"));
+                // Other attributes
+                featureBuilder.add(edgeID);
+                featureBuilder.add(link.getAttributes().getAttribute("osmID"));
+                featureBuilder.add(link.getAttributes().getAttribute("name"));
+                featureBuilder.add(link.getId().toString());
+                featureBuilder.add(fwd);
+                featureBuilder.add(length);
+                featureBuilder.add(cycleTime);
+                featureBuilder.add(walkTime);
+                featureBuilder.add(link.getFreespeed());
+                featureBuilder.add(link.getAttributes().getAttribute("speedLimitMPH"));
+                featureBuilder.add(link.getAttributes().getAttribute("veh85percSpeedKPH"));
 //            featureBuilder.add(bikeMarginalDisutilitiesDay.get(link.getId()));
 //            featureBuilder.add(bikeMarginalDisutilitiesNight.get(link.getId()));
 //            featureBuilder.add(walkMarginalDisutilitiesDay.get(link.getId()));
 //            featureBuilder.add(walkMarginalDisutilitiesNight.get(link.getId()));
-            featureBuilder.add(link.getAttributes().getAttribute("width"));
-            featureBuilder.add((int) link.getNumberOfLanes());
-            featureBuilder.add(link.getAttributes().getAttribute("aadt"));
-            featureBuilder.add(link.getAttributes().getAttribute("aadtFwd"));
-            featureBuilder.add(link.getAttributes().getAttribute("aadtFwd_car"));
-            featureBuilder.add(link.getAttributes().getAttribute("aadtFwd_truck"));
-            featureBuilder.add(allowsCar);
-            featureBuilder.add(allowsBike);
-            featureBuilder.add(allowsWalk);
-            featureBuilder.add(link.getAttributes().getAttribute("motorway"));
-            featureBuilder.add(link.getAttributes().getAttribute("trunk"));
-            featureBuilder.add(link.getAttributes().getAttribute("primary"));
-            featureBuilder.add(link.getAttributes().getAttribute("dismount"));
-//            featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.car));
-//            featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.bike));
-//            featureBuilder.add(link.getAttributes().getAttribute("disconnected_"+ TransportMode.walk));
-            featureBuilder.add(Gradient.getGradient(link));
-            featureBuilder.add((allowsBike || allowsWalk) ? Protection.getType(link).toString() : "null");
-            featureBuilder.add(link.getAttributes().getAttribute("endsAtJct"));
-            featureBuilder.add(link.getAttributes().getAttribute("crossVehicles"));
-            featureBuilder.add(Crossing.getType(link,"bike").toString());
-            featureBuilder.add(Crossing.getType(link,"walk").toString());
-            featureBuilder.add(link.getAttributes().getAttribute("crossLanes"));
-            featureBuilder.add(link.getAttributes().getAttribute("crossWidth"));
-            featureBuilder.add(link.getAttributes().getAttribute("crossAadt"));
-            featureBuilder.add(link.getAttributes().getAttribute("crossSpeedLimitMPH"));
-            featureBuilder.add(link.getAttributes().getAttribute("cross85PercSpeed"));
-            featureBuilder.add(link.getAttributes().getAttribute("vgvi"));
+                featureBuilder.add(link.getAttributes().getAttribute("width"));
+                featureBuilder.add((int) link.getNumberOfLanes());
+                featureBuilder.add(link.getAttributes().getAttribute("aadt"));
+                featureBuilder.add(link.getAttributes().getAttribute("aadtFwd"));
+                featureBuilder.add(link.getAttributes().getAttribute("aadtFwd_car"));
+                featureBuilder.add(link.getAttributes().getAttribute("aadtFwd_truck"));
+                featureBuilder.add(allowsCar);
+                featureBuilder.add(allowsBike);
+                featureBuilder.add(allowsWalk);
+                featureBuilder.add(link.getAttributes().getAttribute("motorway"));
+                featureBuilder.add(link.getAttributes().getAttribute("trunk"));
+                featureBuilder.add(link.getAttributes().getAttribute("primary"));
+                featureBuilder.add(link.getAttributes().getAttribute("dismount"));
+                featureBuilder.add(link.getAttributes().getAttribute("disconnected_" + TransportMode.car));
+                featureBuilder.add(link.getAttributes().getAttribute("disconnected_" + TransportMode.bike));
+                featureBuilder.add(link.getAttributes().getAttribute("disconnected_" + TransportMode.walk));
+                featureBuilder.add(Gradient.getGradient(link));
+                featureBuilder.add((allowsBike || allowsWalk) ? Protection.getType(link).toString() : "null");
+                featureBuilder.add(link.getAttributes().getAttribute("endsAtJct"));
+                featureBuilder.add(link.getAttributes().getAttribute("crossVehicles"));
+                featureBuilder.add(Crossing.getType(link, "bike").toString());
+                featureBuilder.add(Crossing.getType(link, "walk").toString());
+                featureBuilder.add(link.getAttributes().getAttribute("crossLanes"));
+                featureBuilder.add(link.getAttributes().getAttribute("crossWidth"));
+                featureBuilder.add(link.getAttributes().getAttribute("crossAadt"));
+                featureBuilder.add(link.getAttributes().getAttribute("crossSpeedLimitMPH"));
+                featureBuilder.add(link.getAttributes().getAttribute("cross85PercSpeed"));
+                featureBuilder.add(link.getAttributes().getAttribute("vgvi"));
 //            featureBuilder.add(link.getAttributes().getAttribute("shannon"));
 //            featureBuilder.add(link.getAttributes().getAttribute("POIs"));
 //            featureBuilder.add(link.getAttributes().getAttribute("negPOIs"));
@@ -297,17 +298,18 @@ public class WriteNetworkGpkg {
 //            featureBuilder.add(LinkAmbience.getCrimeFactor(link));
 //            featureBuilder.add(LinkAmbience.getPoiFactor(link));
 //            featureBuilder.add(LinkAmbience.getNegativePoiFactor(link));
-            featureBuilder.add(link.getAttributes().getAttribute("hgvPOIs"));
+                featureBuilder.add(link.getAttributes().getAttribute("hgvPOIs"));
 //            featureBuilder.add(LinkAmbience.getDayAmbience(link));
 //            featureBuilder.add(LinkAmbience.getNightAmbience(link));
-            featureBuilder.add(allowsBike ? LinkStressDiscrete.getCycleStress(link).toString() : "null");
-            featureBuilder.add(LinkStress.getStress(link, TransportMode.bike));
-            featureBuilder.add(JctStress.getStress(link,TransportMode.bike));
+                featureBuilder.add(allowsBike ? LinkStressDiscrete.getCycleStress(link).toString() : "null");
+                featureBuilder.add(LinkStress.getStress(link, TransportMode.bike));
+                featureBuilder.add(JctStress.getStress(link, TransportMode.bike));
 //            featureBuilder.add(LinkStress.getStress(link,TransportMode.walk));
-            featureBuilder.add(JctStress.getStress(link,TransportMode.walk));
-            featureBuilder.add(JctStress.getStressProp(link,TransportMode.walk));
-            SimpleFeature feature = featureBuilder.buildFeature(null);
-            collection.add(feature);
+                featureBuilder.add(JctStress.getStress(link, TransportMode.walk));
+                featureBuilder.add(JctStress.getStressProp(link, TransportMode.walk));
+                SimpleFeature feature = featureBuilder.buildFeature(null);
+                collection.add(feature);
+            }
         }
 
         log.info(forwardLinks + " edges in the correct direction");
