@@ -28,25 +28,27 @@ import routing.Bicycle;
 import routing.Gradient;
 import routing.disutility.DistanceDisutility;
 import routing.disutility.JibeDisutility4;
-import routing.disutility.components.JctStress;
 import routing.disutility.components.LinkAmbience;
 import routing.disutility.components.LinkStress;
 import routing.travelTime.WalkTravelTime;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
-public class RunSkims {
+public class RunSkimsMelbourne {
 
     public static void main(String[] args) throws IOException, FactoryException {
 
         if(args.length != 4) {
-            throw new RuntimeException("Program requires 4 arguments: \n" +
-                    "(0) Properties file \n" +
-                    "(1) Zone geometries (.gpkg) \n" +
-                    "(2) Zone ID attribute \n" +
-                    "(4) File path prefix");
+            throw new RuntimeException("""
+                    Program requires 4 arguments:\s
+                    (0) Properties file\s
+                    (1) Zone geometries (.gpkg)\s
+                    (2) Zone ID attribute\s
+                    (4) File path prefix""");
         }
 
         Resources.initializeResources(args[0]);
@@ -122,12 +124,11 @@ public class RunSkims {
         List<RouteAttribute> walkAttributes = new ArrayList<>();
         walkAttributes.add(new RouteAttribute("vgvi", l -> Math.max(0.,0.81 - LinkAmbience.getVgviFactor(l))));
         walkAttributes.add(new RouteAttribute("speed", l -> Math.min(1.,((double) l.getAttributes().getAttribute("speedLimitMPH")) / 50.)));
-        walkAttributes.add(new RouteAttribute("stressJct", l -> JctStress.getStressProp(l,TransportMode.walk)));
 
         // Home-based Work (HBW)
-        TravelDisutility tdBikeHBW = new JibeDisutility4(networkBike,bike,"bike",ttBike,bikeAttributes, new double[] {35.9032908,2.3084587});
-        TravelDisutility tdBikeHBW_f = new JibeDisutility4(networkBike,bike,"bike",ttBike,bikeAttributes, new double[] {35.9032908,2.3084587 + 2.7762033});
-        TravelDisutility tdWalkHBW = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0.3307472,0,4.9887390});
+        TravelDisutility tdBikeHBW = new JibeDisutility4(networkBike,bike,"bike",ttBike,bikeAttributes, new double[] {0, 1.1705777});
+        TravelDisutility tdBikeHBW_f = new JibeDisutility4(networkBike,bike,"bike",ttBike,bikeAttributes, new double[] {0, 1.1705777 + 1.3119864});
+        TravelDisutility tdWalkHBW = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0, 2.2560371});
         calc.calculate("bike",networkBike,networkBike,ttBike,tdBikeHBW,bike);
         calc.calculate("bike_female",networkBike,networkBike,ttBike,tdBikeHBW_f,bike);
         calc.calculate("walk",networkWalk,networkWalk,ttWalk,tdWalkHBW,null);
@@ -135,35 +136,53 @@ public class RunSkims {
         calc.clearResults();
 
         // Home-based Education (HBE)
-        TravelDisutility tdBikeHBE = new JibeDisutility4(networkBike,bike,"bike",ttBike,bikeAttributes, new double[] {0,4.3075357});
-        TravelDisutility tdWalkHBE = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0,0,1.0037846});
+        TravelDisutility tdBikeHBE = new JibeDisutility4(networkBike,bike,"bike",ttBike,bikeAttributes, new double[] {65.8455067, 2.6375670});
+        TravelDisutility tdWalkHBE = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0, 0.8270912});
         calc.calculate("bike",networkBike,networkBike,ttBike,tdBikeHBE,bike);
         calc.calculate("walk",networkWalk,networkWalk,ttWalk,tdWalkHBE,null);
         OmxWriter.createOmxSkimMatrix(filePathPrefix + "HBE.omx",calc.getResults(),calc.getId2index());
         calc.clearResults();
 
-        // Home-based Discretionary (HBD)
-        TravelDisutility tdBikeHBD = new JibeDisutility4(networkBike,bike,"bike",ttBike,bikeAttributes, new double[] {57.0135325,1.2411983});
-        TravelDisutility tdBikeHBD_c = new JibeDisutility4(networkBike,bike,"bike",ttBike,bikeAttributes, new double[] {57.0135325,1.2411983 + 6.4243251});
-        TravelDisutility tdWalkHBD = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0.7789561,0.4479527,5.8219067});
-        TravelDisutility tdWalkHBD_c = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0.7789561,0.4479527 + 2.0418898,5.8219067});
-        TravelDisutility tdWalkHBD_o = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0.7789561,0.4479527 + 0.3715017,5.8219067});
-        calc.calculate("bike",networkBike,networkBike,ttBike,tdBikeHBD,bike);
-        calc.calculate("bike_child",networkBike,networkBike,ttBike,tdBikeHBD_c,bike);
-        calc.calculate("walk",networkWalk,networkWalk,ttWalk,tdWalkHBD,null);
-        calc.calculate("walk_child",networkWalk,networkWalk,ttWalk,tdWalkHBD_c,null);
-        calc.calculate("walk_elderly",networkWalk,networkWalk,ttWalk,tdWalkHBD_o,null);
-        OmxWriter.createOmxSkimMatrix(filePathPrefix + "HBD.omx",calc.getResults(),calc.getId2index());
+        // Home-based recreation (HBR)
+        TravelDisutility tdBikeHBR = new JibeDisutility4(networkBike,bike,"bike",ttBike,bikeAttributes, new double[] {8.7270880, 0});
+        TravelDisutility tdBikeHBR_f = new JibeDisutility4(networkBike,bike,"bike",ttBike,bikeAttributes, new double[] {8.7270880 + 23.5710917, 0 + 1.7298508});
+        TravelDisutility tdBikeHBR_c = new JibeDisutility4(networkBike,bike,"bike",ttBike,bikeAttributes, new double[] {8.7270880 + 51.9352371, 0 + 4.6070250});
+        TravelDisutility tdWalkHBR = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0.6866997, 0.6779886});
+        TravelDisutility tdWalkHBR_c = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0.6866997, 0.6779886 + 1.0379374});
+        calc.calculate("bike",networkBike,networkBike,ttBike,tdBikeHBR,bike);
+        calc.calculate("bike_female",networkBike,networkBike,ttBike,tdBikeHBR_f,bike);
+        calc.calculate("bike_child",networkBike,networkBike,ttBike,tdBikeHBR_c,bike);
+        calc.calculate("walk",networkWalk,networkWalk,ttWalk,tdWalkHBR,null);
+        calc.calculate("walk_child",networkWalk,networkWalk,ttWalk,tdWalkHBR_c,null);
+        OmxWriter.createOmxSkimMatrix(filePathPrefix + "HBR.omx",calc.getResults(),calc.getId2index());
+        calc.clearResults();
+
+        // Home-based Shop & Other (HBSO)
+        TravelDisutility tdBikeHBSO = new JibeDisutility4(networkBike,bike,"bike",ttBike,bikeAttributes, new double[] {331.2382835, 11.4359257});
+        TravelDisutility tdWalkHBSO = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0, 0.3421390});
+        calc.calculate("bike",networkBike,networkBike,ttBike,tdBikeHBSO,bike);
+        calc.calculate("walk",networkWalk,networkWalk,ttWalk,tdWalkHBSO,null);
+        OmxWriter.createOmxSkimMatrix(filePathPrefix + "HBSO.omx",calc.getResults(),calc.getId2index());
         calc.clearResults();
 
         // Home-based Accompany (HBA)
-        TravelDisutility tdWalkHBA = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0.6908324,0,0});
-        calc.calculate("walk",networkWalk,networkWalk,ttWalk,tdWalkHBA,null);
+        TravelDisutility tdBikeHBA = new JibeDisutility4(networkBike,bike,"bike",ttBike,bikeAttributes, new double[] {21.4115565, 0});
+        calc.calculate("bike",networkBike,networkBike,ttBike,tdBikeHBA,bike);
         OmxWriter.createOmxSkimMatrix(filePathPrefix + "HBA.omx",calc.getResults(),calc.getId2index());
         calc.clearResults();
 
+        // Home-based Shop & Other (NHBW)
+        TravelDisutility tdBikeNHBW = new JibeDisutility4(networkBike,bike,"bike",ttBike,bikeAttributes, new double[] {0, 3.9477647});
+        TravelDisutility tdWalkNHBW = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0, 4.3210968});
+        calc.calculate("bike",networkBike,networkBike,ttBike,tdBikeNHBW,bike);
+        calc.calculate("walk",networkWalk,networkWalk,ttWalk,tdWalkNHBW,null);
+        OmxWriter.createOmxSkimMatrix(filePathPrefix + "NHBW.omx",calc.getResults(),calc.getId2index());
+        calc.clearResults();
+
         // Non home-based other (NHBO)
-        TravelDisutility tdWalkNHBO = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0,3.4485883,0});
+        TravelDisutility tdBikeNHBO = new JibeDisutility4(networkBike,bike,"bike",ttBike,bikeAttributes, new double[] {0, 2.6660050});
+        TravelDisutility tdWalkNHBO = new JibeDisutility4(networkWalk,null,"walk",ttWalk,walkAttributes, new double[] {0, 5.7158683});
+        calc.calculate("bike",networkBike,networkBike,ttBike,tdBikeNHBO,bike);
         calc.calculate("walk",networkWalk,networkWalk,ttWalk,tdWalkNHBO,null);
         OmxWriter.createOmxSkimMatrix(filePathPrefix + "NHBO.omx",calc.getResults(),calc.getId2index());
         calc.clearResults();
