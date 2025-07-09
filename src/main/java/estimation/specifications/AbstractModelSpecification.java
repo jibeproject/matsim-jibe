@@ -15,6 +15,7 @@ public abstract class AbstractModelSpecification {
     private int allCoeffs;
     private int varCoeffs;
     private int choiceCount;
+    private final String[] choiceNames;
     private final IntSet choiceSet;
     private IntSet coeffSet;
     private final Map<String,Integer> coefficients;
@@ -25,8 +26,9 @@ public abstract class AbstractModelSpecification {
     private UtilityFunction[][] derivativeMatrix;
     private DynamicComponent dynamicComponent;
 
-    public AbstractModelSpecification(LogitData db, boolean initialise, int... choiceValues) {
+    public AbstractModelSpecification(LogitData db, boolean initialise, String[] choiceNames, int[] choiceValues) {
         this.db = db;
+        this.choiceNames = choiceNames;
         this.choiceSet = new IntSet(choiceValues);
         coefficients = new HashMap<>();
         if(initialise) {
@@ -152,6 +154,10 @@ public abstract class AbstractModelSpecification {
         return varCoeffs;
     }
 
+    public String[] getChoiceNames() {
+        return choiceNames;
+    }
+
     public double[] getStarting() {
         double[] values = new double[varCoeffs];
         for(int j = 0 ; j < allCoeffs ; j++) {
@@ -197,6 +203,23 @@ public abstract class AbstractModelSpecification {
             }
         }
         return wFull;
+    }
+
+    public double[] contractCoeffs(double[] wFull) {
+        assert allCoeffs == wFull.length;
+        double[] w = new double[varCoeffs];
+        for(int i = 0 ; i < allCoeffs ; i++) {
+            if(!fixed[i]) {
+                w[coeffSet.indexOf(i)] = wFull[i];
+            } else {
+                if(starting[i] != wFull[i]) {
+                    String coeffName = (new ArrayList<>(getCoeffNames())).get(i);
+                    throw new RuntimeException("Fixed coefficient \"" + coeffName + " has different starting value " +
+                            "in specification (" + starting[i] + ") than in current coefficient array! (" + wFull[i] + ")");
+                }
+            }
+        }
+        return w;
     }
 
     public String[] expand(double[] z) {

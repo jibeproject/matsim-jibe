@@ -69,6 +69,17 @@ public class MultinomialLogitObjective implements DifferentiableMultivariateFunc
         return f;
     }
 
+    public double[][] p(double[] wAll) {
+        double[][] prediction = new double[y.length][k];
+        for(int i = 0 ; i < y.length ; i++) {
+            for(int j = 0 ; j < k ; j++) {
+                prediction[i][j] = u.getUtility(i,j,wAll);
+            }
+            MathEx.softmax(prediction[i]);
+        }
+        return prediction;
+    }
+
     @Override
     public double g(double[] w, double[] g) {
         double[] wAll = u.expandCoeffs(w);

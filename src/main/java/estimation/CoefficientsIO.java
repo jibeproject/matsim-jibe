@@ -4,14 +4,13 @@ import estimation.specifications.AbstractModelSpecification;
 import io.ioUtils;
 import org.apache.log4j.Logger;
 
-import java.io.File;
-import java.io.PrintWriter;
+import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class CoefficientsWriter {
+public class CoefficientsIO {
 
-    private final static Logger logger = Logger.getLogger(CoefficientsWriter.class);
+    private final static Logger logger = Logger.getLogger(CoefficientsIO.class);
     private final static String SEP = ",";
 
     static void print(AbstractModelSpecification u, BFGS.Results results,double ll0, double[] se, double[] t, double[] pVal, String[] sig, String filePath) {
@@ -83,5 +82,58 @@ public class CoefficientsWriter {
 
         out.close();
         logger.info("Wrote coefficients at each iteration to " + filePath);
+    }
+
+    // Need a way to check coefficients / starting values match....
+    static double[] read(AbstractModelSpecification u, File file) throws IOException {
+
+        String recString;
+        BufferedReader in = new BufferedReader(new FileReader(file));
+
+        // Read header & check it matches specification
+        recString = in.readLine();
+        String[] header = recString.split(SEP);
+        Set<String> coeffNames = u.getCoeffNames();
+
+        if(coeffNames.size() != header.length - 2) {
+            throw new RuntimeException("Number of coefficients in model specification (" + coeffNames.size() +
+                    ") doesn't match number of coefficients in input file (" + (header.length - 2) + ")");
+        } else {
+            int i = 2;
+            for(String name : coeffNames) {
+                String inputName = header[i];
+                if(!name.equals(inputName)) {
+                    throw new RuntimeException("Model coefficient \"" + name + "\" doesn't match " +
+                            "input file coefficient \"" + inputName + "\" (position " + (i-2) + ")");
+                }
+                i++;
+            }
+        }
+
+        // Go to final iteration
+        String finalIterationString = null;
+        while((recString = in.readLine()).matches("^[0-9].*$")) {
+            finalIterationString = recString;
+        }
+        assert finalIterationString != null;
+        String[] finalIteration = finalIterationString.split(SEP);
+
+        // Retrieve values
+        int iteration = Integer.parseInt(finalIteration[0]);
+        double ll = Double.parseDouble(finalIteration[1]);
+        double[] coefficients = Arrays.stream(finalIteration).skip(2).mapToDouble(Double::parseDouble).toArray();
+
+        // Print output
+        logger.info("Final iteration: " + iteration);
+        System.out.printf("| %-30s | %-10s |%n","COEFFICIENT NAME","VALUE");
+        int i = 0;
+        for(String name : coeffNames) {
+            System.out.printf("| %-30s | % .7f |%n",name,coefficients[i]);
+            i++;
+        }
+        System.out.println("Final LL: " + ll);
+
+        // Also return
+        return(coefficients);
     }
 }

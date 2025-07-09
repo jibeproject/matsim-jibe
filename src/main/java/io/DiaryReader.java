@@ -29,7 +29,7 @@ public class DiaryReader {
         return readTrips(geometry,null);
     }
 
-    public static Set<Trip> readTrips(Geometry geometry, DiaryRecordTester tester) throws IOException {
+    public static Set<Trip> readTrips(Geometry geometry, ReadFilter tester) throws IOException {
         Set<Trip> trips = new LinkedHashSet<>();
         String recString;
         Counter counter = new Counter("Processed " + "travel diary records.");
@@ -183,11 +183,16 @@ public class DiaryReader {
         return trips;
     }
 
-    public interface DiaryRecordTester {
-
+    public interface ReadFilter {
         boolean test(String hhid, int persid, int tripid);
 
     }
+
+    public interface IdMatcher {
+        String combine(String hhid, int persid, int tripid);
+    }
+
+
 
     private static int findPositionInArray (String property, String[] array) {
         String string = Resources.instance.getString(property);

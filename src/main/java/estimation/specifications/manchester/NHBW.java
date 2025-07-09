@@ -26,10 +26,10 @@ public class NHBW extends MNL_Manchester {
             "hh.cars_gr_0","hh.cars_gr_23",
             "hh.income_agg_high");
 
-    public NHBW(LogitData data, Trip[] trips, Set<SimpleFeature> OAs,
+    public NHBW(LogitData data, Trip[] trips,
                 Network netBike, Vehicle vehBike, TravelTime ttBike,
                 Network netWalk, Vehicle vehWalk, TravelTime ttWalk) {
-        super(data,trips,OAs,netBike,vehBike,ttBike,netWalk,vehWalk,ttWalk);
+        super(data,trips,netBike,vehBike,ttBike,netWalk,vehWalk,ttWalk);
     }
 
     @Override

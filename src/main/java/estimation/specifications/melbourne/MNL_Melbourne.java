@@ -12,14 +12,14 @@ import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
-import org.opengis.feature.simple.SimpleFeature;
 import trip.Trip;
 
 import java.util.*;
 
 public abstract class MNL_Melbourne extends AbstractModelSpecification {
 
-    private final static List<String> MODES = List.of("carD","carP","pt","bike","walk");
+    private final static String[] MODES = {"carD","carP","pt","bike","walk"};
+    private final static int[] VALUES = {0,1,2,3,4};
 
     private final List<RouteAttribute> attributesBike;
     private final List<RouteAttribute> attributesWalk;
@@ -28,10 +28,10 @@ public abstract class MNL_Melbourne extends AbstractModelSpecification {
     private final RouteData walkRouteData;
 
 
-    public MNL_Melbourne(LogitData data, Trip[] trips, Set<SimpleFeature> OAs,
+    public MNL_Melbourne(LogitData data, Trip[] trips,
                          Network netBike, Vehicle vehBike, TravelTime ttBike,
                          Network netWalk, Vehicle vehWalk, TravelTime ttWalk)  {
-        super(data,false,0,1,2,3,4);
+        super(data,false,MODES,VALUES);
         attributesBike = streetEnvironmentAttributesBike();
         attributesWalk = streetEnvironmentAttributesWalk();
         initialiseCoeffAvail();
@@ -39,8 +39,8 @@ public abstract class MNL_Melbourne extends AbstractModelSpecification {
             bikeRouteData = new RouteDataPrecomputed(data.getIds(), attributesBike, TransportMode.bike);
             walkRouteData = new RouteDataPrecomputed(data.getIds(), attributesWalk, TransportMode.walk);
         } else {
-            bikeRouteData = new RouteDataDynamic(data.getIds(), trips,this, TransportMode.bike,OAs,netBike,vehBike,ttBike,attributesBike);
-            walkRouteData = new RouteDataDynamic(data.getIds(), trips,this, TransportMode.walk,OAs,netWalk,vehWalk,ttWalk,attributesWalk);
+            bikeRouteData = new RouteDataDynamic(data.getIds(), trips,this, TransportMode.bike,null,null,netBike,vehBike,ttBike,attributesBike);
+            walkRouteData = new RouteDataDynamic(data.getIds(), trips,this, TransportMode.walk,null,null,netWalk,vehWalk,ttWalk,attributesWalk);
         }
         initialiseDynamicUtilDeriv();
     }

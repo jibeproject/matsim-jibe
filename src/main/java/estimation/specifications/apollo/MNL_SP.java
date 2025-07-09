@@ -10,8 +10,11 @@ import java.util.Map;
 
 public class MNL_SP extends AbstractModelSpecification {
 
+    public static String[] MODES = {"car","bus","air","rail"};
+    public static int[] VALUES = {1,2,3,4};
+
     public MNL_SP(LogitData data) {
-        super(data,true,1,2,3,4);
+        super(data,true,MODES,VALUES);
     }
 
     @Override

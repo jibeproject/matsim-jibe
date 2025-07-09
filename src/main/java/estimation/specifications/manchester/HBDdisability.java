@@ -18,19 +18,20 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class HBD extends MNL_Manchester {
+public class HBDdisability extends MNL_Manchester {
 
     private final static List<String> SOCIODEMOGRAPHIC_VARIABLES = List.of(
             "p.age_group_agg_5_14","p.age_group_agg_15_24","p.age_group_agg_40_69","p.age_group_agg_70",
             "p.female",
             "p.occupation_worker",
+            "p.disability_lot",
             "hh.cars_gr_0","hh.cars_gr_2","hh.cars_gr_3",
             "hh.income_agg_high",
             "t.full_purpose_HBR","t.full_purpose_HBO");
 
-    public HBD(LogitData data, Trip[] trips,
-               Network netBike, Vehicle vehBike, TravelTime ttBike,
-               Network netWalk, Vehicle vehWalk, TravelTime ttWalk) {
+    public HBDdisability(LogitData data, Trip[] trips,
+                         Network netBike, Vehicle vehBike, TravelTime ttBike,
+                         Network netWalk, Vehicle vehWalk, TravelTime ttWalk) {
         super(data,trips,netBike,vehBike,ttBike,netWalk,vehWalk,ttWalk);
     }
 
@@ -57,11 +58,10 @@ public class HBD extends MNL_Manchester {
 //        walk.add(new RouteAttribute("g_walk_vgvi_c", "g_walk_vgvi", i -> value(i,"p.age_group_agg_5_14") == 1));
 //        walk.add(new RouteAttribute("g_walk_vgvi_o", "g_walk_vgvi", i -> value(i,"p.age_65up") == 1));
         walk.add(new RouteAttribute("g_walk_stressJct", l -> JctStress.getStressProp(l,TransportMode.walk)));
-//        walk.add(new RouteAttribute("g_walk_stressJct_c", "g_walk_stressJct", i -> value(i,"p.age_group_agg_5_14") == 1));
+        walk.add(new RouteAttribute("g_walk_stressJct_d", "g_walk_stressJct", i -> value(i,"p.disability_lot") == 1));
 //        walk.add(new RouteAttribute("g_walk_stressJct_o", "g_walk_stressJct", i -> value(i,"p.age_65up") == 1));
         walk.add(new RouteAttribute("g_walk_speed", l -> Math.min(1.,((double) l.getAttributes().getAttribute("speedLimitMPH")) / 50.)));
-        walk.add(new RouteAttribute("g_walk_speed_c", "g_walk_speed", i -> value(i,"p.age_group_agg_5_14") == 1));
-        walk.add(new RouteAttribute("g_walk_speed_o", "g_walk_speed", i -> value(i,"p.age_65up") == 1));
+//        walk.add(new RouteAttribute("g_walk_speed_d", "g_walk_speed", i -> value(i,"p.disability_lot") == 1));
 //        walk.add(new RouteAttribute("g_walk_aadt", l -> Math.min(1.,((int) l.getAttributes().getAttribute("aadt")) * 0.865/6000.)));
 //        walk.add(new RouteAttribute("g_walk_aadt_c", "g_walk_aadt", i -> value(i,"p.age_group_agg_5_14") == 1));
 //        walk.add(new RouteAttribute("g_walk_aadt_o", "g_walk_aadt", i -> value(i,"p.age_65up") == 1));

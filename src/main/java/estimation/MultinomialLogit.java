@@ -52,8 +52,8 @@ public class MultinomialLogit {
         // Check if matrix is singular
         if(Arrays.stream(eigenvalues.wr).anyMatch(e -> e == 0)) {
             logger.error("Hessian matrix is singular! Cannot compute standard errors");
-            CoefficientsWriter.print(u,results,ll0,null,null,null,null,resultsFileName + ".txt");
-            CoefficientsWriter.write(u,results,null,null,null,null,resultsFileName);
+            CoefficientsIO.print(u,results,ll0,null,null,null,null,resultsFileName + ".txt");
+            CoefficientsIO.write(u,results,null,null,null,null,resultsFileName);
         } else {
 
             // Check convergence to saddle point (probably can still run)
@@ -72,10 +72,10 @@ public class MultinomialLogit {
             String[] sig = sig(t);
 
             // Print results to screen and text file
-            CoefficientsWriter.print(u,results,ll0,se,t,pVal,sig,resultsFileName + ".txt");
+            CoefficientsIO.print(u,results,ll0,se,t,pVal,sig,resultsFileName + ".txt");
 
             // Print iteration details to csv
-            CoefficientsWriter.write(u,results,se,t,pVal,sig,resultsFileName + ".csv");
+            CoefficientsIO.write(u,results,se,t,pVal,sig,resultsFileName + ".csv");
         }
     }
 

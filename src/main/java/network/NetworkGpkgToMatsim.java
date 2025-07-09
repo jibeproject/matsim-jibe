@@ -191,6 +191,8 @@ public class NetworkGpkgToMatsim {
 
             // One way details
             boolean oneWay = ((String) edge.getAttribute("onwysmm")).startsWith("One Way") || Boolean.TRUE.equals(edge.getAttribute("is_oneway"));
+            l1.getAttributes().putAttribute("onwysmm",oneWay);
+            l2.getAttributes().putAttribute("onwysmm",oneWay);
 
             // Allowed modes on return link
             Set<String> allowedModesRtn = new HashSet<>(allowedModesOut);

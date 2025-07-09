@@ -1,11 +1,9 @@
 package estimation.specifications.manchester;
 
 import estimation.*;
-import estimation.dynamic.RouteDataDynamic;
-import estimation.dynamic.DynamicComponent;
-import estimation.dynamic.RouteData;
-import estimation.dynamic.RouteDataPrecomputed;
+import estimation.dynamic.*;
 import estimation.specifications.AbstractModelSpecification;
+import gis.GisUtils;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.router.util.TravelTime;
@@ -13,11 +11,13 @@ import org.matsim.vehicles.Vehicle;
 import org.opengis.feature.simple.SimpleFeature;
 import trip.Trip;
 
+import java.io.IOException;
 import java.util.*;
 
 public abstract class MNL_Manchester extends AbstractModelSpecification {
 
-    private final static List<String> MODES = List.of("carD","carP","pt","bike","walk");
+    private final static String[] MODES = {"carD","carP","pt","bike","walk"};
+    private final static int[] VALUES = {0,1,2,3,4};
 
     private final List<RouteAttribute> attributesBike;
     private final List<RouteAttribute> attributesWalk;
@@ -25,11 +25,10 @@ public abstract class MNL_Manchester extends AbstractModelSpecification {
     private final RouteData bikeRouteData;
     private final RouteData walkRouteData;
 
-
-    public MNL_Manchester(LogitData data, Trip[] trips, Set<SimpleFeature> OAs,
+    public MNL_Manchester(LogitData data, Trip[] trips,
                           Network netBike, Vehicle vehBike, TravelTime ttBike,
-                          Network netWalk, Vehicle vehWalk, TravelTime ttWalk)  {
-        super(data,false,0,1,2,3,4);
+                          Network netWalk, Vehicle vehWalk, TravelTime ttWalk) {
+        super(data,false,MODES,VALUES);
         attributesBike = streetEnvironmentAttributesBike();
         attributesWalk = streetEnvironmentAttributesWalk();
         initialiseCoeffAvail();
@@ -37,8 +36,13 @@ public abstract class MNL_Manchester extends AbstractModelSpecification {
             bikeRouteData = new RouteDataPrecomputed(data.getIds(), attributesBike, TransportMode.bike);
             walkRouteData = new RouteDataPrecomputed(data.getIds(), attributesWalk, TransportMode.walk);
         } else {
-            bikeRouteData = new RouteDataDynamic(data.getIds(), trips,this, TransportMode.bike,OAs,netBike,vehBike,ttBike,attributesBike);
-            walkRouteData = new RouteDataDynamic(data.getIds(), trips,this, TransportMode.walk,OAs,netWalk,vehWalk,ttWalk,attributesWalk);
+            try {
+                Set<SimpleFeature> OAs = GisUtils.readGpkg("zones/2011/gm_oa_buf.gpkg");
+                bikeRouteData = new RouteDataDynamic(data.getIds(), trips,this, TransportMode.bike,OAs,"OA11CD",netBike,vehBike,ttBike,attributesBike);
+                walkRouteData = new RouteDataDynamic(data.getIds(), trips,this, TransportMode.walk,OAs,"OA11CD",netWalk,vehWalk,ttWalk,attributesWalk);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
         initialiseDynamicUtilDeriv();
     }

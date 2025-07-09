@@ -26,10 +26,10 @@ public class NHBO extends MNL_Manchester {
             "p.occupation_worker",
             "hh.cars_gr_0","hh.cars_gr_23");
 
-    public NHBO(LogitData data, Trip[] trips, Set<SimpleFeature> OAs,
+    public NHBO(LogitData data, Trip[] trips,
                 Network netBike, Vehicle vehBike, TravelTime ttBike,
                 Network netWalk, Vehicle vehWalk, TravelTime ttWalk) {
-        super(data,trips,OAs,netBike,vehBike,ttBike,netWalk,vehWalk,ttWalk);
+        super(data,trips,netBike,vehBike,ttBike,netWalk,vehWalk,ttWalk);
     }
 
     @Override

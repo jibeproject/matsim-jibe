@@ -16,7 +16,7 @@ public class RouteDataIO {
     private static final String ID = "ID";  //todo: make these forbidden attribute names?
     private static final String TIME_SUFFIX = "_time";
 
-    public static void writeStaticData(String[] ids, List<RouteAttribute> attributes, RouteDataDynamic dynamic, String mode) {
+    public static void writeStaticData(String[] ids, List<RouteAttribute> attributes, RouteData dynamic, String mode) {
 
         String filePath = ROUTE_DATA_FILE_PREFIX + mode + ".csv";
 

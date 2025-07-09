@@ -24,10 +24,10 @@ public class HBE extends MNL_Melbourne {
             "female",
             "hhcars_0","hhcars_2","hhcars_3");
 
-    public HBE(LogitData data, Trip[] trips, Set<SimpleFeature> OAs,
+    public HBE(LogitData data, Trip[] trips,
                Network netBike, Vehicle vehBike, TravelTime ttBike,
                Network netWalk, Vehicle vehWalk, TravelTime ttWalk) {
-        super(data,trips,OAs,netBike,vehBike,ttBike,netWalk,vehWalk,ttWalk);
+        super(data,trips,netBike,vehBike,ttBike,netWalk,vehWalk,ttWalk);
     }
 
     @Override

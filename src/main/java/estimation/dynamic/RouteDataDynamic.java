@@ -60,7 +60,8 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
     String overlapStats;
 
 
-    public RouteDataDynamic(String[] ids, Trip[] trips, AbstractModelSpecification u, String mode, Set<SimpleFeature> zones,
+    public RouteDataDynamic(String[] ids, Trip[] trips, AbstractModelSpecification u, String mode,
+                            Set<SimpleFeature> zones, String zoneId,
                             Network network, Vehicle vehicle, TravelTime tt,
                             List<RouteAttribute> attributes) {
         this.tripCount = ids.length;
@@ -163,7 +164,7 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
 
         // Sort inter/intra-zonal trips, and compute fixed results for intrazonal
         pathData = new PathData(trips.length);
-        computeVeryShortTripData(pathData,trips,zones,u,baseAttributes,network,mode);
+        computeVeryShortTripData(pathData,trips,zones,zoneId,u,baseAttributes,network,mode);
 
         // Origin and destination nodes
         computeOriginAndDestinationNodes(pathData,trips,network);
@@ -371,7 +372,7 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
         }
     }
 
-    private static void computeVeryShortTripData(PathData pathData, Trip[] trips, Set<SimpleFeature> zones,
+    private static void computeVeryShortTripData(PathData pathData, Trip[] trips, Set<SimpleFeature> zones, String zoneId,
                                                  AbstractModelSpecification u, List<RouteAttribute> attributes,
                                                  Network net, String mode) {
 
@@ -391,7 +392,7 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
         Map<String,IdSet<Link>> linksPerZone = null;
         if(zones != null) {
             Map<SimpleFeature, IdSet<Link>> linksPerFeature = GisUtils.calculateLinksIntersectingZones(zones,net);
-            linksPerZone = linksPerFeature.entrySet().stream().collect(Collectors.toMap(e -> ((String) e.getKey().getAttribute("geo_code")), Map.Entry::getValue));
+            linksPerZone = linksPerFeature.entrySet().stream().collect(Collectors.toMap(e -> ((String) e.getKey().getAttribute(zoneId)), Map.Entry::getValue));
         }
 
         for(int i = 0 ; i < trips.length ; i++) {
