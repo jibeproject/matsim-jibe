@@ -37,7 +37,7 @@ public abstract class MNL_Manchester extends AbstractModelSpecification {
             walkRouteData = new RouteDataPrecomputed(data.getIds(), attributesWalk, TransportMode.walk);
         } else {
             try {
-                Set<SimpleFeature> OAs = GisUtils.readGpkg("zones/2011/gm_oa_buf.gpkg");
+                Set<SimpleFeature> OAs = GisUtils.readGpkg("gis/zones/2011/gm_oa_buf.gpkg");
                 bikeRouteData = new RouteDataDynamic(data.getIds(), trips,this, TransportMode.bike,OAs,"OA11CD",netBike,vehBike,ttBike,attributesBike);
                 walkRouteData = new RouteDataDynamic(data.getIds(), trips,this, TransportMode.walk,OAs,"OA11CD",netWalk,vehWalk,ttWalk,attributesWalk);
             } catch (IOException e) {

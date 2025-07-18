@@ -165,7 +165,10 @@ public class MnlWithRouting {
 
             // Print header
             StringBuilder builder = new StringBuilder();
-            builder.append("ID" + SEP + resources.Properties.HOUSEHOLD_ID + SEP + resources.Properties.PERSON_ID + SEP + Properties.TRIP_ID);
+            builder.append("ID")
+                    .append(SEP).append(Resources.instance.getString(Properties.HOUSEHOLD_ID))
+                    .append(SEP).append(Resources.instance.getString(Properties.PERSON_ID))
+                    .append(SEP).append(Resources.instance.getString(Properties.TRIP_ID));
             for(String mode : u.getChoiceNames()) {
                 builder.append(SEP).append(mode);
             }
