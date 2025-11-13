@@ -11,6 +11,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
+import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
@@ -31,9 +32,11 @@ public class RunAnalysis {
 
     public static void main(String[] args) throws IOException {
         if(args.length < 2) {
-            throw new RuntimeException("Program requires at least 2 arguments: \n" +
-                    "(0) General Properties file\n" +
-                    "(1+) Accessibility properties file(s) \n");
+            throw new RuntimeException("""
+                    Program requires at least 2 arguments:
+                    (0) General Properties file
+                    (1+) Accessibility properties file(s)
+                    """);
         }
 
         Resources.initializeResources(args[0]);
@@ -47,9 +50,9 @@ public class RunAnalysis {
         networkBoundary = GpkgReader.readNetworkBoundary();
 
         // Check that origin boundary is within destination boundary
-        if(!regionBoundary.within(networkBoundary)) {
-            throw new RuntimeException("Region boundary must be within network boundary!");
-        }
+//        if(!regionBoundary.within(networkBoundary)) {
+//            throw new RuntimeException("Region boundary must be within network boundary!");
+//        }
 
         // Loop through and calculate
         for(int i = 1 ; i < args.length ; i++) {
@@ -66,7 +69,8 @@ public class RunAnalysis {
         String mode = AccessibilityResources.instance.getMode();
 
         // Create mode-specific network
-        Network network = NetworkUtils2.extractModeSpecificNetwork(fullNetwork,mode);
+//        Network network = NetworkUtils2.extractModeSpecificNetwork(fullNetwork,mode);
+        Network network = fullNetwork;
 
         // Travel time, vehicle, disutility
         TravelTime tt = AccessibilityResources.instance.getTravelTime();

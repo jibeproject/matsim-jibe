@@ -5,6 +5,9 @@ import estimation.LogitData;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.log4j.Logger;
 import smile.util.IntSet;
+import java.io.File;
+import java.io.IOException;
+import estimation.CoefficientsIO;
 
 import java.util.*;
 
@@ -30,7 +33,7 @@ public abstract class AbstractModelSpecification {
         this.db = db;
         this.choiceNames = choiceNames;
         this.choiceSet = new IntSet(choiceValues);
-        coefficients = new HashMap<>();
+        coefficients = new LinkedHashMap<>();
         if(initialise) {
             initialiseCoeffAvail();
             initialiseDynamicUtilDeriv();
@@ -80,8 +83,28 @@ public abstract class AbstractModelSpecification {
         // COMPUTE AVAILABILITY AS MATRIX
         availability = computeAvailability();
 
+        // OVERRIDE STARTING VALUES
+        String startingValuesFilePath = startingValuesFilename();
+        if(startingValuesFilePath != null) {
+            logger.warn("Overriding starting values with values from file " + startingValuesFilePath);
+            try {
+                starting = CoefficientsIO.read(this,new File(startingValuesFilePath));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            if(starting.length != allCoeffs) {
+                throw new RuntimeException("Starting length doesn't match!");
+            }
+        }
+
         logger.info("Initialised utility function with " + allCoeffs + " coefficients " +
                 "(" + fixedCoeffs.size() + " fixed).");
+
+        logger.info("STARTING VALUES:");
+        System.out.printf("| %-30s | %-10s |%n","COEFFICIENT NAME","VALUE","FIXED");
+        for(String name : coefficients.keySet()) {
+            System.out.printf("| %-30s | % .7f | %b |%n",name,starting[coefficients.get(name)],fixed[coefficients.get(name)]);
+        }
     }
 
 
@@ -105,6 +128,10 @@ public abstract class AbstractModelSpecification {
 
     protected List<String> availability() {
         return new ArrayList<>();
+    }
+
+    protected String startingValuesFilename() {
+        return null;
     }
 
     private UtilityFunction[][] createDerivativeMatrix() {

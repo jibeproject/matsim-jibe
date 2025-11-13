@@ -11,6 +11,7 @@ import org.matsim.vehicles.Vehicle;
 import routing.Bicycle;
 import routing.disutility.DistanceDisutility;
 import routing.disutility.JibeDisutility3;
+import routing.disutility.LaurentDisutility;
 import routing.travelTime.BicycleTravelTime;
 import routing.travelTime.WalkTravelTime;
 import trip.Purpose;
@@ -97,7 +98,7 @@ public class AccessibilityResources {
         }
     }
 
-    private void setActiveDisutility() {
+    private void setActiveDisutility() throws IOException {
         String type = properties.getProperty(AccessibilityProperties.IMPEDANCE);
         boolean dayOverride = false;
         switch(type) {
@@ -113,6 +114,12 @@ public class AccessibilityResources {
                 dayOverride = true;
             case "jibe_night":
                 td = new JibeDisutility3(mode,tt,dayOverride);
+                break;
+            case "laurent_bike":
+                td = new LaurentDisutility(null,4.93,0.9349533,false);
+                break;
+            case "laurent_ebike":
+                td = new LaurentDisutility(null,6.04,0.9349533,true);
                 break;
             default:
                 throw new RuntimeException("Disutility type " + type + " not recognised for mode " + mode);

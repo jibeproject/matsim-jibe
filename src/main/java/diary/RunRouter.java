@@ -24,7 +24,9 @@ import org.matsim.core.router.costcalculators.FreespeedTravelTimeAndDisutility;
 import org.matsim.core.router.util.TravelTime;
 import routing.ActiveAttributes;
 import routing.Bicycle;
+import routing.TravelAttribute;
 import routing.disutility.DistanceDisutility;
+import routing.disutility.LaurentDisutility;
 import routing.travelTime.WalkTravelTime;
 import diary.calculate.RouteIndicatorCalculator;
 import io.TripCsvWriter;
@@ -64,52 +66,15 @@ public class RunRouter {
             }
         }
 
-        // Set up scenario and config
-        Config config = ConfigUtils.createConfig();
-        Bicycle bicycle = new Bicycle(config);
-        Vehicle bike = bicycle.getVehicle();
-
         // Read Boundary Shapefile
         logger.info("Reading boundary shapefile...");
         Geometry boundary = GpkgReader.readNetworkBoundary();
 
         // Read in TRADS trips from CSV
         logger.info("Reading person micro data from ascii file...");
-        Set<Trip> trips = DiaryReader.readTrips(boundary);//
-//                .stream()
-//                .filter(t -> (t.getMainMode().equals("Car or van passenger") || t.getMainMode().equals("Car or van driver")))
-//                .collect(Collectors.toCollection(LinkedHashSet::new));
-
-        // Create car networks
-        logger.info("Creating mode-specific networks...");
-        Network networkCarInput = NetworkUtils.createNetwork();
-        new MatsimNetworkReader(networkCarInput).readFile(Resources.instance.getString(Properties.MATSIM_DEMAND_OUTPUT_NETWORK));
-        Network networkCar = NetworkUtils2.extractModeSpecificNetwork(networkCarInput, TransportMode.car);
-        Network carXy2l = NetworkUtils2.extractXy2LinksNetwork(networkCar, l -> !((boolean) l.getAttributes().getAttribute("motorway")));
-
-        // Create active mode networks
+        Set<Trip> trips = DiaryReader.readTrips(boundary);
         Network network = NetworkUtils2.readFullNetwork();
-        Network networkBike = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.bike);
-        Network networkWalk = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.walk);
-
-        // Load public transport data
-        String transitScheduleFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_SCHEDULE);
-        String transitNetworkFilePath = Resources.instance.getString(Properties.MATSIM_TRANSIT_NETWORK);
-
-        // Travel time
-        FreespeedTravelTimeAndDisutility freeSpeed = new FreespeedTravelTimeAndDisutility(config.planCalcScore());
-        TravelTime ttBikeFast = bicycle.getTravelTimeFast(networkBike);
-        TravelTime ttWalk = new WalkTravelTime();
-
-        // Car freespeed & congested travel time
-        String tfgmDemandEvents = Resources.instance.getString(Properties.MATSIM_DEMAND_OUTPUT_EVENTS);
-        TravelTimeCalculator.Builder builder = new TravelTimeCalculator.Builder(networkCar);
-        TravelTimeCalculator congested = builder.build();
-        EventsManager events = EventsUtils.createEventsManager();
-        events.addHandler(congested);
-        (new MatsimEventsReader(events)).readFile(tfgmDemandEvents);
-        TravelTime congestedTime = congested.getLinkTravelTimes();
-        TravelDisutility congestedDisutility = new OnlyTimeDependentTravelDisutility(congested.getLinkTravelTimes());
+        Network networkBike = network;
 
         // CALCULATOR
         RouteIndicatorCalculator calc = new RouteIndicatorCalculator(trips);
@@ -117,28 +82,18 @@ public class RunRouter {
         // beeline
         calc.beeline("beeline", ORIGIN, DESTINATION);
 
-        // car
-        calc.network("car_freespeed", ORIGIN, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,savePath);
-        calc.network("car_congested", ORIGIN, DESTINATION, null, networkCar, carXy2l, congestedDisutility, congestedTime, null,savePath);
+        // Travel time based on average speed only
+        TravelTime bikeTravelTime = (l,v,person,vehicle) -> l.getLength() / 4.93;
+        TravelTime eBikeTravelTime = (l,v,person,vehicle) -> l.getLength() / 6.04;
 
-         // bike
-        calc.network("bike_short", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new DistanceDisutility(), ttBikeFast,null,savePath);
-        calc.network("bike_fast", ORIGIN, DESTINATION,  bike, networkBike, networkBike, new OnlyTimeDependentTravelDisutility(ttBikeFast), ttBikeFast, null,savePath);
+        LaurentDisutility bikeDisutility = new LaurentDisutility(network,4.93,0.9349533,false);
+        LaurentDisutility eBikeDisutility = new LaurentDisutility(network,6.04,0.9349533,true);
 
-        // walk
-        calc.network("walk_short", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new DistanceDisutility(), ttWalk, null,savePath);
-        calc.network("walk_fast", ORIGIN, DESTINATION, null, networkWalk, networkWalk, new OnlyTimeDependentTravelDisutility(ttWalk), ttWalk, null,savePath);
+        // bike
+//        calc.network("short", ORIGIN, DESTINATION,  null, networkBike, networkBike, new DistanceDisutility(), (l,v,person,vehicle) -> 0.,null,savePath);
+        calc.network("bike", ORIGIN, DESTINATION, null, networkBike, networkBike, bikeDisutility, bikeTravelTime, bikeDisutility.getTravelAttributes(),savePath);
+        calc.network("ebike", ORIGIN, DESTINATION, null, networkBike, networkBike, eBikeDisutility, eBikeTravelTime, eBikeDisutility.getTravelAttributes(),savePath);
 
-        // public transport
-        calc.pt("pt", ORIGIN, DESTINATION, config, transitScheduleFilePath, transitNetworkFilePath);
-//
-//        // Tour analysis for activity-based model development
-//        calc.beeline("beeline_hs", HOME, DESTINATION);
-//        calc.beeline("beeline_sm", DESTINATION, MAIN);
-//        calc.beeline("beeline_hm", HOME,MAIN);
-//        calc.network("car_hs", HOME, DESTINATION, null, networkCar, carXy2l, freeSpeed, freeSpeed, null,false);
-//        calc.network("car_sm",DESTINATION,MAIN,null, networkCar, carXy2l, freeSpeed, freeSpeed, null,false);
-//        calc.network("car_hm",HOME,MAIN,null, networkCar, carXy2l, freeSpeed, freeSpeed, null,false);
 
         // Write results
         if (outputCsv != null) {

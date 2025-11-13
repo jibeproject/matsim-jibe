@@ -172,11 +172,13 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
         // use in debugger to check zero costs: IntStream.range(0,cost.length).filter(i->cost[i] == 0).toArray();
         // Compute costs for starting values
         logger.info("Running initial routing estimate...");
-        updatePathData(u.getStarting());
+        updatePathData(new double[u.getStarting().length]);
 
         // Store initial path (check this works later)
         initialPath = new LeastCostPathCalculator.Path[trips.length];
         System.arraycopy(pathData.path,0,initialPath,0,trips.length);
+        updatePathData(u.getStarting());
+        System.out.println(getStats());
 
         // Print results from initial path
         RouteDataIO.writeStaticData(ids, attributes,this,mode);

@@ -37,9 +37,9 @@ public class BicycleTravelTimeFast implements TravelTime {
     }
 
     private double calculateTravelTime(Link link) {
-        if((boolean) link.getAttributes().getAttribute("dismount")) {
-            return dismountTravelTime.getLinkTravelTime(link,0.,null,null);
-        }
+//        if((boolean) link.getAttributes().getAttribute("dismount")) {
+//            return dismountTravelTime.getLinkTravelTime(link,0.,null,null);
+//        }
         return link.getLength() / linkSpeedCalculator.getMaximumVelocityForLink(link, vehicle);
     }
 

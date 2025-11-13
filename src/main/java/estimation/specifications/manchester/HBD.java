@@ -35,6 +35,11 @@ public class HBD extends MNL_Manchester {
     }
 
     @Override
+    protected String startingValuesFilename() {
+        return "../../result/Manchester/modeChoice/discretionary/dynamic7new2.csv";
+    }
+
+    @Override
     List<String> sociodemographicVariables() {
         return SOCIODEMOGRAPHIC_VARIABLES;
     }

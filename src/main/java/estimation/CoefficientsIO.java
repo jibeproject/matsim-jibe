@@ -85,7 +85,7 @@ public class CoefficientsIO {
     }
 
     // Need a way to check coefficients / starting values match....
-    static double[] read(AbstractModelSpecification u, File file) throws IOException {
+    public static double[] read(AbstractModelSpecification u, File file) throws IOException {
 
         String recString;
         BufferedReader in = new BufferedReader(new FileReader(file));

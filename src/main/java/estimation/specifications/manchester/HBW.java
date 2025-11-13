@@ -6,7 +6,6 @@ import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
-import org.opengis.feature.simple.SimpleFeature;
 import routing.Gradient;
 import routing.disutility.components.JctStress;
 import routing.disutility.components.LinkAmbience;
@@ -34,6 +33,11 @@ public class HBW extends MNL_Manchester {
     List<String> sociodemographicVariables() {
         return SOCIODEMOGRAPHIC_VARIABLES;
     }
+
+    @Override
+//    protected String startingValuesFilename() {
+//        return "../../result/Manchester/modeChoice/work/dynamic10new.csv";
+//    }
 
     List<RouteAttribute> streetEnvironmentAttributesBike() {
         List<RouteAttribute> bike = new ArrayList<>();
@@ -65,7 +69,8 @@ public class HBW extends MNL_Manchester {
 //        fixed.add("b_carP_t.full_purpose_HBO");
 //        fixed.add("b_bike_p.age_group_agg_40_69");
 //        fixed.add("b_bike_hh.income_agg_high");
-//        fixed.add("b_walk_hh.income_agg_high");
+        fixed.add("b_carP_hh.income_agg_high");
+        fixed.add("b_walk_hh.income_agg_high");
 //        fixed.add("g_bike_vgvi");
 //        fixed.add("g_bike_stressJct");
 //        fixed.add("g_walk_grad");

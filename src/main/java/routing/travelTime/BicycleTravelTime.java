@@ -35,19 +35,19 @@ public class BicycleTravelTime implements TravelTime {
     @Override
     public double getLinkTravelTime(Link link, double time, Person person, Vehicle vehicle) {
 
-        if((boolean) link.getAttributes().getAttribute("dismount")) {
-            return dismountTravelTime.getLinkTravelTime(link,time,person,vehicle);
-        }
-
-        if(stressThreshold != null) {
-            LinkStressDiscrete stress = LinkStressDiscrete.getCycleStress(link);
-            assert stress != null;
-            if((AMBER.equals(stressThreshold) && stress.equals(RED)) ||
-                    (GREEN.equals(stressThreshold) && stress.equals(RED)) ||
-                    (GREEN.equals(stressThreshold) && stress.equals(AMBER))) {
-                return dismountTravelTime.getLinkTravelTime(link,time,person,vehicle);
-            }
-        }
+//        if((boolean) link.getAttributes().getAttribute("dismount")) {
+//            return dismountTravelTime.getLinkTravelTime(link,time,person,vehicle);
+//        }
+//
+//        if(stressThreshold != null) {
+//            LinkStressDiscrete stress = LinkStressDiscrete.getCycleStress(link);
+//            assert stress != null;
+//            if((AMBER.equals(stressThreshold) && stress.equals(RED)) ||
+//                    (GREEN.equals(stressThreshold) && stress.equals(RED)) ||
+//                    (GREEN.equals(stressThreshold) && stress.equals(AMBER))) {
+//                return dismountTravelTime.getLinkTravelTime(link,time,person,vehicle);
+//            }
+//        }
 
         return link.getLength() / linkSpeedCalculator.getMaximumVelocityForLink(link, vehicle);
     }

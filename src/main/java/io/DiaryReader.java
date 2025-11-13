@@ -217,7 +217,7 @@ public class DiaryReader {
     private static String getTransportMode(String mode) {
         return switch (mode) {
             case "Walk", "Walking" -> TransportMode.walk;
-            case "Bicycle" -> TransportMode.bike;
+            case "Bicycle", "bike" -> TransportMode.bike;
             case "Motorcycle", "Motorcycle, scooter, moped" -> TransportMode.motorcycle;
             case "Car or van driver", "Vehicle Driver" -> TransportMode.car;
             case "Train", "2+ Train" -> TransportMode.train;
