@@ -89,6 +89,8 @@ public class JibeDisutility4 implements TravelDisutility {
             }
 
             // Link disutility
+            streetEnvironmentAdjustment = Math.min(streetEnvironmentAdjustment,1000.);
+
             double disutility = linkTime * streetEnvironmentAdjustment;
 
             if(Double.isNaN(disutility)) {

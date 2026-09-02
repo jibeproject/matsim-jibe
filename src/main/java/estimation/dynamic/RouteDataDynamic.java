@@ -3,10 +3,13 @@ package estimation.dynamic;
 import estimation.RouteAttribute;
 import estimation.specifications.AbstractModelSpecification;
 import gis.GisUtils;
+import gis.GpkgReader;
 import org.apache.log4j.Logger;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.IdSet;
+import org.matsim.api.core.v01.Identifiable;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.network.Network;
@@ -22,6 +25,7 @@ import org.opengis.feature.simple.SimpleFeature;
 import resources.Properties;
 import resources.Resources;
 import routing.disutility.JibeDisutility4;
+import org.locationtech.jts.geom.LineString;
 import trip.Place;
 import trip.Trip;
 
@@ -31,12 +35,15 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static estimation.SoftPlusTransform.transform;
+import static io.TripRouteWriter.drawPath;
 import static trip.Place.DESTINATION;
 import static trip.Place.ORIGIN;
 
 public class RouteDataDynamic implements RouteData, DynamicComponent {
 
-    private final static boolean ENABLE_DYNAMIC_ROUTING = true;
+    private final static boolean ENABLE_DYNAMIC_ROUTING = false;
+    private final static boolean ADD_BASE_TO_INTERACTION_VARIABLES = true;
     private final static Logger logger = Logger.getLogger(RouteDataDynamic.class);
     private final int numberOfThreads;
     final int tripCount;
@@ -54,7 +61,6 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
     final int[] attributeCoeffPositions;
     final Vehicle vehicle;
     final PathData pathData;
-    final LeastCostPathCalculator.Path[] initialPath;
 
     String detourStats;
     String overlapStats;
@@ -92,15 +98,6 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
             // Get position of attribute in (full) coefficient vector
             attributeCoeffPositions[i] = u.getCoeffPos(attribute.getName());
 
-            // Test valid records for each attribute
-            int validityCount = 0;
-            for(int j = 0 ; j < trips.length ; j++) {
-                if(attribute.test(j)) {
-                    validity[j][i] = true;
-                    validityCount++;
-                }
-            }
-
             // Base or interaction attribute?
             String attributeType;
             if(attribute.isBaseAttribute()) {
@@ -112,12 +109,24 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
                 k++;
             } else {
                 String correspondingBaseAttributeName = attribute.getCorrespondingBaseAttributeName();
-                attributeType = "adjusts \"" + correspondingBaseAttributeName + "\"";
+                attributeType = "interacts with \"" + correspondingBaseAttributeName + "\"";
                 Integer correspondingBaseAttributeIndex = baseAttributeNameIndex.get(correspondingBaseAttributeName);
                 if(correspondingBaseAttributeIndex != null) {
                     baseAttributeIdx[i] = correspondingBaseAttributeIndex;
                 } else {
                     throw new RuntimeException("Base attribute \"" + correspondingBaseAttributeName + "\" must be listed ahead of interaction attribute \"" + attribute.getName() + "\"!");
+                }
+            }
+
+            // Test valid records for each attribute
+            int validityCount = 0;
+            for(int j = 0 ; j < trips.length ; j++) {
+                if(attribute.test(j)) {
+                    validity[j][i] = true;
+                    if (!attribute.isBaseAttribute() & !ADD_BASE_TO_INTERACTION_VARIABLES) {
+                        validity[j][baseAttributeIdx[i]] = false;
+                    }
+                    validityCount++;
                 }
             }
 
@@ -171,12 +180,15 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
 
         // use in debugger to check zero costs: IntStream.range(0,cost.length).filter(i->cost[i] == 0).toArray();
         // Compute costs for starting values
-        logger.info("Running initial routing estimate...");
-        updatePathData(u.getStarting());
+        logger.info("Computing fastest routes...");
+        TravelDisutility[] fastestPathDisutilities = new TravelDisutility[personas.size()];
+        Arrays.setAll(fastestPathDisutilities, i -> new JibeDisutility4(network, vehicle, mode, tt, baseAttributes, new double[baseAttributes.size()]));
+        updatePathData(fastestPathDisutilities);
+        System.arraycopy(pathData.path,0, pathData.fastestPath,0,trips.length);
 
-        // Store initial path (check this works later)
-        initialPath = new LeastCostPathCalculator.Path[trips.length];
-        System.arraycopy(pathData.path,0,initialPath,0,trips.length);
+        logger.info("Computing routes from starting values...");
+        TravelDisutility[] disutilitities = getNewDisutilities(u.expandCoeffs(u.getStarting()));
+        updatePathData(disutilitities);
 
         // Print results from initial path
         RouteDataIO.writeStaticData(ids, attributes,this,mode);
@@ -217,44 +229,28 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
         }
     }
 
+    public PathData getPathData() {
+        return this.pathData;
+    }
+
     public void update(double[] xVarOnly) {
         if(ENABLE_DYNAMIC_ROUTING && !attributes.isEmpty()) {
-            updatePathData(xVarOnly);
+            TravelDisutility[] disutilitities = getNewDisutilities(u.expandCoeffs(xVarOnly));
+            updatePathData(disutilitities);
             computeRouteStats();
         }
     }
 
-    private void updatePathData(double[] xVarOnly) {
-
-        // GET LATEST COEFFICIENTS
-        double[] x = u.expandCoeffs(xVarOnly);
-
-        TravelDisutility[] disutilitities = new TravelDisutility[personas.size()];
-        for(int k = 0 ; k < personas.size() ; k++) {
-            boolean[] persona = personas.get(k);
-            double[] weights = new double[baseAttributes.size()];
-            for(int i = 0 ; i < attributes.size() ; i++) {
-                if (persona[i]) {
-                    weights[baseAttributeIdx[i]] += x[attributeCoeffPositions[i]];
-                }
-            }
-            for(int i = 0 ; i < weights.length ; i++) {
-                if (weights[i] < 0) {
-                    logger.info(mode.toUpperCase() + " PERSONA " + k + " weight for \"" + attributes.get(baseAttributeVal[i]).getName() + "\" = " + weights[i] + " < 0. Setting to 0 for routing...");
-                    weights[i] = 0;
-                }
-            }
-            disutilitities[k] = new JibeDisutility4(network, vehicle, mode, tt, baseAttributes, weights);
-        }
-
-        // Setup multithreaded...
+    private void updatePathData(TravelDisutility[] disutilitities) {
         Thread[] threads = new Thread[numberOfThreads];
         Counter counter = new Counter("Routed ", " / " + tripCount + " trips.");
         ConcurrentLinkedQueue<Integer> tripsQueue = IntStream.range(0, tripCount).boxed().collect(Collectors.toCollection(ConcurrentLinkedQueue::new));
         for(int i = 0 ; i < numberOfThreads ; i++) {
             LeastCostPathCalculator[] lcpCalculators = new LeastCostPathCalculator[personas.size()];
             for(int j = 0 ; j < personas.size() ; j++) {
-                lcpCalculators[j] = new FastDijkstraFactory(false).createPathCalculator(network,disutilitities[j],tt);
+                if (disutilitities[j] != null) {
+                    lcpCalculators[j] = new FastDijkstraFactory(false).createPathCalculator(network, disutilitities[j],tt);
+                }
             }
             TripWorker worker = new TripWorker(tripsQueue,counter,tt,vehicle,lcpCalculators, personasIdx,baseAttributes,pathData);
             threads[i] = new Thread(worker,"DynamicRouteUpdate-" + i);
@@ -271,21 +267,62 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
         }
     }
 
+    private TravelDisutility @NonNull [] getNewDisutilities(double[] x) {
+        TravelDisutility[] disutilitities = new TravelDisutility[personas.size()];
+        for(int k = 0 ; k < personas.size() ; k++) {
+            boolean[] persona = personas.get(k);
+            double[] weights = new double[baseAttributes.size()];
+                for(int i = 0 ; i < attributes.size() ; i++) {
+                    if (persona[i]) {
+                        weights[baseAttributeIdx[i]] += transform(x[attributeCoeffPositions[i]]);
+                    }
+                }
+                for(int i = 0 ; i < weights.length ; i++) {
+                    if (weights[i] < 0) {
+                        logger.info(mode.toUpperCase() + " PERSONA " + k + " weight for \"" + attributes.get(baseAttributeVal[i]).getName() + "\" = " + weights[i] + " < 0. Setting to 0 for routing...");
+                        weights[i] = 0;
+                    }
+                }
+            if (Arrays.stream(weights).allMatch(w -> Math.abs(w) <= 1e-8)) {
+                logger.info("All weights are zero for persona " + k + " skipping routing and reverting to fastest path...");
+                disutilitities[k] = null;
+            } else {
+                disutilitities[k] = new JibeDisutility4(network, vehicle, mode, tt, baseAttributes, weights);
+            }
+        }
+        return disutilitities;
+    }
+
     private void computeRouteStats() {
         // Detour vs Fastest path
         double[] detours = IntStream.range(0,tripCount).filter(i -> !(pathData.tooShort[i]))
-                .mapToDouble(i -> pathData.path[i].travelTime / initialPath[i].travelTime)
+                .mapToDouble(i -> pathData.path[i].travelTime / pathData.fastestPath[i].travelTime)
                 .sorted().toArray();
         detourStats = mode.toUpperCase() + " DETOURS: " + getSummaryStats(detours);
         logger.info(detourStats);
 
         // Overlap vs Fastest path
         double[] overlap = IntStream.range(0,tripCount).filter(i -> !(pathData.tooShort[i]))
-                .mapToDouble(i -> pathData.path[i].links.stream().filter(initialPath[i].links::contains)
-                        .mapToDouble(l -> tt.getLinkTravelTime(l,0.,null,null)).sum() / initialPath[i].travelTime)
+                .mapToDouble(i -> pathData.path[i].links.stream().filter(pathData.fastestPath[i].links::contains)
+                        .mapToDouble(l -> tt.getLinkTravelTime(l,0.,null,null)).sum() / pathData.fastestPath[i].travelTime)
                 .sorted().toArray();
         overlapStats = mode.toUpperCase() + " OVERLAP: " + getSummaryStats(overlap);
         logger.info(overlapStats);
+    }
+
+    public void printRoutes() {
+
+        Map<Integer, SimpleFeature> networkFeatures = GpkgReader.readEdges();
+
+        for(int i = 0 ; i < tripCount ; i++) {
+            if(!pathData.tooShort[i]) {
+                List<Id<Link>> links = pathData.path[i].links.stream().map(Identifiable::getId).toList();
+                LineString path = drawPath(links, network, networkFeatures);
+
+                logger.info("Trip " + i + ": " + pathData.path[i].links.stream().map(l -> l.getId().toString()).collect(Collectors.joining(" -> ")));
+            }
+        }
+
     }
 
     public String getStats() {
@@ -310,6 +347,7 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
         final Node[] destinationNodes;
         final double[] time;
         final LeastCostPathCalculator.Path[] path;
+        final LeastCostPathCalculator.Path[] fastestPath;
         final double[][] attributes;
 
         public PathData(int length) {
@@ -319,33 +357,14 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
             this.destinationNodes = new Node[length];
             this.time = new double[length];
             this.path = new LeastCostPathCalculator.Path[length];
+            this.fastestPath = new LeastCostPathCalculator.Path[length];
             this.attributes = new double[length][];
         }
     }
 
-    private static class TripWorker implements Runnable {
-
-        private final ConcurrentLinkedQueue<Integer> tripIndices;
-        private final Counter counter;
-        private final Vehicle vehicle;
-        private final LeastCostPathCalculator[] lcpCalculators;
-        private final int[] lcpCalculatorIdx;
-        private final TravelTime tt;
-        private final List<RouteAttribute> attributes;
-        private final PathData pathData;
-
-
-        public TripWorker(ConcurrentLinkedQueue<Integer> tripIndices, Counter counter, TravelTime travelTime, Vehicle vehicle,
-                          LeastCostPathCalculator[] lcpCalculators, int[] lcpCalculatorIdx, List<RouteAttribute> attributes, PathData pathData) {
-            this.tripIndices = tripIndices;
-            this.counter = counter;
-            this.tt = travelTime;
-            this.vehicle = vehicle;
-            this.lcpCalculators = lcpCalculators;
-            this.lcpCalculatorIdx = lcpCalculatorIdx;
-            this.attributes = attributes;
-            this.pathData = pathData;
-        }
+    private record TripWorker(ConcurrentLinkedQueue<Integer> tripIndices, Counter counter, TravelTime tt,
+                              Vehicle vehicle, LeastCostPathCalculator[] lcpCalculators, int[] lcpCalculatorIdx,
+                              List<RouteAttribute> attributes, PathData pathData) implements Runnable {
 
         public void run() {
 
@@ -356,7 +375,13 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
                 }
 //                this.counter.incCounter();
                 if(!pathData.tooShort[i]) {
-                    LeastCostPathCalculator.Path path = lcpCalculators[lcpCalculatorIdx[i]].calcLeastCostPath(pathData.originNodes[i], pathData.destinationNodes[i], 0., null, vehicle);
+                    LeastCostPathCalculator lcpCalculator = lcpCalculators[lcpCalculatorIdx[i]];
+                    LeastCostPathCalculator.Path path;
+                    if (lcpCalculator == null) {
+                        path = pathData.fastestPath[i];
+                    } else {
+                        path = lcpCalculator.calcLeastCostPath(pathData.originNodes[i], pathData.destinationNodes[i], 0., null, vehicle);
+                    }
                     double[] pathAttributes = new double[attributes.size()];
                     for(Link link : path.links) {
                         double linkTime = tt.getLinkTravelTime(link,0.,null,vehicle) / 60;
@@ -461,7 +486,7 @@ public class RouteDataDynamic implements RouteData, DynamicComponent {
                 pathData.attributes[i] = totAttributes;
             }
         }
-        logger.info("Identified " + veryShortTrips + " " + mode + " trips which start and end long the same link. Used properties of the nearest link.");
+        logger.info("Identified " + veryShortTrips + " " + mode + " trips which start and end on the same link. Used properties of the nearest link.");
     }
 
 }

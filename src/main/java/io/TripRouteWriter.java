@@ -189,7 +189,7 @@ public class TripRouteWriter {
         return builder.buildFeature(null);
     }
 
-    private static LineString drawPath(List<Id<Link>> linkIDs, Network network, Map<Integer, SimpleFeature> networkFeatures) {
+    public static LineString drawPath(List<Id<Link>> linkIDs, Network network, Map<Integer, SimpleFeature> networkFeatures) {
 
         Coordinate[] path = new Coordinate[]{};
         Map<Id<Link>, ? extends Link> networkLinks = network.getLinks();

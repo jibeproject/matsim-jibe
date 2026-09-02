@@ -3,10 +3,7 @@ package estimation.specifications.melbourne;
 import estimation.LogitData;
 import estimation.RouteAttribute;
 import estimation.UtilityFunction;
-import estimation.dynamic.DynamicComponent;
-import estimation.dynamic.RouteData;
-import estimation.dynamic.RouteDataDynamic;
-import estimation.dynamic.RouteDataPrecomputed;
+import estimation.dynamic.*;
 import estimation.specifications.AbstractModelSpecification;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
@@ -181,27 +178,5 @@ public abstract class MNL_Melbourne extends AbstractModelSpecification {
 
     List<RouteAttribute> streetEnvironmentAttributesWalk() {
         return new ArrayList<>();
-    }
-
-    private static class DynamicActive implements DynamicComponent {
-
-        final DynamicComponent dynamicBike;
-        final DynamicComponent dynamicWalk;
-
-        private DynamicActive(DynamicComponent dynamicBike, DynamicComponent dynamicWalk) {
-            this.dynamicBike = dynamicBike;
-            this.dynamicWalk = dynamicWalk;
-        }
-
-        @Override
-        public void update(double[] x) {
-            dynamicBike.update(x);
-            dynamicWalk.update(x);
-        }
-
-        @Override
-        public String getStats() {
-            return dynamicBike.getStats() + "\n" + dynamicWalk.getStats();
-        }
     }
 }

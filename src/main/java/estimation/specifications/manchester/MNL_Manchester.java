@@ -14,6 +14,8 @@ import trip.Trip;
 import java.io.IOException;
 import java.util.*;
 
+import static estimation.SoftPlusTransform.*;
+
 public abstract class MNL_Manchester extends AbstractModelSpecification {
 
     private final static String[] MODES = {"carD","carP","pt","bike","walk"};
@@ -116,11 +118,21 @@ public abstract class MNL_Manchester extends AbstractModelSpecification {
         return result;
     }
 
+    public UtilityFunction[] marginalCost() {
+        UtilitiesBuilder builder = new UtilitiesBuilder();
+        builder.put(0, (c, i) -> 1.);
+        builder.put(1, (c, i) -> 1.);
+        builder.put(2, (c, i) -> 1.);
+        builder.put(3, (c, i) -> pathCostBike(c,i) / bikeRouteData.getTime(i));
+        builder.put(4, (c, i) -> pathCostWalk(c,i) / walkRouteData.getTime(i));
+        return builder.build();
+    }
+
     // Path cost
     private double pathCostBike(double[] c, int i) {
         double cost = bikeRouteData.getTime(i);
         for(int j = 0 ; j < attributesBike.size() ; j++) {
-            cost += beta(c,attributesBike.get(j).getName()) * bikeRouteData.getAttribute(i,j);
+            cost += transform(beta(c,attributesBike.get(j).getName())) * bikeRouteData.getAttribute(i,j);
         }
         return cost;
     }
@@ -128,7 +140,7 @@ public abstract class MNL_Manchester extends AbstractModelSpecification {
     private double pathCostWalk(double[] c, int i) {
         double cost = walkRouteData.getTime(i);
         for(int j = 0 ; j < attributesWalk.size() ; j++) {
-            cost += beta(c,attributesWalk.get(j).getName()) * walkRouteData.getAttribute(i,j);
+            cost += transform(beta(c,attributesWalk.get(j).getName())) * walkRouteData.getAttribute(i,j);
         }
         return cost;
     }
@@ -162,14 +174,20 @@ public abstract class MNL_Manchester extends AbstractModelSpecification {
         builder.putAt("b_bike_cost", this::pathCostBike,3);
         for(int j = 0 ; j < attributesBike.size() ; j++) {
             int finalJ = j;
-            builder.putAt(attributesBike.get(j).getName(),(c,i)->beta(c,"b_bike_cost") * bikeRouteData.getAttribute(i,finalJ),3);
+            builder.putAt(attributesBike.get(j).getName(),(c,i)->
+                    beta(c,"b_bike_cost") *
+                            transformDerivative(beta(c,attributesBike.get(finalJ).getName())) *
+                            bikeRouteData.getAttribute(i,finalJ),3);
         }
 
         // Walk
         builder.putAt("b_walk_cost", this::pathCostWalk,4);
         for(int j = 0 ; j < attributesWalk.size() ; j++) {
             int finalJ = j;
-            builder.putAt(attributesWalk.get(j).getName(),(c,i)->beta(c,"b_walk_cost") * walkRouteData.getAttribute(i,finalJ),4);
+            builder.putAt(attributesWalk.get(j).getName(),
+                    (c,i)->beta(c,"b_walk_cost") *
+                            transformDerivative(beta(c,attributesWalk.get(finalJ).getName())) *
+                            walkRouteData.getAttribute(i,finalJ),4);
         }
 
         // Return
@@ -184,25 +202,4 @@ public abstract class MNL_Manchester extends AbstractModelSpecification {
         return new ArrayList<>();
     }
 
-    private static class DynamicActive implements DynamicComponent {
-
-        final DynamicComponent dynamicBike;
-        final DynamicComponent dynamicWalk;
-
-        private DynamicActive(DynamicComponent dynamicBike, DynamicComponent dynamicWalk) {
-            this.dynamicBike = dynamicBike;
-            this.dynamicWalk = dynamicWalk;
-        }
-
-        @Override
-        public void update(double[] x) {
-            dynamicBike.update(x);
-            dynamicWalk.update(x);
-        }
-
-        @Override
-        public String getStats() {
-            return dynamicBike.getStats() + "\n" + dynamicWalk.getStats();
-        }
-    }
 }

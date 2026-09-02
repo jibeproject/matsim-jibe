@@ -41,11 +41,11 @@ public class BicycleLinkSpeedCalculatorDefaultImpl implements BicycleLinkSpeedCa
         double surfaceFactor = computeSurfaceFactor(link);
         double gradientFactor = computeGradientFactor(link);
         double speed = maxBicycleSpeed * bicycleInfrastructureFactor * surfaceFactor * gradientFactor;
-        return Math.min(speed, link.getFreespeed());
+        return speed;//Math.min(speed, link.getFreespeed());
     }
 
     private double getDefaultMaximumVelocity(QVehicle qVehicle, Link link, double time) {
-        return Math.min(qVehicle.getMaximumVelocity(), link.getFreespeed(time));
+        return qVehicle.getMaximumVelocity();//Math.min(qVehicle.getMaximumVelocity(), link.getFreespeed(time));
     }
 
     /**

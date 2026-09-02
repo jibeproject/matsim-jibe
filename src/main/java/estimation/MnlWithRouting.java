@@ -1,5 +1,6 @@
 package estimation;
 
+import estimation.dynamic.DynamicActive;
 import estimation.specifications.AbstractModelSpecification;
 import gis.GpkgReader;
 import io.DiaryReader;
@@ -37,23 +38,41 @@ public class MnlWithRouting {
 
     }
 
+    public static String getOptionalArg(String[] args, String identifier) {
+        for (int i = 0; i < args.length - 1; i++) {
+            if (args[i].equals(identifier))
+                return args[i + 1];
+        }
+        return null;
+    }
+
     public static void run(String[] args, ModelLoader model, boolean computeRouteData,
                            String idVar, DiaryReader.IdMatcher idMatcher) throws IOException, FactoryException {
 
-        if(args.length < 3 || args.length > 4) {
+        if(args.length < 3 || args.length > 7) {
             throw new RuntimeException("""
-                    Program requires 3-4 arguments:\s
+                    Program requires 3-6 arguments:\s
                     (0) Properties file\s
                     (1) Logit data file\s
                     (2) Estimation results file\s
-                    (3) [OPTIONAL] Predicted output probabilities file""");
+                    (3) [optional with -s] Starting values from a previous run (variable names must match)\s
+                    (4) [optional with -p] Predicted output probabilities file\s
+                    (5) [optional with -g] Predicted output marginal generalised costs\s
+                    (6) [optional with -r] Output routes filename (.gpkg)""");
         }
 
         Resources.initializeResources(args[0]);
         String logitDataFilepath = args[1];
         String estimationResultPath = args[2];
-        boolean runPrediction = args.length == 4;
+        String startingValuesPath = getOptionalArg(args, "-s");
+        String predictedProbabilitiesFile = getOptionalArg(args, "-p");
+        String predictedMarginalCostsFile = getOptionalArg(args, "-g");
+        String routesOutputFile = getOptionalArg(args, "-r");
 
+        boolean predictProbabilities = predictedProbabilitiesFile  != null;
+        boolean predictMarginalCosts = predictedMarginalCostsFile != null;
+        boolean printRoutes = routesOutputFile != null;
+        logger.info("Running prediction: " + predictProbabilities);
 
         // Read in TRADS trips from CSV
         logger.info("Reading fixed input data from ascii file...");
@@ -73,13 +92,14 @@ public class MnlWithRouting {
         Trip[] trip_data = null;
         List<Trip> tripList = null;
         List<String> ids;
+        Network network = null;
         Network networkBike = null;
         Network networkWalk = null;
         TravelTime ttBike = null;
         TravelTime ttWalk = null;
         Vehicle bike = null;
 
-        if(computeRouteData || runPrediction) {
+        if(computeRouteData || predictProbabilities || predictMarginalCosts) {
 
             // Read Boundary Shapefile
             logger.info("Reading boundary shapefile...");
@@ -111,7 +131,7 @@ public class MnlWithRouting {
         if(computeRouteData) {
 
             // Read network
-            Network network = NetworkUtils2.readFullNetwork();
+            network = NetworkUtils2.readFullNetwork();
             networkBike = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.bike);
             networkWalk = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.walk);
 
@@ -128,22 +148,35 @@ public class MnlWithRouting {
         // Estimation
         File resultsFile = new File(estimationResultPath + ".csv");
         if(!resultsFile.exists()) {
+            // Override starting values
+            if(startingValuesPath != null) {
+                File startingValuesFile = new File(startingValuesPath);
+                if (!startingValuesFile.exists()) {
+                    throw new RuntimeException("Starting values file not found! " + startingValuesPath);
+                } else {
+                    logger.warn("Overriding starting values with values from " + startingValuesPath);
+                    double[] startingValues = CoefficientsIO.read(u,new File(startingValuesPath),false);
+                    u.overrideStarting(startingValues);
+                    if(u.getDynamicComponent() != null) {
+                        u.getDynamicComponent().update(u.contractCoeffs(startingValues));
+                    }
+                }
+            }
+
             // Run estimation
             logger.info("No estimation results CSV file found. Running estimation...");
             MultinomialLogit.run(u,y,k,0,1e-10,500,estimationResultPath);
             logger.info("finished estimation.");
         } else {
             // Don't run estimation
-            logger.info("Estimation results CSV file already exists. Skipping to prediction...");
+            logger.info("Estimation results CSV file already exists. Skipping estimation...");
         }
 
-        // Prediction
-        if(runPrediction) {
-            String predictionOutputFilepath = args[3];
+        // Read in coefficients for prediction or route writing
+        if(predictProbabilities || predictMarginalCosts || printRoutes) {
 
-            // Run prediction
-            logger.info("Running prediction...");
-            double[] coefficients = CoefficientsIO.read(u,resultsFile);
+            // Read coefficients and store into dynamic component
+            double[] coefficients = CoefficientsIO.read(u,resultsFile,true);
 
             // Create vector of variable coefficients only
             double[] varCoefficients = u.contractCoeffs(coefficients);
@@ -152,44 +185,67 @@ public class MnlWithRouting {
                 u.getDynamicComponent().update(varCoefficients);
             }
 
-            // Compute LL
-            MultinomialLogitObjective objective = new MultinomialLogitObjective(u, y, k, 0.);
-            logger.info("Computed LL = " + objective.f(varCoefficients));
+            if(predictProbabilities || predictMarginalCosts) {
 
-            // Compute probabilities
-            double[][] prediction = objective.p(coefficients);
+                logger.info("Predicting probabilities...");
 
-            // Write results
-            PrintWriter out = ioUtils.openFileForSequentialWriting(new File(predictionOutputFilepath), false);
-            assert out != null;
+                // Compute LL
+                MultinomialLogitObjective objective = new MultinomialLogitObjective(u, y, k, 0.);
+                logger.info("Computed LL = " + objective.f(varCoefficients));
 
-            // Print header
-            StringBuilder builder = new StringBuilder();
-            builder.append("ID")
-                    .append(SEP).append(Resources.instance.getString(Properties.HOUSEHOLD_ID))
-                    .append(SEP).append(Resources.instance.getString(Properties.PERSON_ID))
-                    .append(SEP).append(Resources.instance.getString(Properties.TRIP_ID));
-            for(String mode : u.getChoiceNames()) {
-                builder.append(SEP).append(mode);
+                // Compute probabilities
+                if (predictProbabilities) {
+                    double[][] probabilities = objective.p(coefficients);
+                    writePrediction(predictedProbabilitiesFile, u, y, tripList, ids, k, probabilities);
+                }
+
+                // Compute generalised costs
+                if (predictMarginalCosts) {
+                    double[][] marginalCosts = objective.mc(coefficients);
+                    writePrediction(predictedMarginalCostsFile, u, y, tripList, ids, k, marginalCosts);
+                }
+            }
+
+            if(printRoutes) {
+                ((DynamicActive) u.getDynamicComponent()).mapRoutes(routesOutputFile, logitData.getIds(), network);
+            }
+
+        }
+    }
+
+    private static void writePrediction(String predictionOutputFile, AbstractModelSpecification u, int[] y,
+                                        List<Trip> tripList, List<String> ids, int k, double[][] prediction) {
+        // Write results
+        logger.info("Writing prediction results to " + predictionOutputFile);
+        PrintWriter out = ioUtils.openFileForSequentialWriting(new File(predictionOutputFile), false);
+        assert out != null;
+
+        // Print header
+        StringBuilder builder = new StringBuilder();
+        builder.append("ID")
+                .append(SEP).append(Resources.instance.getString(Properties.HOUSEHOLD_ID))
+                .append(SEP).append(Resources.instance.getString(Properties.PERSON_ID))
+                .append(SEP).append(Resources.instance.getString(Properties.TRIP_ID));
+        for(String mode : u.getChoiceNames()) {
+            builder.append(SEP).append(mode);
+        }
+        out.println(builder);
+
+        // Print each line
+        for(int i = 0; i < y.length ; i++) {
+            Trip trip = tripList.get(i);
+            builder = new StringBuilder();
+            builder.append(ids.get(i)).
+                    append(SEP).append(trip.getHouseholdId()).
+                    append(SEP).append(trip.getPersonId()).
+                    append(SEP).append(trip.getTripId());
+
+            for(int j = 0; j < k; j++) {
+                builder.append(SEP).append(prediction[i][j]);
             }
             out.println(builder);
-
-            // Print each line
-            for(int i = 0 ; i < y.length ; i++) {
-                Trip trip = tripList.get(i);
-                builder = new StringBuilder();
-                builder.append(ids.get(i)).
-                        append(SEP).append(trip.getHouseholdId()).
-                        append(SEP).append(trip.getPersonId()).
-                        append(SEP).append(trip.getTripId());
-
-                for(int j  = 0 ; j < k ; j++) {
-                    builder.append(SEP).append(prediction[i][j]);
-                }
-                out.println(builder);
-            }
-
-            out.close();
         }
+
+        out.close();
     }
 }

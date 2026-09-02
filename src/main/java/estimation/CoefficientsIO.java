@@ -84,8 +84,7 @@ public class CoefficientsIO {
         logger.info("Wrote coefficients at each iteration to " + filePath);
     }
 
-    // Need a way to check coefficients / starting values match....
-    static double[] read(AbstractModelSpecification u, File file) throws IOException {
+    static double[] read(AbstractModelSpecification u, File file, boolean requireExactMatch) throws IOException {
 
         String recString;
         BufferedReader in = new BufferedReader(new FileReader(file));
@@ -94,19 +93,40 @@ public class CoefficientsIO {
         recString = in.readLine();
         String[] header = recString.split(SEP);
         Set<String> coeffNames = u.getCoeffNames();
+        int modelCoeffCount = coeffNames.size();
 
-        if(coeffNames.size() != header.length - 2) {
-            throw new RuntimeException("Number of coefficients in model specification (" + coeffNames.size() +
+        if(requireExactMatch && (modelCoeffCount != header.length - 2)) {
+            throw new RuntimeException("Number of coefficients in model specification (" + modelCoeffCount +
                     ") doesn't match number of coefficients in input file (" + (header.length - 2) + ")");
-        } else {
-            int i = 2;
-            for(String name : coeffNames) {
-                String inputName = header[i];
-                if(!name.equals(inputName)) {
-                    throw new RuntimeException("Model coefficient \"" + name + "\" doesn't match " +
-                            "input file coefficient \"" + inputName + "\" (position " + (i-2) + ")");
+        }
+
+        // Index coefficient names
+        Set<String> remainingCoeffNames = new HashSet<>(coeffNames);
+        int[] input2model = new int[header.length];
+        Arrays.fill(input2model,-1);
+        for(int i = 2 ; i < header.length ; i++) {
+            String inputName = header[i];
+            Integer position = u.getCoeffPos(inputName);
+            if (position == null) {
+                String message = "Input coefficient name not found in model specification: " + inputName;
+                if(requireExactMatch) {
+                    throw new RuntimeException(message);
+                } else {
+                    logger.warn(message);
                 }
-                i++;
+            } else {
+                input2model[i] = position;
+                remainingCoeffNames.remove(inputName);
+            }
+        }
+
+        // Check for missing coefficient names
+        if (!remainingCoeffNames.isEmpty()) {
+            String message = "Some model coefficients were not in input file: " + String.join(", ", remainingCoeffNames);
+            if(requireExactMatch) {
+                throw new RuntimeException(message);
+            } else {
+                logger.warn(message);
             }
         }
 
@@ -121,19 +141,24 @@ public class CoefficientsIO {
         // Retrieve values
         int iteration = Integer.parseInt(finalIteration[0]);
         double ll = Double.parseDouble(finalIteration[1]);
-        double[] coefficients = Arrays.stream(finalIteration).skip(2).mapToDouble(Double::parseDouble).toArray();
+
+        // Initialise model coefficients from starting values
+        double[] modelCoefficients = u.expandCoeffs(u.getStarting());
 
         // Print output
         logger.info("Final iteration: " + iteration);
-        System.out.printf("| %-30s | %-10s |%n","COEFFICIENT NAME","VALUE");
-        int i = 0;
-        for(String name : coeffNames) {
-            System.out.printf("| %-30s | % .7f |%n",name,coefficients[i]);
-            i++;
+        System.out.printf("| %-15s | %-30s | %-10s |%n","MODEL INDEX","COEFFICIENT NAME","VALUE");
+        for(int i = 2 ; i < header.length ; i++) {
+            int modelIdx = input2model[i];
+            double inputCoeff = Double.parseDouble(finalIteration[i]);
+            System.out.printf("| %-15d | %-30s | % .7f |%n",modelIdx,header[i],inputCoeff);
+            if (modelIdx != -1) {
+                modelCoefficients[modelIdx] = inputCoeff;
+            }
         }
         System.out.println("Final LL: " + ll);
 
-        // Also return
-        return(coefficients);
+        // Return model coefficients
+        return(modelCoefficients);
     }
 }

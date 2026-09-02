@@ -97,6 +97,9 @@ public abstract class AbstractModelSpecification {
 
     protected abstract UtilityFunction[] utility();
 
+    public UtilityFunction[] marginalCost() {
+        throw new RuntimeException("Marginal costs requested but not implemented in utility specification!");
+    }
     protected abstract Map<String, UtilityFunction[]> derivatives();
 
     protected DynamicComponent dynamic() {
@@ -124,7 +127,7 @@ public abstract class AbstractModelSpecification {
 
     public double getUtility(int i, int choiceIdx, double[] coeffs) {
         if(availability[choiceIdx][i]) {
-            return utilityVector[choiceIdx].applyAsDouble(coeffs,i);//utility(i, choiceSet.valueOf(choiceIdx),c);
+            return utilityVector[choiceIdx].applyAsDouble(coeffs,i);
         } else {
             return Double.NEGATIVE_INFINITY;
         }
@@ -156,6 +159,13 @@ public abstract class AbstractModelSpecification {
 
     public String[] getChoiceNames() {
         return choiceNames;
+    }
+
+    public void overrideStarting(double[] newStartingValues) {
+        if(newStartingValues.length != allCoeffs) {
+            throw new RuntimeException("Incorrect number of starting values given!");
+        }
+        System.arraycopy(newStartingValues,0,this.starting,0,newStartingValues.length);
     }
 
     public double[] getStarting() {
@@ -211,12 +221,6 @@ public abstract class AbstractModelSpecification {
         for(int i = 0 ; i < allCoeffs ; i++) {
             if(!fixed[i]) {
                 w[coeffSet.indexOf(i)] = wFull[i];
-            } else {
-                if(starting[i] != wFull[i]) {
-                    String coeffName = (new ArrayList<>(getCoeffNames())).get(i);
-                    throw new RuntimeException("Fixed coefficient \"" + coeffName + " has different starting value " +
-                            "in specification (" + starting[i] + ") than in current coefficient array! (" + wFull[i] + ")");
-                }
             }
         }
         return w;
@@ -341,7 +345,7 @@ public abstract class AbstractModelSpecification {
         return coefficients().keySet();
     }
 
-    public int getCoeffPos(String coeffName) {
+    public Integer getCoeffPos(String coeffName) {
         return coefficients.get(coeffName);
     }
 }

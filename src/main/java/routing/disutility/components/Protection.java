@@ -15,27 +15,17 @@ public enum Protection {
         String cycleway = (String) link.getAttributes().getAttribute(BicycleUtils.CYCLEWAY);
 
         if (link.getAllowedModes().contains(TransportMode.walk) || link.getAllowedModes().contains(TransportMode.bike)) {
-            switch (cycleosm) {
-                case "offroad":
-                case "kerbed":
-                    return KERBED;
-                case "protected":
-                    return PROTECTED;
-                case "painted":
-                    return LANE;
-                case "integrated":
-                    return MIXED;
-                default:
-                    switch (cycleway) {
-                        case "track":
-                            return PROTECTED;
-                        case "share_busway":
-                        case "lane":
-                            return LANE;
-                        default:
-                            return MIXED;
-                    }
-            }
+            return switch (cycleosm) {
+                case "offroad", "kerbed" -> KERBED;
+                case "protected" -> PROTECTED;
+                case "painted" -> LANE;
+                case "integrated" -> MIXED;
+                default -> switch (cycleway) {
+                    case "track" -> PROTECTED;
+                    case "share_busway", "lane" -> LANE;
+                    default -> MIXED;
+                };
+            };
         } else {
             return null;
         }
