@@ -10,11 +10,9 @@ import resources.Resources;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
-// Tools for reading edges and nodes files produced by the JIBE WP2 team
+// Tools for reading GIS data
 
 public class GpkgReader {
 
@@ -37,34 +35,8 @@ public class GpkgReader {
         return features;
     }
 
-    public static Set<SimpleFeature> readFeatures(File file) {
-        Set<SimpleFeature> features = new HashSet<>();
-
-        try{
-            GeoPackage geopkg = new GeoPackage(file);
-            SimpleFeatureReader r = geopkg.reader(geopkg.features().get(0), null,null);
-            while(r.hasNext()) {
-                features.add(r.next());
-            }
-            r.close();
-            geopkg.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return features;
-    }
-
-    public static Map<Integer, SimpleFeature> readNodes() {
-        return readFeatures(Resources.instance.getFile(Properties.NETWORK_NODES), "nodeID");
-    }
-
     public static Map<Integer, SimpleFeature> readEdges() {
         return readFeatures(Resources.instance.getFile(Properties.NETWORK_LINKS), "edgeID");
-    }
-
-    public static Geometry readRegionBoundary() throws IOException {
-        return readBoundary(Resources.instance.getString(Properties.REGION_BOUNDARY));
     }
 
     public static Geometry readNetworkBoundary() throws IOException {

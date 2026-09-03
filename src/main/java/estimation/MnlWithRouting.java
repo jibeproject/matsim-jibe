@@ -1,15 +1,17 @@
 package estimation;
 
-import estimation.dynamic.DynamicActive;
+import estimation.latent.LatentUtilityActive;
 import estimation.specifications.AbstractModelSpecification;
 import gis.GpkgReader;
 import io.DiaryReader;
 import io.ioUtils;
-import network.NetworkUtils2;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
+import org.matsim.core.network.NetworkUtils;
+import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
+import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.vehicles.Vehicle;
 import org.opengis.referencing.FactoryException;
@@ -29,6 +31,23 @@ public class MnlWithRouting {
 
     private final static Logger logger = Logger.getLogger(MnlWithRouting.class);
     private static final String SEP = ",";
+
+
+    public static Network readFullNetwork() {
+        // Read network
+        logger.info("Reading MATSim network...");
+        String networkPath = Resources.instance.getString(Properties.MATSIM_NETWORK);
+        Network fullNetwork = NetworkUtils.createNetwork();
+        new MatsimNetworkReader(fullNetwork).readFile(networkPath);
+        return fullNetwork;
+    }
+
+    // Extracts mode-specific network (e.g. walk network, car network, cycle network)
+    public static Network extractModeSpecificNetwork(Network network, String transportMode) {
+        Network modeSpecificNetwork = NetworkUtils.createNetwork();
+        new TransportModeNetworkFilter(network).filter(modeSpecificNetwork, Collections.singleton(transportMode));
+        return modeSpecificNetwork;
+    }
 
 
     public interface ModelLoader {
@@ -131,9 +150,9 @@ public class MnlWithRouting {
         if(computeRouteData) {
 
             // Read network
-            network = NetworkUtils2.readFullNetwork();
-            networkBike = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.bike);
-            networkWalk = NetworkUtils2.extractModeSpecificNetwork(network, TransportMode.walk);
+            network = readFullNetwork();
+            networkBike = extractModeSpecificNetwork(network, TransportMode.bike);
+            networkWalk = extractModeSpecificNetwork(network, TransportMode.walk);
 
             // Travel Time
             Bicycle bicycle = new Bicycle(null);
@@ -157,8 +176,8 @@ public class MnlWithRouting {
                     logger.warn("Overriding starting values with values from " + startingValuesPath);
                     double[] startingValues = CoefficientsIO.read(u,new File(startingValuesPath),false);
                     u.overrideStarting(startingValues);
-                    if(u.getDynamicComponent() != null) {
-                        u.getDynamicComponent().update(u.contractCoeffs(startingValues));
+                    if(u.getLatentUtilityComponent() != null) {
+                        u.getLatentUtilityComponent().update(u.contractCoeffs(startingValues));
                     }
                 }
             }
@@ -175,14 +194,14 @@ public class MnlWithRouting {
         // Read in coefficients for prediction or route writing
         if(predictProbabilities || predictMarginalCosts || printRoutes) {
 
-            // Read coefficients and store into dynamic component
+            // Read coefficients and store into latent component
             double[] coefficients = CoefficientsIO.read(u,resultsFile,true);
 
             // Create vector of variable coefficients only
             double[] varCoefficients = u.contractCoeffs(coefficients);
 
-            if(u.getDynamicComponent() != null) {
-                u.getDynamicComponent().update(varCoefficients);
+            if(u.getLatentUtilityComponent() != null) {
+                u.getLatentUtilityComponent().update(varCoefficients);
             }
 
             if(predictProbabilities || predictMarginalCosts) {
@@ -207,7 +226,7 @@ public class MnlWithRouting {
             }
 
             if(printRoutes) {
-                ((DynamicActive) u.getDynamicComponent()).mapRoutes(routesOutputFile, logitData.getIds(), network);
+                ((LatentUtilityActive) u.getLatentUtilityComponent()).mapRoutes(routesOutputFile, logitData.getIds(), network);
             }
 
         }

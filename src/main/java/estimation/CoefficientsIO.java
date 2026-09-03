@@ -46,10 +46,10 @@ public class CoefficientsIO {
         out.println("Start LL = " + results.llStart);
         out.println("Final LL = " + results.llOut);
 
-        // Print stats from dynamic component (if applicable)
-        if(u.getDynamicComponent() != null) {
+        // Print stats from latent component (if applicable)
+        if(u.getLatentUtilityComponent() != null) {
             out.println();
-            out.println(u.getDynamicComponent().getStats());
+            out.println(u.getLatentUtilityComponent().getStats());
         }
 
         out.close();

@@ -1,6 +1,6 @@
 package estimation.specifications;
 import estimation.UtilityFunction;
-import estimation.dynamic.DynamicComponent;
+import estimation.latent.LatentUtilityComponent;
 import estimation.LogitData;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.log4j.Logger;
@@ -24,7 +24,7 @@ public abstract class AbstractModelSpecification {
     private boolean[][] availability;
     private UtilityFunction[] utilityVector;
     private UtilityFunction[][] derivativeMatrix;
-    private DynamicComponent dynamicComponent;
+    private LatentUtilityComponent latentUtilityComponent;
 
     public AbstractModelSpecification(LogitData db, boolean initialise, String[] choiceNames, int[] choiceValues) {
         this.db = db;
@@ -33,7 +33,7 @@ public abstract class AbstractModelSpecification {
         coefficients = new HashMap<>();
         if(initialise) {
             initialiseCoeffAvail();
-            initialiseDynamicUtilDeriv();
+            initialiseLatentUtilDeriv();
         }
     }
 
@@ -85,8 +85,8 @@ public abstract class AbstractModelSpecification {
     }
 
 
-    protected void initialiseDynamicUtilDeriv() {
-        this.dynamicComponent = dynamic();
+    protected void initialiseLatentUtilDeriv() {
+        this.latentUtilityComponent = latent();
         this.utilityVector = utility();
         this.derivativeMatrix = createDerivativeMatrix();
     }
@@ -102,7 +102,7 @@ public abstract class AbstractModelSpecification {
     }
     protected abstract Map<String, UtilityFunction[]> derivatives();
 
-    protected DynamicComponent dynamic() {
+    protected LatentUtilityComponent latent() {
         return null;
     }
 
@@ -133,8 +133,8 @@ public abstract class AbstractModelSpecification {
         }
     }
 
-    public DynamicComponent getDynamicComponent() {
-        return this.dynamicComponent;
+    public LatentUtilityComponent getLatentUtilityComponent() {
+        return this.latentUtilityComponent;
     }
 
     protected double beta(double[] c, String name) {

@@ -11,16 +11,6 @@ public class Jacobian {
     private final static double D = 0.0001;
     private final static int R = 4;
 
-    public static void main(String[] args) {
-        double[] a = new double[] {
-                (exp2x(0.1) - exp2x(-0.1))/0.2,
-                (exp2x(0.05) - exp2x(-0.05))/0.1,
-                (exp2x(0.025) - exp2x(-0.025))/0.05,
-                (exp2x(0.0125) - exp2x(-0.0125))/0.025};
-        double test = extrapolate(a);
-        System.out.println("test = " + test);
-    }
-
     public static double exp2x(double x) {
         return Math.exp(2 * x);
     }

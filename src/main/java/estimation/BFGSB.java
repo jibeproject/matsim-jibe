@@ -17,7 +17,7 @@
 
 package estimation;
 
-import estimation.dynamic.DynamicComponent;
+import estimation.latent.LatentUtilityComponent;
 import org.apache.log4j.Logger;
 import smile.math.DifferentiableMultivariateFunction;
 import smile.math.MultivariateFunction;
@@ -126,7 +126,7 @@ public class BFGSB {
      *
      * @return the minimum value of the function.
      */
-    public static Results minimize(DifferentiableMultivariateFunction func, DynamicComponent dynamicComponent,
+    public static Results minimize(DifferentiableMultivariateFunction func, LatentUtilityComponent latentUtilityComponent,
                                    double[] x, double[] l, double[] u, double gtol, int maxIter) {
 
         List<double[]> xAtEachIteration = new ArrayList<>();
@@ -207,11 +207,11 @@ public class BFGSB {
                 return new Results(llStart, f, hessin, iter - 1, xAtEachIteration, fAtEachIteration);
             }
 
-            f = linesearch(func, x, f, g, xi, xnew, stpmax, dynamicComponent);
+            f = linesearch(func, x, f, g, xi, xnew, stpmax, latentUtilityComponent);
             clampToBound(xnew, l, u);
 
-            if (dynamicComponent != null) {
-                dynamicComponent.update(xnew);
+            if (latentUtilityComponent != null) {
+                latentUtilityComponent.update(xnew);
             }
 
             for (double value : xnew) {
@@ -359,7 +359,7 @@ public class BFGSB {
      * @return the new function value.
      */
     private static double linesearch(MultivariateFunction func, double[] xold, double fold, double[] g, double[] p, double[] x, double stpmax,
-                                     DynamicComponent dynamicComponent) {
+                                     LatentUtilityComponent latentUtilityComponent) {
         if (stpmax <= 0) {
             throw new IllegalArgumentException("Invalid upper bound of linear search step: " + stpmax);
         }
@@ -414,9 +414,9 @@ public class BFGSB {
                 x[i] = xold[i] + alam * p[i];
             }
 
-            // Update dynamic component
-            if(dynamicComponent != null) {
-                dynamicComponent.update(x);
+            // Update latent component
+            if(latentUtilityComponent != null) {
+                latentUtilityComponent.update(x);
             }
 
             double f = func.apply(x);
@@ -425,9 +425,9 @@ public class BFGSB {
             if (alam < alammin) {
                 System.arraycopy(xold, 0, x, 0, n);
                 logger.info("Linesearch ran " + runCount + " times, no update.");
-                // Go back to old dynamic component (unlikely)
-                if(dynamicComponent != null) {
-                    dynamicComponent.update(x);
+                // Go back to old latent component (unlikely)
+                if(latentUtilityComponent != null) {
+                    latentUtilityComponent.update(x);
                 }
                 return f;
             } else if (f <= fold + ftol * alam * slope) {

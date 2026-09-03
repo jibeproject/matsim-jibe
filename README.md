@@ -1,128 +1,102 @@
-This repository contains a collection of tools and code for network 
-conversion, routing, travel diary processing, matrix generation, and accessibility calculations for 
-the JIBE and GLASST projects.
+# Mode choice estimation with latent paths
 
+This repository contains the mode choice estimation tool that uses latent paths to incorporate route-level 
+street-environment into walking and cycling utility. It is designed to create empirical models that are straightforward 
+to interperet while being effective for forecasting active travel policy in large-scale transport models.   
+
+It is referenced in the paper "Latent paths in mode choice models: incorporating street-level environment features for 
+active travel policy" published in Transportation Research Part A: Policy and Practice.
+
+DOI: https://doi.org/10.1016/j.tra.2026.105223
+
+A more technical description of each component can be found in the paper's supplementary materials, located at:
+https://ars.els-cdn.com/content/image/1-s2.0-S0965856426003642-mmc1.docx
+
+Key features:
+- 📊 Easily interpretable street-level environment coefficients
+- ⚡ Efficient implementation for large-scale forecasting
+- 👥 Demographic interactions
+- 🗺️ Sensitivity to environments along the full trip (not just at origin and destination)
+- ❌ No reliance on route choice data (which is often unavailable)
+
+## Required inputs
+This code is written in Java and has been tested with the Java 25 SDK
+
+### Properties file
+Key inputs and computational parameters are specified in a properties file, including:
+
+- **matsim.network** The road network in MATSim .xml format. This should include the full network for pedestrians and cyclists.
+- **network.boundary** A polygon defining the network extent, in .gpkg format
+- **number.of.threads** Threads used for computing least-cost paths
+- **network.links** (optional for outputting routes) Link geometries in .gpkg format
+- **diary.file** Filename of diary file, which should contain origin and destination locations for each trip.
+- **diary.delimeter** Delimeter used to separate columns (usually comma or semicolon)
+- **diary.household.id** Column name in diary containing household IDs
+- **diary.person.id** Column name in diary containing person IDs
+- **diary.trip.id** Column name in diary containing trip IDs
+- **diary.origin.x** and **diary.origin.y** X and Y coordinates of origin locations
+- **diary.destination.x** and **diary.destination.y** X and Y coordinates of destination locations
+
+An example of the properties file is provided in src/main/java/resources/example.properties.
+
+### Logit data file
+This file contains the choice dataset and all non-spatial (e.g., sociodemogaphic) predictors. 
+At the very least, each record needs a unique identifier and a "choice" column containing the chosen mode.
+
+Every record in the logit dataset should correspond to a record in the diary.
+The correspondence is specified using a DiaryReader.IdMatcher object, 
+and can be passed in as an argument to the MnlWithRouting.run method
+(see the estimation section below)
+
+## Specification
+Specifications should implement the class estimation/specifications/AbstractModelSpecification.java.
+To estimate with your chosen specification, it needs to be entered as the first argument in run() in 
+the estimation/MultinomialLogit.java class.
+
+Simple model specifications applying the SP and RP examples in Apollo (http://www.apollochoicemodelling.com/examples.html).
+are presented in estimation/specifications/apollo_examples/. These demonstrate the maximum likelihood estimation 
+procedure without spatial information or latent routes. 
+
+The specifications used for the published article are in estimation/specifications/manchester and estimation/specifications/melbourne.
+
+Example main methods are described RunMnlApolloExample.java (for running the above apollo examples)
+and RunMnlWithLatentRoutes.java (for running the models published in the article).
+
+### Street-level environment features
+Street-level environment features should be defined as attributes of the MATSim links.
+These features can then be queried in the specification. 
+See specifications/manchester and specifications/melbourne for examples.
+
+The *routing* package contains helpful methods for computing travel time and disutility for active modes, incorporating the street-level environment.
 The walk and cycle routing algorithms are based largely on code from the "bicycle" MATSim extension which
 can be found here: https://github.com/matsim-org/matsim-libs/tree/master/contribs/bicycle.
 The extension is also described in this paper: https://doi.org/10.1016/j.procs.2017.05.424
 
-Our calculations for skim matrices and accessibility require efficiently routing to a large number of destinations.
-Our code for doing this is based largely on code by the swiss federal railway (SBB) which can be found here:
-https://github.com/SchweizerischeBundesbahnen/matsim-sbb-extensions
-
-The runnable methods are described below.
-
-# General
-
-The relevant inputs, outputs, and parameters are specified in a properties file which is passed in as the first argument to all runnable code. A template for this properties file is located in src/main/java/resources/example.properties. All paths given in this properties file are relative from the working directory which can be specified in each run configuration.
-
-Most code requires the MATSim vehicle/bike/walk network to run. This network can be created with src/main/java/network/CreateMatsimNetwork[area].java, and it will be saved to the location specified by "matsim.road.network" in the properties file.
-
-Some code also requires the PT network, which can be generated using src/main/java/network/CreateMatsimNetworkPt.java.
-
-## Network package (src/main/java/network)
-
-This package contains tools for creating, converting, and writing the MATSim network
-
-### CreateMatsimNetworkManchester.java
-
-Creates the MATSim network for the Greater Manchester study area. Requires nodes and edges files in .gpkg format.
-
-### CreateMatsimNetworkMelbourne.java
-
-Creates the MATSim network for the Greater Melbourne study area. Requires nodes and edges files in .gpkg format.
-
-### WriteNetworkXmlSingleMode.java
-
-Writes a single-mode matsim network (e.g. car, walk, or cycle network).
-
-### CreateMatsimNetworkPt.java
-
-Creates a MATSim public transport network and schedule from GTFS data using the pt2matsim extension.
-Bus trips are mapped to the car network (this can take several days to run).
-More details on the pt2matsim extension can be found at https://github.com/matsim-org/pt2matsim.
-
-### WriteNetworkGpkg.java
-
-Creates a directed 2-way edges file (.gpkg) based on the matsim network. Includes attributes useful for visualising and debugging.
-(additional attributes can be specified in this code).
-This is especially useful for visualisations in which attributes are different in each direction.
-Note that the output from this code is only meant for visualisation, it is not to be taken as input anywhere else.
-
-## Diary package (src/main/java/diary)
-This package contains everything related to routing trips from a travel diary survey.
-
-### RunRouter.java
-
-Calculates routes for diary trips. Can specify one or multiple routing algorithms in this code by defining different travel disutility functions.
-(see routing/disutility for custom functions used in this project). Results can be written as either a .gpkg file (with geometries) or a .csv file (without geometries, faster).
-Route attributes can be computed by aggregating over all links in each route, using a method from routing/ActiveAttributes.Java (or create your own)
-and passing this in as an argument to the router.
-
-
-### RunCorridors.java
-
-Calculates corridors for each diary trip, using the methodology described in Zhang et al. 2024 (https://doi.org/10.17863/CAM.107588).
-This computes all links a person could feasibly use for their journey up to a specified detour threshold. Not this is computationally intensive,
-recommend detour threshold does not exceed 10%.
-
-### RunRubberBandingAnalysis.java
-
-Tool for tour-based analysis, to evaluate placement of stops with respect to the home and main activity.
-Useful for preparing activity-based models. Requires the 'main' activity to be specified for each trip.
-
-## Accessibility package (src/main/java/accessibility)
-
-This package contains tools and methods for calculating accessibility. See accessibility/README.md for further details.
-
-## Skim package (src/main/java/skim)
-Package for generating skim matrices for MITO in .omx format
-
-### RunSkims.java
-Creates various skims for car, bike, and walk.
-Includes purpose-specific generalised time skims for MITO.
-
-### RunSkimsPt.java
-Creates skim matrices for public transport
-
-## Estimation package (src/main/java/estimation)
-This package contains a tool for empirical mode choice estimation incorporating the street-level environment.
+## Estimation
 The estimation currently supports only multinomial logit models estimated using the BGFS algorithm.
-This is based on the estimation tools in Smile (https://haifengl.github.io) and Apollo (http://www.apollochoicemodelling.com).
+It is based on the estimation tools in Smile (https://haifengl.github.io) and Apollo (http://www.apollochoicemodelling.com).
 
-### RunMnl.java
-Example model applying the SP and RP examples in Apollo (http://www.apollochoicemodelling.com/examples.html). 
- results should match the Apollo examples
+For estimating with latent paths, a useful setup script can be found in estimation/MnlWithRouting.java.
+In addition to estimation, this script also includes functionality for custom starting values, prediction, and writing latent routes.
 
-### RunMnlManchester.java
-Script to run models for Manchester. The estimation requires two diary datasets.
-First, the dataset containing fixed non-route-based predictors (e.g., sociodemographic attributes). 
-Second, the dataset used for routing (see Routing package), includes origin and destination locations for each trip.
-The fixed predictors dataset is passed in as an argument, while the routing dataset is specified in the _diary.file_ property. 
-The network must also be specified in the _matsim.road.network_ property.
-Every record in the travel diary should correspond to a record in the routing dataset 
-(based on the ID variable in the predictor dataset and the household/person/trip ID in the routing dataset, see lines 70-76).
+For a quick estimation without latent routes, the estimation can be also run using pre-calculated initial route data from the previous run.
+This can be enabled by setting the computeRouteData argument to false in MnlWithRouting.run().
 
-Dynamic updating of route estimates can be enabled or disabled using _ENABLE_DYNAMIC_ROUTING_ in dynamic/RouteDataDynamic.java (line 37).
-Otherwise, the fastest route is computed once and used over all iterations of the estimation.
+### Handling matching origin and destination nodes
 
-For a quick estimation, the routine can be also run with pre-calculated fastest route data from the previous run.
-This can be enabled by setting _COMPUTE_ROUTE_DATA_ to false in RunMnlManchester.java (line 28).
-This quicker option is not possible with dynamic updating.
+Matching origin and destination nodes can happen for very short trips.
+For these trips, paths cannot be computed, so travel time and street environment predictors are static instead of latent. 
 
-## Demand package
-Package for setting up and running MATSim simulation using travel demand data provided by TfGM in OMX format.
-The most important methods are
+For these trips, travel time is estimated using the "dist" attribute in the choice dataset, divided by average speed.
+These average speeds can be customised using the *avg.walk.speed* and *avg.bike.speed* properties.
 
-### GenerateManchesterPlans.java
-Creates a MATSim plans file using origin-destination demand data from TfGM's transport model.
+Their street-level environment predictors are computed in one of two ways:
+1) If the diary contains origin and destination zone columns and a zone polygons is provided, then take an average of all links in that zone. In this case the folllowing properties must be specified:
+- **zone.system** Zone polygons in .gpkg format
+- **zone.id** Attribute name in zone system corresponding to diary zone IDs
+- **diary.origin.zone** Column name in diary containing origin zone IDs
+- **diary.destination.zone** Column name in diary containing destination zone IDs
+2) If no zone system if provided, then it uses the link(s) closest to the original origin and destination coordinates.
 
-### RunSimulation.java
-Runs the simulation. The exampleConfig.xml and exampleVehicles.xml are useful templates for this.
-
-## Other methods
-### gis/CreateGrid.java
-For use with grid-based accessibility calculations.
-Creates a geopackage of hexagonal grid cells within the region boundary
-(specified by the property _region.boundary_ in the properties file).
-The desired side length for each cell must be specified as an argument.
+This process is coded into the latent router in estimation/latent/LatentRouter.java,
+specifically the computeVeryShortTripData method.

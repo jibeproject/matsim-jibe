@@ -1,19 +1,14 @@
-<!--
-  ~ Copyright (C) Schweizerische Bundesbahnen SBB, 2018-2019.
-  -->
-
 <project xmlns="http://maven.apache.org/POM/4.0.0"
 		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>ch.sbb</groupId>
-	<artifactId>matsim-sbb-extensions</artifactId>
-	<version>12.14</version>
+	<groupId>de.tum.bgu.msm.latentpathmodechoice</groupId>
+	<artifactId>latent-path-mode-choice</artifactId>
+	<version>2.0</version>
 
-
-	<name>MATSim JIBE</name>
-	<description>All MATSim-related scripts for JIBE</description>
+	<name>Latent path mode choice</name>
+	<description>Mode choice estimation framework using latent paths</description>
 	<properties>
 		<matsim.version>14.0</matsim.version>
 		<geotools.version>24.2</geotools.version>
@@ -138,11 +133,6 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.matsim</groupId>
-			<artifactId>pt2matsim</artifactId>
-			<version>21.10</version>
-		</dependency>
-		<dependency>
 			<groupId>com.github.haifengl</groupId>
 			<artifactId>smile-core</artifactId>
 			<version>3.1.1</version>
@@ -229,18 +219,5 @@
 
 		</plugins>
 	</build>
-
-	<distributionManagement>
-    <repository>
-        <id>bintray-schweizerischebundesbahnen-simba.mvn</id>
-        <name>schweizerischebundesbahnen-simba.mvn</name>
-        <url>https://api.bintray.com/maven/schweizerischebundesbahnen/simba.mvn/matsim-sbb-extensions/;publish=1</url>
-    </repository>
-		<snapshotRepository>
-			<id>oss-jfrog-artifactory</id>
-			<name>artifactory-snapshots</name>
-			<url>http://oss.jfrog.org/oss-snapshot-local</url>
-		</snapshotRepository>
-	</distributionManagement>
 
 </project>

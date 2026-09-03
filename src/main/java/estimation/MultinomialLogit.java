@@ -36,7 +36,7 @@ public class MultinomialLogit {
 
         // Run BFGS algrorithm
         MultinomialLogitObjective objective = new MultinomialLogitObjective(u, y, k, lambda);
-        BFGS.Results results = BFGS.minimize(objective,u.getDynamicComponent(), w, tol, maxIter);
+        BFGS.Results results = BFGS.minimize(objective,u.getLatentUtilityComponent(), w, tol, maxIter);
         logger.info("finished estimation.");
 
         // Approximate variance-coviariance matrix (from BFGS method) – for debugging only

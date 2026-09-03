@@ -44,12 +44,5 @@ public class Resources {
         return Double.parseDouble(properties.getProperty(key));
     }
 
-    public synchronized double getMarginalCost(String mode, String type) {
-        return getDouble("mc." + mode + "." + type);
-    }
-
-
-
-
 
 }
